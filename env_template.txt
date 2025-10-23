@@ -1,0 +1,12 @@
+# Telegram Bot Configuration
+BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
+
+# Database Configuration (замените на ваш URL из Neon)
+DATABASE_URL=postgresql://postgres:postgres@db:5432/waifu_bot
+
+# Redis Configuration (замените на ваш URL из Redis Cloud)
+REDIS_URL=redis://redis:6379/0
+
+# Environment
+ENV=development
+

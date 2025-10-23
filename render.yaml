@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: waifu-bot-webapp
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m uvicorn src.bot.api_server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+    healthCheckPath: /health
