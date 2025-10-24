@@ -20,6 +20,7 @@ try:
     # Проверяем настройки базы данных
     try:
         settings = get_settings()
+        print(f"Database URL: {settings.database_url}")
         if not settings.database_url:
             raise Exception("Database URL not configured")
     except Exception as e:
@@ -28,7 +29,8 @@ try:
         Waifu = None
         calculate_waifu_power = lambda x: 0
         
-except ImportError:
+except ImportError as e:
+    print(f"Import error: {e}")
     # Если не можем импортировать, создаем заглушки
     SessionLocal = None
     Waifu = None
