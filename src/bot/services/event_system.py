@@ -96,14 +96,10 @@ def format_event_result(waifu: Dict, event_type: str, score: float, rewards: Dic
 ⭐ Опыт: +{rewards['xp']}
 
 💭 <b>Влияние на вайфу:</b>
+⚡ Энергия: -20
+😊 Настроение: +5
+💝 Лояльность: +2
 """
-    
-    # Влияние на настроение и лояльность
-    mood_change = random.randint(-5, 10)
-    loyalty_change = random.randint(0, 5)
-    
-    result += f"😊 Настроение: {mood_change:+d}%\n"
-    result += f"💝 Лояльность: {loyalty_change:+d}%\n"
     
     return result.strip()
 

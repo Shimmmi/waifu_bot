@@ -11,6 +11,7 @@ from bot.services.event_system import (
     get_event_description, format_event_result, get_available_events,
     can_participate_in_event
 )
+from bot.data_tables import EVENTS
 
 router = Router()
 
@@ -43,6 +44,12 @@ async def handle_menu_callback(callback: CallbackQuery) -> None:
         await handle_waifu_events_callback(callback)
     elif callback.data == "random_event":
         await handle_random_event_callback(callback)
+    elif callback.data.startswith("event_accept_"):
+        await handle_event_accept_callback(callback)
+    elif callback.data == "event_decline":
+        await handle_event_decline_callback(callback)
+    elif callback.data == "event_cannot_participate":
+        await callback.answer("⛔ Эта вайфу не может участвовать в событии!")
     elif callback.data == "back_to_waifu_menu":
         await handle_waifu_menu_callback(callback)
     elif callback.data.startswith("waifu_list_page_"):
@@ -453,7 +460,7 @@ async def handle_waifu_events_callback(callback: CallbackQuery) -> None:
 
 
 async def handle_random_event_callback(callback: CallbackQuery) -> None:
-    """Участие в случайном событии - выбор вайфу"""
+    """Участие в случайном событии - предложение участия"""
     if callback.from_user is None:
         return
 
@@ -480,33 +487,25 @@ async def handle_random_event_callback(callback: CallbackQuery) -> None:
 
         # Выбираем случайное событие
         event_type = get_random_event()
-        event_info = get_event_description(event_type)
+        event = EVENTS.get(event_type, {})
         
-        # Создаем кнопки для выбора вайфу
-        keyboard_buttons = []
-        for waifu in waifus:
-            power = calculate_waifu_power({
-                "stats": waifu.stats,
-                "dynamic": waifu.dynamic,
-                "level": waifu.level
-            })
-            rarity_icon = get_rarity_color(waifu.rarity)
-            keyboard_buttons.append([
-                InlineKeyboardButton(
-                    text=f"{waifu.name} - Ур.{waifu.level} {rarity_icon} 💪{power}",
-                    callback_data=f"event_waifu_select_{waifu.id}_{event_type}"
-                )
-            ])
-        
-        keyboard_buttons.append([InlineKeyboardButton(text="🔙 Назад к событиям", callback_data="waifu_events")])
-
+        # Предлагаем участие с таймером 60 секунд
         text = (
-            f"🎲 <b>Случайное событие: {event_info['name']}</b>\n\n"
-            f"📝 {event_info['description']}\n\n"
-            f"Выберите вайфу для участия:"
+            f"🎲 <b>Случайное событие!</b>\n\n"
+            f"🎯 <b>{event.get('name', 'Событие')}</b>\n"
+            f"📝 {event.get('description', 'Описание отсутствует')}\n\n"
+            f"⏱️ У вас есть <b>60 секунд</b> чтобы принять решение!\n\n"
+            f"Хотите участвовать?"
         )
 
-        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✅ Да, участвовать!", callback_data=f"event_accept_{event_type}"),
+                InlineKeyboardButton(text="❌ Нет, отказаться", callback_data="event_decline")
+            ],
+            [InlineKeyboardButton(text="🔙 Назад к событиям", callback_data="waifu_events")]
+        ])
+        
         await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
         await callback.answer()
 
@@ -514,6 +513,100 @@ async def handle_random_event_callback(callback: CallbackQuery) -> None:
         await callback.answer(f"Ошибка: {str(e)}")
     finally:
         session.close()
+
+
+async def handle_event_accept_callback(callback: CallbackQuery) -> None:
+    """Обработка принятия участия в событии"""
+    if callback.from_user is None:
+        return
+    
+    # Парсим callback data: event_accept_{event_type}
+    parts = callback.data.split("_")
+    if len(parts) >= 3:
+        event_type = parts[2]
+        
+        tg_user_id = callback.from_user.id
+        session = SessionLocal()
+        try:
+            # Получаем пользователя
+            result = session.execute(select(User).where(User.tg_id == tg_user_id))
+            user = result.scalar_one_or_none()
+
+            if user is None:
+                await callback.answer("Сначала используйте /start")
+                return
+
+            # Получаем все вайфу пользователя
+            waifus_result = session.execute(
+                select(Waifu).where(Waifu.owner_id == user.id)
+            )
+            waifus = waifus_result.scalars().all()
+
+            if not waifus:
+                await callback.answer("У вас нет вайфу для участия в событиях!")
+                return
+
+            event = EVENTS.get(event_type, {})
+            
+            # Создаем кнопки для выбора вайфу
+            keyboard_buttons = []
+            for waifu in waifus:
+                power = calculate_waifu_power({
+                    "stats": waifu.stats,
+                    "dynamic": waifu.dynamic,
+                    "level": waifu.level
+                })
+                rarity_icon = get_rarity_color(waifu.rarity)
+                
+                # Проверяем возможность участия
+                can_participate, reason = can_participate_in_event({
+                    "dynamic": waifu.dynamic,
+                    "profession": waifu.profession
+                }, event_type)
+                
+                button_text = f"{waifu.name} - Ур.{waifu.level} {rarity_icon} 💪{power}"
+                if not can_participate:
+                    button_text += f" ⛔ ({reason})"
+                
+                keyboard_buttons.append([
+                    InlineKeyboardButton(
+                        text=button_text,
+                        callback_data=f"event_waifu_select_{waifu.id}_{event_type}" if can_participate else "event_cannot_participate"
+                    )
+                ])
+            
+            keyboard_buttons.append([InlineKeyboardButton(text="🔙 Назад к событиям", callback_data="waifu_events")])
+
+            text = (
+                f"🎯 <b>{event.get('name', 'Событие')}</b>\n\n"
+                f"📝 {event.get('description', 'Описание отсутствует')}\n\n"
+                f"Выберите вайфу для участия:"
+            )
+
+            keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+            await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+            await callback.answer()
+
+        except Exception as e:
+            await callback.answer(f"Ошибка: {str(e)}")
+        finally:
+            session.close()
+
+
+async def handle_event_decline_callback(callback: CallbackQuery) -> None:
+    """Обработка отказа от участия в событии"""
+    text = (
+        f"❌ <b>Вы отказались от участия в событии</b>\n\n"
+        f"Возможно, в следующий раз повезет больше!"
+    )
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎲 Новое событие", callback_data="random_event")],
+        [InlineKeyboardButton(text="🔙 Назад к событиям", callback_data="waifu_events")]
+    ])
+    
+    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+    await callback.answer()
 
 
 # Debug обработчики для администратора
@@ -758,10 +851,13 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
         return
     
     # Парсим callback data: event_waifu_select_{waifu_id}_{event_type}
+    # waifu_id может содержать подчеркивания (например, wf_ddd65e42)
     parts = callback.data.split("_")
     if len(parts) >= 5:
-        waifu_id = parts[3]
-        event_type = parts[4]
+        # Собираем waifu_id обратно (все части кроме первых 3 и последней)
+        # event_waifu_select_wf_ddd65e42_dance -> wf_ddd65e42
+        waifu_id = "_".join(parts[3:-1])
+        event_type = parts[-1]
         
         tg_user_id = callback.from_user.id
         session = SessionLocal()
@@ -805,14 +901,28 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
             
             # Обновляем вайфу
             waifu.xp += rewards["xp"]
-            waifu.dynamic["energy"] = max(0, waifu.dynamic["energy"] - 20)
-            waifu.dynamic["mood"] = min(100, waifu.dynamic["mood"] + 5)
-            waifu.dynamic["loyalty"] = min(100, waifu.dynamic["loyalty"] + 2)
+            # Преобразуем значения в int перед операциями
+            current_energy = int(waifu.dynamic.get("energy", 100))
+            current_mood = int(waifu.dynamic.get("mood", 50))
+            current_loyalty = int(waifu.dynamic.get("loyalty", 50))
+            
+            # Обновляем dynamic - создаем новый словарь для корректного отслеживания изменений
+            waifu.dynamic = {
+                **waifu.dynamic,
+                "energy": max(0, current_energy - 20),
+                "mood": min(100, current_mood + 5),
+                "loyalty": min(100, current_loyalty + 2)
+            }
+            
+            # Помечаем поле как измененное для SQLAlchemy
+            from sqlalchemy.orm.attributes import flag_modified
+            flag_modified(waifu, "dynamic")
             
             # Обновляем пользователя
             user.coins += rewards["coins"]
             
             session.commit()
+            session.refresh(waifu)  # Обновляем объект из базы данных
 
             # Формируем результат
             result_text = format_event_result({
