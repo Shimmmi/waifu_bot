@@ -9,4 +9,6 @@ services:
         sync: false
       - key: BOT_TOKEN
         sync: false
+      - key: WEBAPP_URL
+        value: https://shimmirpgbot.ru
     healthCheckPath: /health

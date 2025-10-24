@@ -895,7 +895,7 @@ async def handle_waifu_details_menu_callback(callback: CallbackQuery) -> None:
                 keyboard_buttons.append([
                     InlineKeyboardButton(
                         text=f"🖼️ {waifu.name} - Ур.{waifu.level} {rarity_icon} 💪{power}",
-                        web_app=WebAppInfo(url=f"https://ваш-домен.com/waifu-card/{waifu.id}?waifu_id={waifu.id}")
+                        web_app=WebAppInfo(url=f"https://waifu-bot-webapp.onrender.com/waifu-card/{waifu.id}?waifu_id={waifu.id}")
                     )
                 ])
             
