@@ -5,10 +5,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import Dict, Any
 import os
+import sys
+from pathlib import Path
 
-from bot.db import SessionLocal
-from bot.models import Waifu
-from bot.services.waifu_generator import calculate_waifu_power
+# Добавляем путь к проекту
+sys.path.insert(0, str(Path(__file__).parent))
+
+try:
+    from db import SessionLocal
+    from models import Waifu
+    from services.waifu_generator import calculate_waifu_power
+except ImportError:
+    # Если не можем импортировать, создаем заглушки
+    SessionLocal = None
+    Waifu = None
+    calculate_waifu_power = lambda x: 0
 
 app = FastAPI(title="Waifu Bot API", version="1.0.0")
 
@@ -23,6 +34,8 @@ app.add_middleware(
 
 # Функция для получения сессии базы данных
 def get_db():
+    if SessionLocal is None:
+        raise HTTPException(status_code=500, detail="Database not configured")
     db = SessionLocal()
     try:
         yield db
@@ -33,6 +46,9 @@ def get_db():
 async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Получение данных вайфу для WebApp"""
     try:
+        if Waifu is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+            
         # Получаем вайфу из базы данных
         waifu = db.query(Waifu).filter(Waifu.id == waifu_id).first()
         
@@ -63,12 +79,20 @@ async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[s
 @app.get("/")
 async def read_root():
     """Главная страница WebApp"""
-    return FileResponse("webapp/waifu-card.html")
+    webapp_path = Path(__file__).parent.parent.parent / "webapp" / "waifu-card.html"
+    if webapp_path.exists():
+        return FileResponse(str(webapp_path))
+    else:
+        return {"message": "Waifu Bot WebApp", "status": "running"}
 
 @app.get("/waifu-card/{waifu_id}")
 async def waifu_card_page(waifu_id: str):
     """Страница карточки вайфу"""
-    return FileResponse("webapp/waifu-card.html")
+    webapp_path = Path(__file__).parent.parent.parent / "webapp" / "waifu-card.html"
+    if webapp_path.exists():
+        return FileResponse(str(webapp_path))
+    else:
+        return {"message": f"Waifu card page for ID: {waifu_id}", "status": "running"}
 
 @app.get("/health")
 async def health_check():
