@@ -15,6 +15,19 @@ try:
     from bot.db import SessionLocal
     from bot.models import Waifu
     from bot.services.waifu_generator import calculate_waifu_power
+    from bot.config import get_settings
+    
+    # Проверяем настройки базы данных
+    try:
+        settings = get_settings()
+        if not settings.database_url:
+            raise Exception("Database URL not configured")
+    except Exception as e:
+        print(f"Database configuration error: {e}")
+        SessionLocal = None
+        Waifu = None
+        calculate_waifu_power = lambda x: 0
+        
 except ImportError:
     # Если не можем импортировать, создаем заглушки
     SessionLocal = None
