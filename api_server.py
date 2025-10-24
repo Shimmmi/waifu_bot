@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 import os
@@ -14,6 +15,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Обслуживание статических файлов
+if Path("webapp").exists():
+    app.mount("/webapp", StaticFiles(directory="webapp"), name="webapp")
 
 @app.get("/")
 async def read_root():
