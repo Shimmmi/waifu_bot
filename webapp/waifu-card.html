@@ -222,12 +222,23 @@
             return urlParams.get('waifu_id');
         }
 
-        // Получение данных вайфу (тестовые данные)
-        function getWaifuData(waifuId) {
-            // Возвращаем тестовые данные для WebApp
-            const testWaifus = {
-                'test': {
-                    id: 'test',
+        // Получение данных вайфу с сервера
+        async function fetchWaifuData(waifuId) {
+            try {
+                // Используем полный URL для API
+                const apiUrl = `https://waifu-bot-webapp.onrender.com/api/waifu/${waifuId}`;
+                console.log('Fetching from:', apiUrl);
+                
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Ошибка загрузки данных вайфу:', error);
+                // Возвращаем тестовые данные в случае ошибки
+                return {
+                    id: waifuId,
                     name: "Тестовая вайфу",
                     rarity: "Rare",
                     race: "Human",
@@ -250,35 +261,8 @@
                     },
                     tags: ["cute", "magical"],
                     created_at: "2025-01-01T00:00:00"
-                },
-                'default': {
-                    id: waifuId || 'default',
-                    name: "Сакура Танака",
-                    rarity: "Epic",
-                    race: "Elf",
-                    profession: "Archer",
-                    nationality: "Japanese",
-                    level: 5,
-                    xp: 1250,
-                    stats: {
-                        power: 85,
-                        charm: 90,
-                        luck: 75,
-                        affection: 60,
-                        intellect: 80,
-                        speed: 95
-                    },
-                    dynamic: {
-                        mood: 85,
-                        loyalty: 70,
-                        energy: 80
-                    },
-                    tags: ["elegant", "archer", "elf"],
-                    created_at: "2025-01-01T00:00:00"
-                }
-            };
-            
-            return testWaifus[waifuId] || testWaifus['default'];
+                };
+            }
         }
 
         // Отображение карточки вайфу
@@ -423,14 +407,44 @@
         }
 
         // Инициализация приложения
-        function initApp() {
+        async function initApp() {
             try {
                 const waifuId = getWaifuId();
                 console.log('Waifu ID:', waifuId);
                 
-                // Получаем данные вайфу (тестовые данные)
-                const waifu = getWaifuData(waifuId);
-                renderWaifuCard(waifu);
+                if (!waifuId) {
+                    // Если ID не указан, показываем тестовую вайфу
+                    console.log('No waifu ID provided, showing test data');
+                    const testWaifu = {
+                        id: 'test',
+                        name: "Тестовая вайфу",
+                        rarity: "Rare",
+                        race: "Human",
+                        profession: "Mage",
+                        nationality: "Japanese",
+                        level: 1,
+                        xp: 0,
+                        stats: {
+                            power: 50,
+                            charm: 60,
+                            luck: 40,
+                            affection: 30,
+                            intellect: 70,
+                            speed: 45
+                        },
+                        dynamic: {
+                            mood: 80,
+                            loyalty: 60,
+                            energy: 90
+                        },
+                        tags: ["cute", "magical"],
+                        created_at: "2025-01-01T00:00:00"
+                    };
+                    renderWaifuCard(testWaifu);
+                } else {
+                    const waifu = await fetchWaifuData(waifuId);
+                    renderWaifuCard(waifu);
+                }
                 
                 // Настройка кнопки закрытия
                 document.getElementById('close-btn').addEventListener('click', () => {
@@ -445,6 +459,12 @@
 
         // Запуск приложения
         document.addEventListener('DOMContentLoaded', initApp);
+        
+        // Дополнительная проверка для Telegram WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+        }
     </script>
 </body>
 </html>

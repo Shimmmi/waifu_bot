@@ -233,7 +233,8 @@ async def handle_back_to_menu(callback: CallbackQuery) -> None:
         [InlineKeyboardButton(text="👤 Профиль", callback_data="profile")],
         [InlineKeyboardButton(text="🎁 Ежедневный бонус", callback_data="daily")],
         [InlineKeyboardButton(text="🎭 Вайфу", callback_data="waifu_menu")],
-        [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")]
+        [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")],
+        [InlineKeyboardButton(text="🧪 Тест WebApp", web_app=WebAppInfo(url="https://waifu-bot-webapp.onrender.com/"))]
     ])
 
     await callback.message.edit_text(
@@ -908,6 +909,12 @@ async def handle_waifu_details_menu_callback(callback: CallbackQuery) -> None:
             
             if nav_buttons:
                 keyboard_buttons.append(nav_buttons)
+            
+            # Тестовая кнопка WebApp
+            keyboard_buttons.append([InlineKeyboardButton(
+                text="🧪 Тест WebApp", 
+                web_app=WebAppInfo(url="https://waifu-bot-webapp.onrender.com/")
+            )])
             
             # Кнопка возврата
             keyboard_buttons.append([InlineKeyboardButton(text="🔙 Назад к списку", callback_data=f"waifu_list_page_{page}_{sort_by}")])
