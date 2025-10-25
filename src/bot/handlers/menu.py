@@ -837,26 +837,37 @@ async def handle_waifu_list_sort_menu_callback(callback: CallbackQuery) -> None:
 
 async def handle_waifu_list_sort_callback(callback: CallbackQuery) -> None:
     """Обработка смены сортировки списка вайфу"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if callback.from_user is None:
         return
     
+    logger.info(f"🔀 SORT CALLBACK: {callback.data}")
+    
     # Парсим callback data: waifu_list_sort_{sort_by}_{page}
     parts = callback.data.split("_")
+    logger.info(f"   Parts: {parts}")
+    
     if len(parts) >= 5:
-        # sort_by теперь без подчеркиваний (например, "createdat")
-        # Для callback data: waifu_list_sort_createdat_0
-        # parts = ['waifu', 'list', 'sort', 'createdat', '0']
-        sort_by = parts[3]  # parts[3] = 'createdat'
+        # sort_by теперь без подчеркиваний (например, "createdat", "power", "name")
+        # Для callback data: waifu_list_sort_power_0
+        # parts = ['waifu', 'list', 'sort', 'power', '0']
+        sort_by = parts[3]  # parts[3] = 'power'
         page = int(parts[4])  # parts[4] = '0' -> 0
         
-        # Преобразуем sort_by обратно в правильный формат
+        logger.info(f"   Parsed: sort_by={sort_by}, page={page}")
+        
+        # Преобразуем sort_by обратно в правильный формат (только для created_at)
         if sort_by == "createdat":
             sort_by = "created_at"
+            logger.info(f"   Converted: sort_by={sort_by}")
         
-        # Проверяем, не пытаемся ли мы установить ту же сортировку
-        # Если да, то просто возвращаемся к списку без изменений
+        # Переходим к списку с новой сортировкой
+        logger.info(f"   Calling show_waifu_list_page with sort_by={sort_by}")
         await show_waifu_list_page(callback, page=page, sort_by=sort_by)
     else:
+        logger.error(f"   ERROR: Invalid parts length: {len(parts)}")
         await callback.answer("Ошибка обработки запроса")
 
 

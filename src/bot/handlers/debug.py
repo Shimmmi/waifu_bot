@@ -258,8 +258,9 @@ async def handle_debug_add_xp_to_waifu(callback: CallbackQuery, tg_user_id: int)
         )
         
         if level_up_info:
-            text += f"\n🎉 Вайфу повысила уровень до {waifu.level}!\n"
-            text += f"📈 {level_up_info['increased_stat']}: {level_up_info['old_stat_value']} → {level_up_info['new_stat_value']}"
+            # Add formatted level-up message
+            level_up_message = level_up_service.format_level_up_message(waifu.name, level_up_info)
+            text += f"\n{level_up_message}"
         
         await callback.answer("✅ 1000 XP добавлено!")
         await callback.message.edit_text(

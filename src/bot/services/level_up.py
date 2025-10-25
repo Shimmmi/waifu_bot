@@ -93,42 +93,37 @@ class LevelUpService:
             
         Returns:
             Dictionary with:
-                - increased_stat: name of the stat that increased
-                - stat_increase: amount increased (always 1)
+                - increased_stats: dict of {stat_name: increase_amount}
                 - old_level: previous level
                 - new_level: new level
-                - old_stat_value: previous stat value
-                - new_stat_value: new stat value
+                - old_stats: copy of stats before leveling
                 - updated_stats: full updated stats dict
+                - levels_gained: number of levels gained
         """
         old_level = waifu_data.get("level", 1)
-        stats = waifu_data.get("stats", {})
+        stats = dict(waifu_data.get("stats", {}))  # Make a copy
+        old_stats = dict(stats)  # Save original stats
         
-        # Select random stat to increase
-        increased_stat = LevelUpService.select_random_stat_to_increase(stats)
-        old_stat_value = stats[increased_stat]
-        
-        # Increase the stat by 1
-        stats[increased_stat] = old_stat_value + 1
-        
-        # Calculate levels gained (in case of multiple level-ups)
+        # Calculate levels gained
         levels_gained = new_level - old_level
         
-        # If multiple levels gained, increase multiple stats
-        if levels_gained > 1:
-            logger.info(f"Multiple levels gained: {levels_gained}. Increasing multiple stats.")
-            # Increase one random stat for each additional level
-            for _ in range(levels_gained - 1):
-                additional_stat = LevelUpService.select_random_stat_to_increase(stats)
-                stats[additional_stat] += 1
+        # Track which stats increased and by how much
+        stat_increases = {}
+        
+        # Increase one random stat for EACH level gained
+        for i in range(levels_gained):
+            random_stat = LevelUpService.select_random_stat_to_increase(stats)
+            stats[random_stat] += 1
+            stat_increases[random_stat] = stat_increases.get(random_stat, 0) + 1
+            logger.info(f"Level {old_level + i} → {old_level + i + 1}: Increased {random_stat} by 1")
+        
+        logger.info(f"Total stat increases: {stat_increases}")
         
         return {
-            "increased_stat": increased_stat,
-            "stat_increase": 1,
+            "increased_stats": stat_increases,
             "old_level": old_level,
             "new_level": new_level,
-            "old_stat_value": old_stat_value,
-            "new_stat_value": stats[increased_stat],
+            "old_stats": old_stats,
             "updated_stats": stats,
             "levels_gained": levels_gained
         }
@@ -157,22 +152,31 @@ class LevelUpService:
             "speed": "Скорость"
         }
         
-        increased_stat = level_up_info["increased_stat"]
-        stat_name_ru = stat_names_ru.get(increased_stat, increased_stat)
-        old_value = level_up_info["old_stat_value"]
-        new_value = level_up_info["new_stat_value"]
+        increased_stats = level_up_info["increased_stats"]
+        old_stats = level_up_info["old_stats"]
+        updated_stats = level_up_info["updated_stats"]
         new_level = level_up_info["new_level"]
         levels_gained = level_up_info.get("levels_gained", 1)
         
         # Calculate total power (sum of all stats)
-        total_power = sum(level_up_info["updated_stats"].values())
+        total_power = sum(updated_stats.values())
+        
+        # Build stat changes text
+        stat_changes_lines = []
+        for stat_name, increase_amount in increased_stats.items():
+            stat_name_ru = stat_names_ru.get(stat_name, stat_name)
+            old_value = old_stats[stat_name]
+            new_value = updated_stats[stat_name]
+            stat_changes_lines.append(f"📈 <b>{stat_name_ru}</b>: {old_value} → {new_value} (+{increase_amount})")
+        
+        stat_changes_text = "\n".join(stat_changes_lines)
         
         if levels_gained > 1:
             message = (
                 f"🎉 <b>ПОВЫШЕНИЕ УРОВНЯ!</b> 🎉\n\n"
                 f"🌟 <b>{waifu_name}</b> достигла <b>{new_level} уровня</b>! "
                 f"(+{levels_gained} уровней)\n\n"
-                f"📈 <b>{stat_name_ru}</b>: {old_value} → {new_value} (+{new_value - old_value})\n"
+                f"{stat_changes_text}\n\n"
                 f"💪 <b>Общая сила</b>: {total_power}\n\n"
                 f"✨ Поздравляем с прогрессом!"
             )
@@ -180,8 +184,7 @@ class LevelUpService:
             message = (
                 f"🎉 <b>ПОВЫШЕНИЕ УРОВНЯ!</b> 🎉\n\n"
                 f"🌟 <b>{waifu_name}</b> достигла <b>{new_level} уровня</b>!\n\n"
-                f"📈 <b>{stat_name_ru}</b> увеличилась на 1\n"
-                f"     {old_value} → {new_value}\n\n"
+                f"{stat_changes_text}\n\n"
                 f"💪 <b>Общая сила</b>: {total_power}\n\n"
                 f"✨ Продолжай в том же духе!"
             )

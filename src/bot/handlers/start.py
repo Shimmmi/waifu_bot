@@ -37,7 +37,9 @@ async def cmd_start(message: Message) -> None:
             [InlineKeyboardButton(text="👤 Профиль", callback_data="profile")],
             [InlineKeyboardButton(text="🎁 Ежедневный бонус", callback_data="daily")],
             [InlineKeyboardButton(text="🎭 Вайфу", callback_data="waifu_menu")],
-            [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")]
+            [InlineKeyboardButton(text="🎯 События", callback_data="events_menu")],
+            [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")],
+            [InlineKeyboardButton(text="🔧 Debug", callback_data="debug_menu")]
         ])
 
         await message.answer(

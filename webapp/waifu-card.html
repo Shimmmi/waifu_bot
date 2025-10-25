@@ -327,9 +327,20 @@
             }
         }
 
-        // Расчет общей мощи
-        function calculatePower(stats) {
-            return Object.values(stats).reduce((sum, val) => sum + val, 0);
+        // Расчет общей мощи (matching backend formula)
+        function calculatePower(stats, dynamic, level) {
+            // Base power from stats
+            const basePower = Object.values(stats).reduce((sum, val) => sum + val, 0);
+            
+            // Bonuses from dynamic stats
+            const moodBonus = (dynamic.mood || 50) * 0.1;
+            const loyaltyBonus = (dynamic.loyalty || 50) * 0.05;
+            
+            // Level bonus
+            const levelBonus = level * 2;
+            
+            const totalPower = basePower + moodBonus + loyaltyBonus + levelBonus;
+            return Math.floor(totalPower);
         }
 
         // Расчет общего XP для достижения определенного уровня
@@ -375,7 +386,7 @@
         function renderWaifuCard(waifu) {
             const container = document.getElementById('waifu-card-container');
             
-            const power = calculatePower(waifu.stats);
+            const power = calculatePower(waifu.stats, waifu.dynamic, waifu.level);
             const xpProgress = getXPProgress(waifu.xp, waifu.level);
             const xpPercent = xpProgress.percent;
             
