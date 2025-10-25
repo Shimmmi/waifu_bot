@@ -1,123 +1,218 @@
-# Таблицы данных для генерации вайфу
+"""
+Data tables for waifu generation system with image URLs
+"""
 
-RACES = [
-    "Human", "Elf", "Demon", "Angel", "Beastkin", 
-    "Cyborg", "Fairy", "Vampire", "Dragon", "Spirit"
-]
+# Image URLs organized by race, profession, and nationality
+# Replace these URLs with your own hosted images
 
-PROFESSIONS = [
-    "Idol", "Baker", "Warrior", "Mage", "Scholar", 
-    "Assassin", "Artist", "Nurse", "Chef", "Dancer",
-    "Singer", "Teacher", "Engineer", "Doctor", "Knight"
-]
+WAIFU_IMAGES_BY_RACE = {
+    "Human": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Human1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Human2",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Human3",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Human4",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Human5",
+    ],
+    "Elf": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Elf1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Elf2",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Elf3",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Elf4",
+    ],
+    "Demon": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Demon1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Demon2",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Demon3",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Demon4",
+    ],
+    "Angel": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Angel1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Angel2",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Angel3",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Angel4",
+    ],
+    "Vampire": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Vampire1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Vampire2",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Vampire3",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Vampire4",
+    ],
+    "Dragon": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Dragon1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Dragon2",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Dragon3",
+    ],
+    "Beast": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Beast1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Beast2",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Beast3",
+    ],
+    "Fairy": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Fairy1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Fairy2",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Fairy3",
+    ],
+}
 
-NATIONALITIES = [
-    "JP", "RU", "US", "KR", "CN", "EU", "IN", "BR", "CA", "AU"
-]
+# Optional: Images by profession for more variety
+WAIFU_IMAGES_BY_PROFESSION = {
+    "Warrior": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Warrior1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Warrior2",
+    ],
+    "Mage": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Mage1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Mage2",
+    ],
+    "Assassin": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Assassin1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Assassin2",
+    ],
+    "Knight": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Knight1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Knight2",
+    ],
+    "Archer": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Archer1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Archer2",
+    ],
+    "Healer": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Healer1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Healer2",
+    ],
+    "Merchant": [
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Merchant1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Merchant2",
+    ],
+}
+
+# Optional: Images by nationality for cultural themes
+WAIFU_IMAGES_BY_NATIONALITY = {
+    "JP": [  # Japanese
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Japanese1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Japanese2",
+    ],
+    "CN": [  # Chinese
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Chinese1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Chinese2",
+    ],
+    "KR": [  # Korean
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Korean1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Korean2",
+    ],
+    "US": [  # American
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=American1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=American2",
+    ],
+    "GB": [  # British
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=British1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=British2",
+    ],
+    "FR": [  # French
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=French1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=French2",
+    ],
+    "DE": [  # German
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=German1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=German2",
+    ],
+    "IT": [  # Italian
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Italian1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Italian2",
+    ],
+    "RU": [  # Russian
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Russian1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Russian2",
+    ],
+    "BR": [  # Brazilian
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Brazilian1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Brazilian2",
+    ],
+    "IN": [  # Indian
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Indian1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Indian2",
+    ],
+    "CA": [  # Canadian
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Canadian1",
+        "https://api.dicebear.com/7.x/adventurer/svg?seed=Canadian2",
+    ],
+}
+
+# Existing data tables (races, professions, etc.)
+RACES = {
+    "Human": {"base_power": 10, "base_charm": 10},
+    "Elf": {"base_power": 8, "base_charm": 14},
+    "Demon": {"base_power": 15, "base_charm": 12},
+    "Angel": {"base_power": 12, "base_charm": 15},
+    "Vampire": {"base_power": 13, "base_charm": 13},
+    "Dragon": {"base_power": 18, "base_charm": 10},
+    "Beast": {"base_power": 16, "base_charm": 8},
+    "Fairy": {"base_power": 6, "base_charm": 16},
+}
+
+PROFESSIONS = {
+    "Warrior": {"power_mod": 5, "charm_mod": -2},
+    "Mage": {"power_mod": 3, "charm_mod": 2},
+    "Assassin": {"power_mod": 4, "charm_mod": 0},
+    "Knight": {"power_mod": 4, "charm_mod": 1},
+    "Archer": {"power_mod": 3, "charm_mod": 1},
+    "Healer": {"power_mod": 1, "charm_mod": 4},
+    "Merchant": {"power_mod": 0, "charm_mod": 5},
+}
+
+NATIONALITIES = {
+    "JP": "Japanese",
+    "CN": "Chinese",
+    "KR": "Korean",
+    "US": "American",
+    "GB": "British",
+    "FR": "French",
+    "DE": "German",
+    "IT": "Italian",
+    "RU": "Russian",
+    "BR": "Brazilian",
+    "IN": "Indian",
+    "CA": "Canadian",
+}
 
 RARITIES = {
-    "Common": 1, 
-    "Uncommon": 2, 
-    "Rare": 3, 
-    "Epic": 4, 
-    "Legendary": 5
+    "Common": {"multiplier": 1.0},
+    "Uncommon": {"multiplier": 1.2},
+    "Rare": {"multiplier": 1.5},
+    "Epic": {"multiplier": 2.0},
+    "Legendary": {"multiplier": 3.0},
 }
 
-# Распределение характеристик по редкости
 STATS_DISTRIBUTION = {
-    "Common": {
-        "power": (5, 15), 
-        "charm": (5, 10), 
-        "luck": (5, 10), 
-        "affection": (5, 10),
-        "intellect": (5, 10),
-        "speed": (5, 10)
-    },
-    "Uncommon": {
-        "power": (10, 20), 
-        "charm": (10, 15), 
-        "luck": (10, 15), 
-        "affection": (10, 15),
-        "intellect": (10, 15),
-        "speed": (10, 15)
-    },
-    "Rare": {
-        "power": (15, 25), 
-        "charm": (15, 25), 
-        "luck": (15, 20), 
-        "affection": (15, 20),
-        "intellect": (15, 20),
-        "speed": (15, 20)
-    },
-    "Epic": {
-        "power": (20, 35), 
-        "charm": (20, 35), 
-        "luck": (20, 30), 
-        "affection": (20, 30),
-        "intellect": (20, 30),
-        "speed": (20, 30)
-    },
-    "Legendary": {
-        "power": (30, 45), 
-        "charm": (30, 45), 
-        "luck": (30, 40), 
-        "affection": (30, 40),
-        "intellect": (30, 40),
-        "speed": (30, 40)
-    }
+    "Common": {"min": 5, "max": 15},
+    "Uncommon": {"min": 10, "max": 20},
+    "Rare": {"min": 15, "max": 25},
+    "Epic": {"min": 20, "max": 35},
+    "Legendary": {"min": 30, "max": 50},
 }
 
-# События и их требования
-EVENTS = {
-    "dance": {
-        "base_stats": ["charm", "speed", "luck"], 
-        "profession_bonus": "Dancer",
-        "name": "Танцевальный конкурс",
-        "description": "Покажи свои танцевальные навыки!"
-    },
-    "hunt": {
-        "base_stats": ["power", "speed", "luck"], 
-        "profession_bonus": "Warrior",
-        "name": "Охота на монстров",
-        "description": "Сражайся с опасными существами!"
-    },
-    "quiz": {
-        "base_stats": ["intellect", "charm", "luck"], 
-        "profession_bonus": "Scholar",
-        "name": "Интеллектуальная викторина",
-        "description": "Проверь свои знания!"
-    },
-    "cooking": {
-        "base_stats": ["intellect", "charm", "luck"], 
-        "profession_bonus": "Chef",
-        "name": "Кулинарный конкурс",
-        "description": "Приготовь самое вкусное блюдо!"
-    },
-    "singing": {
-        "base_stats": ["charm", "intellect", "luck"], 
-        "profession_bonus": "Singer",
-        "name": "Вокальный конкурс",
-        "description": "Покажи свой голос!"
-    }
-}
-
-# Имена для генерации
 NAMES_BY_NATIONALITY = {
-    "JP": ["Sakura", "Yuki", "Hana", "Akane", "Luna", "Aria", "Miku", "Rei", "Asuka", "Mai"],
-    "RU": ["Anastasia", "Katya", "Svetlana", "Natasha", "Irina", "Olga", "Maria", "Elena", "Anna", "Daria"],
-    "US": ["Emma", "Olivia", "Sophia", "Isabella", "Ava", "Mia", "Charlotte", "Amelia", "Harper", "Evelyn"],
-    "KR": ["Ji-eun", "Min-jung", "So-young", "Hye-jin", "Eun-jung", "Ji-hye", "Seo-yeon", "Min-ji", "Ji-woo", "Hae-in"],
-    "CN": ["Mei", "Ling", "Xia", "Wei", "Jing", "Li", "Fang", "Hui", "Lan", "Yan"],
-    "EU": ["Sophie", "Marie", "Claire", "Emma", "Anna", "Lisa", "Sarah", "Julia", "Nina", "Elena"],
-    "IN": ["Priya", "Kavya", "Ananya", "Shreya", "Isha", "Riya", "Aanya", "Sneha", "Pooja", "Divya"],
-    "BR": ["Ana", "Maria", "Julia", "Fernanda", "Camila", "Beatriz", "Larissa", "Gabriela", "Isabella", "Leticia"],
-    "CA": ["Emma", "Olivia", "Charlotte", "Sophia", "Isabella", "Ava", "Mia", "Amelia", "Harper", "Evelyn"],
-    "AU": ["Charlotte", "Olivia", "Amelia", "Isla", "Mia", "Ava", "Grace", "Willow", "Freya", "Chloe"]
+    "JP": ["Sakura", "Yuki", "Hana", "Rei", "Mai", "Ayumi", "Hinata"],
+    "CN": ["Mei", "Li", "Hua", "Ying", "Xiu", "Jing", "Yan"],
+    "KR": ["Min-ji", "Ji-woo", "Soo-jin", "Hye-jin", "So-young", "Hae-in"],
+    "US": ["Emma", "Olivia", "Ava", "Isabella", "Sophia", "Mia"],
+    "GB": ["Emily", "Charlotte", "Sophie", "Amelia", "Grace"],
+    "FR": ["Camille", "Léa", "Chloé", "Emma", "Manon"],
+    "DE": ["Emma", "Hannah", "Mia", "Sophia", "Anna"],
+    "IT": ["Sofia", "Giulia", "Aurora", "Alice", "Ginevra"],
+    "RU": ["Anastasia", "Maria", "Daria", "Ekaterina", "Polina"],
+    "BR": ["Maria", "Ana", "Julia", "Beatriz", "Larissa"],
+    "IN": ["Priya", "Ananya", "Diya", "Aanya", "Aadhya", "Shreya"],
+    "CA": ["Emma", "Olivia", "Ava", "Charlotte", "Sophia"],
 }
 
-# Теги для вайфу
 TAGS = [
-    "cute", "cool", "mysterious", "energetic", "calm", "playful", 
-    "serious", "romantic", "adventurous", "shy", "confident", 
-    "loyal", "independent", "caring", "funny", "elegant"
+    "shy", "brave", "kind", "mysterious", "cheerful", 
+    "cold", "energetic", "calm", "playful", "serious",
+    "romantic", "tsundere", "yandere", "kuudere", "dandere",
+    "loyal", "independent", "wise", "naive", "cunning",
+    "gentle", "fierce", "elegant", "tomboyish", "graceful",
+    "adventurous", "homebody", "ambitious", "laid-back",
+    "protective", "competitive", "artistic", "intellectual",
+    "funny", "stoic", "optimistic", "pessimistic", "sarcastic"
 ]

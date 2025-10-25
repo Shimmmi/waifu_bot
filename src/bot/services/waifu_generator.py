@@ -5,7 +5,8 @@ import logging
 from typing import Dict, List, Optional
 from ..data_tables import (
     RACES, PROFESSIONS, NATIONALITIES, RARITIES, STATS_DISTRIBUTION, 
-    NAMES_BY_NATIONALITY, TAGS
+    NAMES_BY_NATIONALITY, TAGS,
+    WAIFU_IMAGES_BY_RACE, WAIFU_IMAGES_BY_PROFESSION, WAIFU_IMAGES_BY_NATIONALITY
 )
 
 logger = logging.getLogger(__name__)
@@ -37,13 +38,39 @@ WAIFU_IMAGES = [
 ]
 
 
-def get_waifu_image() -> str:
+def get_waifu_image(race: str = None, profession: str = None, nationality: str = None) -> str:
     """
-    Get a random anime waifu image from the predefined list
+    Get a waifu image based on race, profession, or nationality
+    Priority: race > profession > nationality > fallback
     Returns image URL
     """
+    # Try to get image by race first (most distinctive)
+    if race and race in WAIFU_IMAGES_BY_RACE:
+        images = WAIFU_IMAGES_BY_RACE[race]
+        if images:
+            image_url = random.choice(images)
+            logger.info(f"🎨 Selected {race} waifu image: {image_url}")
+            return image_url
+    
+    # Try profession if race doesn't have images
+    if profession and profession in WAIFU_IMAGES_BY_PROFESSION:
+        images = WAIFU_IMAGES_BY_PROFESSION[profession]
+        if images:
+            image_url = random.choice(images)
+            logger.info(f"🎨 Selected {profession} waifu image: {image_url}")
+            return image_url
+    
+    # Try nationality as last resort
+    if nationality and nationality in WAIFU_IMAGES_BY_NATIONALITY:
+        images = WAIFU_IMAGES_BY_NATIONALITY[nationality]
+        if images:
+            image_url = random.choice(images)
+            logger.info(f"🎨 Selected {nationality} waifu image: {image_url}")
+            return image_url
+    
+    # Fallback to generic images
     image_url = random.choice(WAIFU_IMAGES)
-    logger.info(f"🎨 Selected waifu image: {image_url}")
+    logger.info(f"🎨 Selected fallback waifu image: {image_url}")
     return image_url
 
 
@@ -86,8 +113,8 @@ def generate_waifu(card_number: int, owner_id: int = None) -> Dict:
     # Создаем уникальный ID
     waifu_id = f"wf_{uuid.uuid4().hex[:8]}"
     
-    # Get anime image from predefined list
-    image_url = get_waifu_image()
+    # Get anime image based on waifu characteristics
+    image_url = get_waifu_image(race=race, profession=profession, nationality=nationality)
     
     return {
         "id": waifu_id,
