@@ -19,10 +19,11 @@ router = Router()
 def get_sort_display_name(sort_by: str) -> str:
     """Возвращает отображаемое название сортировки"""
     sort_names = {
-        "created_at": "По дате",
+        "power": "По силе",
         "name": "По имени", 
         "level": "По уровню",
-        "rarity": "По редкости"
+        "rarity": "По редкости",
+        "created_at": "По дате"
     }
     return sort_names.get(sort_by, "По дате")
 
@@ -76,6 +77,14 @@ async def handle_menu_callback(callback: CallbackQuery) -> None:
         await handle_stats_callback(callback)
     elif callback.data == "back_to_menu":
         await handle_back_to_menu(callback)
+    elif callback.data == "events_menu":
+        await handle_waifu_events_callback(callback)
+    elif callback.data == "debug_menu":
+        from bot.handlers.debug import handle_debug_menu_callback
+        await handle_debug_menu_callback(callback)
+    elif callback.data.startswith("debug_"):
+        from bot.handlers.debug import handle_debug_action_callback
+        await handle_debug_action_callback(callback)
 
 
 async def handle_profile_callback(callback: CallbackQuery) -> None:
@@ -216,7 +225,6 @@ async def handle_waifu_menu_callback(callback: CallbackQuery) -> None:
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🎰 Призвать вайфу", callback_data="waifu_pull")],
         [InlineKeyboardButton(text="📋 Мои вайфу", callback_data="waifu_list")],
-        [InlineKeyboardButton(text="🎯 События", callback_data="waifu_events")],
         [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu")]
     ])
 
@@ -240,8 +248,9 @@ async def handle_back_to_menu(callback: CallbackQuery) -> None:
         [InlineKeyboardButton(text="👤 Профиль", callback_data="profile")],
         [InlineKeyboardButton(text="🎁 Ежедневный бонус", callback_data="daily")],
         [InlineKeyboardButton(text="🎭 Вайфу", callback_data="waifu_menu")],
+        [InlineKeyboardButton(text="🎯 События", callback_data="events_menu")],
         [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")],
-        [InlineKeyboardButton(text="🧪 Тест WebApp", web_app=WebAppInfo(url="https://waifu-bot-webapp.onrender.com/"))]
+        [InlineKeyboardButton(text="🔧 Debug", callback_data="debug_menu")]
     ])
 
     await callback.message.edit_text(
@@ -343,19 +352,25 @@ async def show_waifu_list_page(callback: CallbackQuery, page: int = 0, sort_by: 
             await callback.answer("Сначала используйте /start")
             return
 
-        # Определяем сортировку
-        order_clause = {
-            "created_at": Waifu.created_at.desc(),
-            "name": Waifu.name.asc(),
-            "level": Waifu.level.desc(),
-            "rarity": Waifu.rarity.desc()
-        }.get(sort_by, Waifu.created_at.desc())
-
         # Получаем все вайфу пользователя
         waifus_result = session.execute(
-            select(Waifu).where(Waifu.owner_id == user.id).order_by(order_clause)
+            select(Waifu).where(Waifu.owner_id == user.id)
         )
         waifus = waifus_result.scalars().all()
+        
+        # Применяем сортировку
+        if sort_by == "power":
+            # Сортировка по силе (сумма всех характеристик)
+            waifus = sorted(waifus, key=lambda w: sum(w.stats.values()) if w.stats else 0, reverse=True)
+        elif sort_by == "name":
+            waifus = sorted(waifus, key=lambda w: w.name.lower())
+        elif sort_by == "level":
+            waifus = sorted(waifus, key=lambda w: w.level, reverse=True)
+        elif sort_by == "rarity":
+            rarity_order = {"Legendary": 5, "Epic": 4, "Rare": 3, "Uncommon": 2, "Common": 1}
+            waifus = sorted(waifus, key=lambda w: rarity_order.get(w.rarity, 0), reverse=True)
+        else:  # created_at or default
+            waifus = sorted(waifus, key=lambda w: w.created_at, reverse=True)
 
         if not waifus:
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -803,7 +818,7 @@ async def handle_waifu_list_sort_menu_callback(callback: CallbackQuery) -> None:
         
         # Создаем меню сортировки
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📅 По дате", callback_data=f"waifu_list_sort_createdat_{page}")],
+            [InlineKeyboardButton(text="💪 По силе", callback_data=f"waifu_list_sort_power_{page}")],
             [InlineKeyboardButton(text="📝 По имени", callback_data=f"waifu_list_sort_name_{page}")],
             [InlineKeyboardButton(text="⭐ По уровню", callback_data=f"waifu_list_sort_level_{page}")],
             [InlineKeyboardButton(text="💎 По редкости", callback_data=f"waifu_list_sort_rarity_{page}")],
@@ -1091,12 +1106,6 @@ async def handle_waifu_details_menu_callback(callback: CallbackQuery) -> None:
             
             if nav_buttons:
                 keyboard_buttons.append(nav_buttons)
-            
-            # Тестовая кнопка WebApp
-            keyboard_buttons.append([InlineKeyboardButton(
-                text="🧪 Тест WebApp", 
-                web_app=WebAppInfo(url="https://waifu-bot-webapp.onrender.com/")
-            )])
             
             # Кнопка возврата
             keyboard_buttons.append([InlineKeyboardButton(text="🔙 Назад к списку", callback_data=f"waifu_list_page_{page}_{sort_by}")])
