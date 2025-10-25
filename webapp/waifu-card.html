@@ -309,43 +309,21 @@
         // Получение данных вайфу с сервера
         async function fetchWaifuData(waifuId) {
             try {
-                // Используем полный URL для API
-                const apiUrl = `https://waifu-bot-webapp.onrender.com/api/waifu/${waifuId}`;
+                // Используем относительный URL для API (будет использоваться тот же домен, что и WebApp)
+                const apiUrl = `/api/waifu/${waifuId}`;
                 console.log('Fetching from:', apiUrl);
                 
                 const response = await fetch(apiUrl);
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorText = await response.text();
+                    console.error('API error response:', errorText);
+                    throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
                 }
                 return await response.json();
             } catch (error) {
                 console.error('Ошибка загрузки данных вайфу:', error);
-                // Возвращаем тестовые данные в случае ошибки
-                return {
-                    id: waifuId,
-                    name: "Тестовая вайфу",
-                    rarity: "Rare",
-                    race: "Human",
-                    profession: "Mage",
-                    nationality: "Japanese",
-                    level: 1,
-                    xp: 0,
-                    stats: {
-                        power: 50,
-                        charm: 60,
-                        luck: 40,
-                        affection: 30,
-                        intellect: 70,
-                        speed: 45
-                    },
-                    dynamic: {
-                        mood: 80,
-                        loyalty: 60,
-                        energy: 90
-                    },
-                    tags: ["cute", "magical"],
-                    created_at: "2025-01-01T00:00:00"
-                };
+                // В случае ошибки, показываем сообщение об ошибке вместо тестовых данных
+                throw error;
             }
         }
 
@@ -495,38 +473,12 @@
                 console.log('Waifu ID:', waifuId);
                 
                 if (!waifuId) {
-                    // Если ID не указан, показываем тестовую вайфу
-                    console.log('No waifu ID provided, showing test data');
-                    const testWaifu = {
-                        id: 'test',
-                        name: "Тестовая вайфу",
-                        rarity: "Rare",
-                        race: "Human",
-                        profession: "Mage",
-                        nationality: "Japanese",
-                        level: 1,
-                        xp: 0,
-                        stats: {
-                            power: 50,
-                            charm: 60,
-                            luck: 40,
-                            affection: 30,
-                            intellect: 70,
-                            speed: 45
-                        },
-                        dynamic: {
-                            mood: 80,
-                            loyalty: 60,
-                            energy: 90
-                        },
-                        tags: ["cute", "magical"],
-                        created_at: "2025-01-01T00:00:00"
-                    };
-                    renderWaifuCard(testWaifu);
-                } else {
-                    const waifu = await fetchWaifuData(waifuId);
-                    renderWaifuCard(waifu);
+                    showError('ID вайфу не указан в URL');
+                    return;
                 }
+                
+                const waifu = await fetchWaifuData(waifuId);
+                renderWaifuCard(waifu);
                 
                 // Настройка кнопки закрытия
                 document.getElementById('close-btn').addEventListener('click', () => {
@@ -535,7 +487,7 @@
                 
             } catch (error) {
                 console.error('Error in initApp:', error);
-                showError('Произошла ошибка при загрузке данных вайфу');
+                showError(`Произошла ошибка при загрузке данных вайфу: ${error.message}`);
             }
         }
 

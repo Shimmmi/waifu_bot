@@ -57,9 +57,6 @@ def get_db():
 @app.get("/api/waifu/{waifu_id}")
 async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Получение данных вайфу для WebApp"""
-    import logging
-    logger = logging.getLogger(__name__)
-    
     try:
         logger.info(f"📡 API REQUEST: GET /api/waifu/{waifu_id}")
         
@@ -92,7 +89,7 @@ async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[s
             "stats": waifu.stats,
             "dynamic": waifu.dynamic,
             "tags": waifu.tags,
-            "created_at": waifu.created_at.isoformat()
+            "created_at": waifu.created_at.isoformat() if waifu.created_at else None
         }
         
         logger.info(f"📤 SENDING TO CLIENT:")
@@ -101,9 +98,12 @@ async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[s
         
         return waifu_data
         
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
-        logger.error(f"❌ API ERROR: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
 
 @app.get("/")
 async def read_root():
