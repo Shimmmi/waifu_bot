@@ -1,11 +1,42 @@
 import uuid
 import random
 import datetime
-from typing import Dict, List
+import logging
+from typing import Dict, List, Optional
 from ..data_tables import (
     RACES, PROFESSIONS, NATIONALITIES, RARITIES, STATS_DISTRIBUTION, 
     NAMES_BY_NATIONALITY, TAGS
 )
+
+logger = logging.getLogger(__name__)
+
+
+def fetch_waifu_image() -> Optional[str]:
+    """
+    Fetch a random anime waifu image from free API
+    Returns image URL or None if fetch fails
+    """
+    try:
+        import requests
+        
+        logger.info("🎨 Fetching waifu image from API...")
+        response = requests.get("https://api.waifu.pics/sfw/waifu", timeout=5)
+        
+        if response.status_code == 200:
+            data = response.json()
+            image_url = data.get("url")
+            logger.info(f"✅ Got image URL: {image_url[:50]}...")
+            return image_url
+        else:
+            logger.warning(f"⚠️ API returned status {response.status_code}")
+            return None
+            
+    except ImportError:
+        logger.error("❌ requests library not installed. Run: pip install requests")
+        return None
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to fetch waifu image: {e}")
+        return None
 
 
 def generate_waifu(card_number: int, owner_id: int = None) -> Dict:
@@ -47,6 +78,9 @@ def generate_waifu(card_number: int, owner_id: int = None) -> Dict:
     # Создаем уникальный ID
     waifu_id = f"wf_{uuid.uuid4().hex[:8]}"
     
+    # Fetch anime image from API
+    image_url = fetch_waifu_image()
+    
     return {
         "id": waifu_id,
         "card_number": card_number,
@@ -55,7 +89,7 @@ def generate_waifu(card_number: int, owner_id: int = None) -> Dict:
         "race": race,
         "profession": profession,
         "nationality": nationality,
-        "image_url": None,  # Можно добавить генерацию изображений
+        "image_url": image_url,  # Now fetches real anime images!
         "owner_id": owner_id,
         "level": 1,
         "xp": 0,
