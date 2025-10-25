@@ -216,3 +216,37 @@ TAGS = [
     "protective", "competitive", "artistic", "intellectual",
     "funny", "stoic", "optimistic", "pessimistic", "sarcastic"
 ]
+
+# Events and their requirements
+EVENTS = {
+    "dance": {
+        "base_stats": ["charm", "speed", "luck"], 
+        "profession_bonus": "Dancer",
+        "name": "Танцевальный конкурс",
+        "description": "Покажи свои танцевальные навыки!"
+    },
+    "hunt": {
+        "base_stats": ["power", "speed", "luck"], 
+        "profession_bonus": "Warrior",
+        "name": "Охота на монстров",
+        "description": "Сражайся с опасными существами!"
+    },
+    "quiz": {
+        "base_stats": ["intellect", "charm", "luck"], 
+        "profession_bonus": "Scholar",
+        "name": "Интеллектуальная викторина",
+        "description": "Проверь свои знания!"
+    },
+    "cooking": {
+        "base_stats": ["intellect", "charm", "luck"], 
+        "profession_bonus": "Chef",
+        "name": "Кулинарный конкурс",
+        "description": "Приготовь самое вкусное блюдо!"
+    },
+    "singing": {
+        "base_stats": ["charm", "intellect", "luck"], 
+        "profession_bonus": "Singer",
+        "name": "Вокальный конкурс",
+        "description": "Покажи свой голос!"
+    }
+}
