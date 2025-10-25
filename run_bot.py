@@ -18,6 +18,7 @@ os.chdir(project_root)
 if __name__ == "__main__":
     import asyncio
     import logging
+    from aiohttp import web
     from aiogram import Bot, Dispatcher
     from aiogram.client.default import DefaultBotProperties
     from aiogram.enums import ParseMode
@@ -43,8 +44,39 @@ if __name__ == "__main__":
     )
     logger = logging.getLogger(__name__)
 
+    # Health check endpoint for Render
+    async def health_check(request):
+        return web.Response(text="Bot is running", status=200)
+
+    async def start_web_server():
+        """Start FastAPI server for WebApp and API"""
+        import uvicorn
+        from bot.api_server import app as fastapi_app
+        
+        port = int(os.getenv('PORT', 10000))
+        
+        config = uvicorn.Config(
+            fastapi_app,
+            host="0.0.0.0",
+            port=port,
+            log_level="info",
+            access_log=True
+        )
+        server = uvicorn.Server(config)
+        
+        logger.info(f"✅ Starting FastAPI server on port {port}")
+        logger.info(f"   WebApp will be available at: http://0.0.0.0:{port}/")
+        logger.info(f"   API endpoints at: http://0.0.0.0:{port}/api/waifu/{{id}}")
+        
+        # Run server in background task
+        asyncio.create_task(server.serve())
+        return server
+
     async def main() -> None:
         logger.info("🚀 Starting Waifu Bot...")
+        
+        # Start FastAPI server first (for Render + WebApp)
+        web_server = await start_web_server()
         
         settings = get_settings()
         bot = Bot(
