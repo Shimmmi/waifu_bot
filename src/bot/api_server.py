@@ -19,15 +19,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Добавляем путь к проекту
-sys.path.insert(0, str(Path(__file__).parent))
+# Добавляем путь к проекту для правильного импорта модулей
+current_dir = Path(__file__).parent  # src/bot/
+src_dir = current_dir.parent  # src/
+if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
+
 logger.info("🌐 Starting Waifu Bot API Server...")
+logger.info(f"   Current directory: {current_dir}")
+logger.info(f"   Python path: {sys.path[:3]}")
 
 try:
-    from db import SessionLocal
-    from models import Waifu
-    from services.waifu_generator import calculate_waifu_power
-except ImportError:
+    # Import using bot.module_name since src/ is in path
+    from bot.db import SessionLocal
+    from bot.models import Waifu
+    from bot.services.waifu_generator import calculate_waifu_power
+    logger.info("✅ Database modules imported successfully")
+    logger.info(f"   SessionLocal: {SessionLocal}")
+    logger.info(f"   Waifu model: {Waifu}")
+except ImportError as e:
+    logger.error(f"❌ Failed to import database modules: {e}", exc_info=True)
     # Если не можем импортировать, создаем заглушки
     SessionLocal = None
     Waifu = None
