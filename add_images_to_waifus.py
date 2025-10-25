@@ -67,13 +67,19 @@ def main(force_update=False):
                 # Assign a random image from our curated list
                 waifu.image_url = get_random_image()
                 updated_count += 1
-                print(f"  ✅ Updated {waifu.name} (ID: {waifu.id})")
+                
+                # Commit each waifu individually to avoid connection timeouts
+                try:
+                    session.commit()
+                    print(f"  ✅ Updated {waifu.name} (ID: {waifu.id})")
+                except Exception as e:
+                    print(f"  ❌ Failed to update {waifu.name}: {e}")
+                    session.rollback()
             else:
                 skipped_count += 1
                 print(f"  ⏭️  Skipped {waifu.name} (already has image)")
         
         if updated_count > 0:
-            session.commit()
             print(f"\n✅ Successfully updated {updated_count} waifus")
         
         if skipped_count > 0:
