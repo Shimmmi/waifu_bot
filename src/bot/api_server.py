@@ -85,6 +85,7 @@ async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[s
         
         logger.info(f"✅ FETCHED FROM DB: Waifu {waifu.id} ({waifu.name})")
         logger.info(f"   XP: {waifu.xp}")
+        logger.info(f"   Image URL: {waifu.image_url}")
         logger.info(f"   Dynamic: {waifu.dynamic}")
         
         # Формируем ответ
@@ -95,6 +96,7 @@ async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[s
             "race": waifu.race,
             "profession": waifu.profession,
             "nationality": waifu.nationality,
+            "image_url": waifu.image_url,  # Include image URL
             "level": waifu.level,
             "xp": waifu.xp,
             "stats": waifu.stats,
@@ -105,6 +107,7 @@ async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[s
         
         logger.info(f"📤 SENDING TO CLIENT:")
         logger.info(f"   XP: {waifu_data['xp']}")
+        logger.info(f"   Image URL: {waifu_data['image_url']}")
         logger.info(f"   Dynamic: {waifu_data['dynamic']}")
         
         return waifu_data

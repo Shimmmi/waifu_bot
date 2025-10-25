@@ -386,6 +386,10 @@
         function renderWaifuCard(waifu) {
             const container = document.getElementById('waifu-card-container');
             
+            console.log('Rendering waifu card:', waifu.name);
+            console.log('Image URL:', waifu.image_url);
+            console.log('Has image_url:', !!waifu.image_url);
+            
             const power = calculatePower(waifu.stats, waifu.dynamic, waifu.level);
             const xpProgress = getXPProgress(waifu.xp, waifu.level);
             const xpPercent = xpProgress.percent;
@@ -409,7 +413,9 @@
                     <!-- Средняя часть - изображение -->
                     <div class="card-image-container">
                         ${waifu.image_url 
-                            ? `<img src="${waifu.image_url}" alt="${waifu.name}" class="card-image">`
+                            ? `<img src="${waifu.image_url}" alt="${waifu.name}" class="card-image" 
+                                    onerror="this.style.display='none'; this.parentElement.innerHTML += '<div class=\\'card-image-placeholder\\'>🎭</div>' + this.parentElement.querySelector('.image-badges').outerHTML;"
+                                    onload="console.log('Image loaded successfully:', '${waifu.image_url}');">`
                             : `<div class="card-image-placeholder">🎭</div>`
                         }
                         
