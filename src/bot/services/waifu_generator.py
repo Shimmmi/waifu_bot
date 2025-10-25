@@ -10,33 +10,41 @@ from ..data_tables import (
 
 logger = logging.getLogger(__name__)
 
+# Curated list of anime waifu images (safe for work)
+# Using placeholder service that generates consistent anime-style avatars
+# Format: https://api.dicebear.com/7.x/[style]/svg?seed=[unique_seed]
+WAIFU_IMAGES = [
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Bella",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Sophie",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Luna",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Mia",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Zoe",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Lily",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Chloe",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Emma",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Ava",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Aria",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Nora",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Ruby",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Jade",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Rose",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Iris",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Maya",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Nova",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Star",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Sky",
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Dawn",
+]
 
-def fetch_waifu_image() -> Optional[str]:
+
+def get_waifu_image() -> str:
     """
-    Fetch a random anime waifu image from free API
-    Returns image URL or None if fetch fails
+    Get a random anime waifu image from the predefined list
+    Returns image URL
     """
-    try:
-        import requests
-        
-        logger.info("🎨 Fetching waifu image from API...")
-        response = requests.get("https://api.waifu.pics/sfw/waifu", timeout=5)
-        
-        if response.status_code == 200:
-            data = response.json()
-            image_url = data.get("url")
-            logger.info(f"✅ Got image URL: {image_url[:50]}...")
-            return image_url
-        else:
-            logger.warning(f"⚠️ API returned status {response.status_code}")
-            return None
-            
-    except ImportError:
-        logger.error("❌ requests library not installed. Run: pip install requests")
-        return None
-    except Exception as e:
-        logger.warning(f"⚠️ Failed to fetch waifu image: {e}")
-        return None
+    image_url = random.choice(WAIFU_IMAGES)
+    logger.info(f"🎨 Selected waifu image: {image_url}")
+    return image_url
 
 
 def generate_waifu(card_number: int, owner_id: int = None) -> Dict:
@@ -78,8 +86,8 @@ def generate_waifu(card_number: int, owner_id: int = None) -> Dict:
     # Создаем уникальный ID
     waifu_id = f"wf_{uuid.uuid4().hex[:8]}"
     
-    # Fetch anime image from API
-    image_url = fetch_waifu_image()
+    # Get anime image from predefined list
+    image_url = get_waifu_image()
     
     return {
         "id": waifu_id,
