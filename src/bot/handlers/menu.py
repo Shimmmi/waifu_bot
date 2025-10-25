@@ -900,6 +900,9 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
             rewards = get_event_rewards(score, event_type)
             
             # Обновляем вайфу
+            from datetime import datetime
+            from sqlalchemy.orm.attributes import flag_modified
+            
             waifu.xp += rewards["xp"]
             # Преобразуем значения в int перед операциями
             current_energy = int(waifu.dynamic.get("energy", 100))
@@ -911,17 +914,19 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
                 **waifu.dynamic,
                 "energy": max(0, current_energy - 20),
                 "mood": min(100, current_mood + 5),
-                "loyalty": min(100, current_loyalty + 2)
+                "loyalty": min(100, current_loyalty + 2),
+                "last_restore": datetime.now().isoformat()  # Update restoration timestamp
             }
             
             # Помечаем поле как измененное для SQLAlchemy
-            from sqlalchemy.orm.attributes import flag_modified
             flag_modified(waifu, "dynamic")
             
             # Обновляем пользователя
             user.coins += rewards["coins"]
             
+            # Commit and explicitly flush to database
             session.commit()
+            session.flush()
             session.refresh(waifu)  # Обновляем объект из базы данных
 
             # Формируем результат

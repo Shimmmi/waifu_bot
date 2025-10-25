@@ -13,6 +13,7 @@ from bot.handlers.menu import router as menu_router
 from bot.handlers.waifu import router as waifu_router
 from bot.handlers.debug import router as debug_router
 from bot.handlers.webapp import router as webapp_router
+from bot.services.stat_restoration import start_restoration_service, stop_restoration_service
 
 
 async def main() -> None:
@@ -33,7 +34,14 @@ async def main() -> None:
     dp.include_router(debug_router)
     dp.include_router(webapp_router)
 
-    await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    # Start stat restoration service
+    await start_restoration_service()
+    
+    try:
+        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+    finally:
+        # Stop restoration service on shutdown
+        await stop_restoration_service()
 
 
 if __name__ == "__main__":
