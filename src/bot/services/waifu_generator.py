@@ -110,13 +110,27 @@ def get_rarity_color(rarity: str) -> str:
 
 def format_waifu_card(waifu: Dict) -> str:
     """Форматирует карточку вайфу для отображения"""
+    from bot.services.level_up import level_up_service
+    
     rarity_icon = get_rarity_color(waifu["rarity"])
     power = calculate_waifu_power(waifu)
+    
+    # Get XP progress info
+    current_xp = waifu.get('xp', 0)
+    current_level = waifu.get('level', 1)
+    xp_info = level_up_service.get_xp_progress_info(current_xp, current_level)
+    
+    # Format XP progress bar
+    xp_in_level = xp_info['xp_in_current_level']
+    xp_needed = xp_info['xp_needed_in_level']
+    progress = xp_info['progress_percentage']
     
     card = f"""
 {rarity_icon} <b>{waifu['name']}</b> [{waifu['rarity']}]
 🏷️ {waifu['race']} • {waifu['profession']} • {waifu['nationality']}
 ⚡ Уровень: {waifu['level']} | 💪 Сила: {power}
+
+✨ <b>Опыт:</b> {xp_in_level}/{xp_needed} ({progress}%)
 
 📊 <b>Характеристики:</b>
 💪 Сила: {waifu['stats'].get('power', 0)}

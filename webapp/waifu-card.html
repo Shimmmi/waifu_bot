@@ -332,9 +332,32 @@
             return Object.values(stats).reduce((sum, val) => sum + val, 0);
         }
 
+        // Расчет общего XP для достижения определенного уровня
+        function getTotalXPForLevel(level) {
+            // Formula: 50 * level * (level - 1)
+            // Level 1: 0, Level 2: 100, Level 3: 300, Level 4: 600, etc.
+            if (level <= 1) return 0;
+            return 50 * level * (level - 1);
+        }
+        
         // Расчет XP для следующего уровня
         function getXPForNextLevel(level) {
-            return level * 100; // Простая формула: уровень * 100
+            // Returns total XP needed to reach next level
+            return getTotalXPForLevel(level + 1);
+        }
+        
+        // Расчет XP прогресса в текущем уровне
+        function getXPProgress(currentXP, currentLevel) {
+            const xpForCurrentLevel = getTotalXPForLevel(currentLevel);
+            const xpForNextLevel = getTotalXPForLevel(currentLevel + 1);
+            const xpInCurrentLevel = currentXP - xpForCurrentLevel;
+            const xpNeededInLevel = xpForNextLevel - xpForCurrentLevel;
+            
+            return {
+                xpInLevel: xpInCurrentLevel,
+                xpNeeded: xpNeededInLevel,
+                percent: (xpInCurrentLevel / xpNeededInLevel) * 100
+            };
         }
 
         // Получение класса национальности
@@ -353,8 +376,8 @@
             const container = document.getElementById('waifu-card-container');
             
             const power = calculatePower(waifu.stats);
-            const xpForNext = getXPForNextLevel(waifu.level);
-            const xpPercent = (waifu.xp / xpForNext) * 100;
+            const xpProgress = getXPProgress(waifu.xp, waifu.level);
+            const xpPercent = xpProgress.percent;
             
             const rarityClass = `rarity-${waifu.rarity.toLowerCase()}`;
             const nationalityClass = getNationalityClass(waifu.nationality);
@@ -439,7 +462,7 @@
                         <div class="xp-bar-container">
                             <div class="xp-label">
                                 <span>✨ Опыт</span>
-                                <span>${waifu.xp} / ${xpForNext}</span>
+                                <span>${xpProgress.xpInLevel} / ${xpProgress.xpNeeded} (${Math.round(xpPercent)}%)</span>
                             </div>
                             <div class="xp-bar">
                                 <div class="xp-fill" style="width: ${xpPercent}%"></div>

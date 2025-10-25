@@ -903,16 +903,45 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
             from datetime import datetime
             from sqlalchemy.orm.attributes import flag_modified
             import logging
+            from bot.services.level_up import level_up_service
             logger = logging.getLogger(__name__)
             
             # Log BEFORE changes
             old_xp = waifu.xp
+            old_level = waifu.level
             old_dynamic = dict(waifu.dynamic) if waifu.dynamic else {}
             logger.info(f"🔍 EVENT PARTICIPATION - BEFORE: Waifu {waifu.id} ({waifu.name})")
-            logger.info(f"   XP: {old_xp}")
+            logger.info(f"   Level: {old_level}, XP: {old_xp}")
             logger.info(f"   Dynamic: {old_dynamic}")
             
+            # Add XP
             waifu.xp += rewards["xp"]
+            
+            # Check for level up
+            should_level_up, new_level = level_up_service.check_level_up(waifu.xp, waifu.level)
+            level_up_info = None
+            
+            if should_level_up:
+                logger.info(f"🎉 LEVEL UP DETECTED! {old_level} → {new_level}")
+                
+                # Apply level up changes
+                waifu_data = {
+                    "level": waifu.level,
+                    "xp": waifu.xp,
+                    "stats": dict(waifu.stats)
+                }
+                
+                level_up_info = level_up_service.apply_level_up(waifu_data, new_level)
+                
+                # Update waifu with new level and stats
+                waifu.level = new_level
+                waifu.stats = level_up_info["updated_stats"]
+                flag_modified(waifu, "stats")
+                
+                logger.info(f"   New level: {new_level}")
+                logger.info(f"   Stat increased: {level_up_info['increased_stat']} "
+                           f"({level_up_info['old_stat_value']} → {level_up_info['new_stat_value']})")
+            
             # Преобразуем значения в int перед операциями
             current_energy = int(waifu.dynamic.get("energy", 100))
             current_mood = int(waifu.dynamic.get("mood", 50))
@@ -932,9 +961,10 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
             
             # Log AFTER changes (before commit)
             logger.info(f"🔄 EVENT PARTICIPATION - AFTER CHANGES: Waifu {waifu.id}")
+            logger.info(f"   Level: {old_level} → {waifu.level}")
             logger.info(f"   XP: {old_xp} → {waifu.xp}")
             logger.info(f"   Dynamic: {waifu.dynamic}")
-            logger.info(f"   flag_modified: dynamic field marked as modified")
+            logger.info(f"   flag_modified: dynamic and stats fields marked as modified")
             
             # Обновляем пользователя
             user.coins += rewards["coins"]
@@ -947,6 +977,7 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
             
             # Log AFTER commit
             logger.info(f"✅ COMMITTED TO DB: Waifu {waifu.id}")
+            logger.info(f"   Level after refresh: {waifu.level}")
             logger.info(f"   XP after refresh: {waifu.xp}")
             logger.info(f"   Dynamic after refresh: {waifu.dynamic}")
 
@@ -956,6 +987,14 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
                 "stats": waifu.stats,
                 "dynamic": waifu.dynamic
             }, event_type, score, rewards)
+            
+            # Add level-up message if leveled up
+            if level_up_info:
+                level_up_message = level_up_service.format_level_up_message(
+                    waifu.name,
+                    level_up_info
+                )
+                result_text = f"{result_text}\n\n{level_up_message}"
 
             keyboard = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🔙 Назад к событиям", callback_data="waifu_events")]
