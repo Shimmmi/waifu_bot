@@ -45,15 +45,27 @@ def get_db():
 @app.get("/api/waifu/{waifu_id}")
 async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Получение данных вайфу для WebApp"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
+        logger.info(f"📡 API REQUEST: GET /api/waifu/{waifu_id}")
+        
         if Waifu is None:
+            logger.error("❌ Database models not configured")
             raise HTTPException(status_code=500, detail="Database models not configured")
             
         # Получаем вайфу из базы данных
+        logger.info(f"🔍 Querying database for waifu_id: {waifu_id}")
         waifu = db.query(Waifu).filter(Waifu.id == waifu_id).first()
         
         if not waifu:
+            logger.warning(f"⚠️ Waifu not found: {waifu_id}")
             raise HTTPException(status_code=404, detail="Вайфу не найдена")
+        
+        logger.info(f"✅ FETCHED FROM DB: Waifu {waifu.id} ({waifu.name})")
+        logger.info(f"   XP: {waifu.xp}")
+        logger.info(f"   Dynamic: {waifu.dynamic}")
         
         # Формируем ответ
         waifu_data = {
@@ -71,9 +83,14 @@ async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[s
             "created_at": waifu.created_at.isoformat()
         }
         
+        logger.info(f"📤 SENDING TO CLIENT:")
+        logger.info(f"   XP: {waifu_data['xp']}")
+        logger.info(f"   Dynamic: {waifu_data['dynamic']}")
+        
         return waifu_data
         
     except Exception as e:
+        logger.error(f"❌ API ERROR: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
 
 @app.get("/")

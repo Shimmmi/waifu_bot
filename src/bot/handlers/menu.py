@@ -902,6 +902,15 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
             # Обновляем вайфу
             from datetime import datetime
             from sqlalchemy.orm.attributes import flag_modified
+            import logging
+            logger = logging.getLogger(__name__)
+            
+            # Log BEFORE changes
+            old_xp = waifu.xp
+            old_dynamic = dict(waifu.dynamic) if waifu.dynamic else {}
+            logger.info(f"🔍 EVENT PARTICIPATION - BEFORE: Waifu {waifu.id} ({waifu.name})")
+            logger.info(f"   XP: {old_xp}")
+            logger.info(f"   Dynamic: {old_dynamic}")
             
             waifu.xp += rewards["xp"]
             # Преобразуем значения в int перед операциями
@@ -921,13 +930,25 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
             # Помечаем поле как измененное для SQLAlchemy
             flag_modified(waifu, "dynamic")
             
+            # Log AFTER changes (before commit)
+            logger.info(f"🔄 EVENT PARTICIPATION - AFTER CHANGES: Waifu {waifu.id}")
+            logger.info(f"   XP: {old_xp} → {waifu.xp}")
+            logger.info(f"   Dynamic: {waifu.dynamic}")
+            logger.info(f"   flag_modified: dynamic field marked as modified")
+            
             # Обновляем пользователя
             user.coins += rewards["coins"]
             
             # Commit and explicitly flush to database
+            logger.info(f"💾 Committing to database...")
             session.commit()
             session.flush()
             session.refresh(waifu)  # Обновляем объект из базы данных
+            
+            # Log AFTER commit
+            logger.info(f"✅ COMMITTED TO DB: Waifu {waifu.id}")
+            logger.info(f"   XP after refresh: {waifu.xp}")
+            logger.info(f"   Dynamic after refresh: {waifu.dynamic}")
 
             # Формируем результат
             result_text = format_event_result({
@@ -1000,8 +1021,15 @@ async def handle_waifu_details_menu_callback(callback: CallbackQuery) -> None:
             current_waifus = waifus[start_idx:end_idx]
 
             # Создаем кнопки для каждой вайфу на текущей странице
+            import logging
+            logger = logging.getLogger(__name__)
+            
             keyboard_buttons = []
             for waifu in current_waifus:
+                logger.info(f"📋 DISPLAYING WAIFU IN LIST: {waifu.id} ({waifu.name})")
+                logger.info(f"   XP: {waifu.xp}")
+                logger.info(f"   Dynamic: {waifu.dynamic}")
+                
                 power = calculate_waifu_power({
                     "stats": waifu.stats,
                     "dynamic": waifu.dynamic,
