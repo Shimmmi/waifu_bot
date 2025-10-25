@@ -6,10 +6,22 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any
 import os
 import sys
+import logging
 from pathlib import Path
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # Добавляем путь к проекту
 sys.path.insert(0, str(Path(__file__).parent))
+logger.info("🌐 Starting Waifu Bot API Server...")
 
 try:
     from db import SessionLocal

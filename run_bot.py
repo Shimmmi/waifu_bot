@@ -17,6 +17,7 @@ os.chdir(project_root)
 
 if __name__ == "__main__":
     import asyncio
+    import logging
     from aiogram import Bot, Dispatcher
     from aiogram.client.default import DefaultBotProperties
     from aiogram.enums import ParseMode
@@ -30,8 +31,21 @@ if __name__ == "__main__":
     from bot.handlers.waifu import router as waifu_router
     from bot.handlers.debug import router as debug_router
     from bot.handlers.webapp import router as webapp_router
+    from bot.services.stat_restoration import start_restoration_service, stop_restoration_service
+
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    logger = logging.getLogger(__name__)
 
     async def main() -> None:
+        logger.info("🚀 Starting Waifu Bot...")
+        
         settings = get_settings()
         bot = Bot(
             token=settings.bot_token,
@@ -49,9 +63,19 @@ if __name__ == "__main__":
         dp.include_router(debug_router)
         dp.include_router(webapp_router)
 
-        print("Запуск Waifu Bot...")
-        print("Бот готов к работе!")
+        logger.info("✅ All routers included")
         
-        await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+        # Start stat restoration service
+        logger.info("🔄 Starting stat restoration service...")
+        await start_restoration_service()
+        
+        logger.info("✅ Waifu Bot is ready!")
+        logger.info("📡 Polling for updates...")
+        
+        try:
+            await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
+        finally:
+            logger.info("🛑 Shutting down...")
+            await stop_restoration_service()
 
     asyncio.run(main())

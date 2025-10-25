@@ -1,4 +1,6 @@
 import asyncio
+import logging
+import sys
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -15,8 +17,20 @@ from bot.handlers.debug import router as debug_router
 from bot.handlers.webapp import router as webapp_router
 from bot.services.stat_restoration import start_restoration_service, stop_restoration_service
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
 
 async def main() -> None:
+    logger.info("🚀 Starting Waifu Bot...")
+    
     settings = get_settings()
     bot = Bot(
         token=settings.bot_token,
