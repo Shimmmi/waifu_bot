@@ -457,7 +457,7 @@
                             <div class="rarity-badge ${rarityClass}">${waifu.rarity}</div>
                             <div class="card-meta">
                                 <div class="meta-badge">🧬 ${waifu.race}</div>
-                                <div class="meta-badge"><span class="nationality-flag">${nationalityFlag}</span> ${waifu.nationality}</div>
+                                <div class="meta-badge">${nationalityFlag} ${waifu.nationality}</div>
                                 <div class="meta-badge">💼 ${waifu.profession}</div>
                             </div>
                         </div>
@@ -523,6 +523,12 @@
                     
                     <!-- Кнопки -->
                     <div class="actions">
+                        <button id="set-active-btn" class="btn" style="background: #28a745; color: white; margin-bottom: 8px;">
+                            ⭐ Сделать активной
+                        </button>
+                        <button id="toggle-favorite-btn" class="btn" style="background: #dc3545; color: white; margin-bottom: 8px;">
+                            ❤️ Добавить в избранное
+                        </button>
                         <button id="close-btn" class="btn btn-secondary">Закрыть</button>
                     </div>
                 </div>
@@ -557,6 +563,38 @@
                 // Настройка кнопки закрытия
                 document.getElementById('close-btn').addEventListener('click', () => {
                     tg.close();
+                });
+                
+                // Настройка кнопки "Сделать активной"
+                document.getElementById('set-active-btn').addEventListener('click', async () => {
+                    try {
+                        const response = await fetch(`/api/waifu/${waifuId}/set-active`, {
+                            method: 'POST'
+                        });
+                        if (response.ok) {
+                            tg.showAlert('✅ Вайфу установлена как активная!');
+                        } else {
+                            tg.showAlert('❌ Ошибка при установке активной вайфу');
+                        }
+                    } catch (error) {
+                        tg.showAlert('❌ Ошибка: ' + error.message);
+                    }
+                });
+                
+                // Настройка кнопки "Добавить в избранное"
+                document.getElementById('toggle-favorite-btn').addEventListener('click', async () => {
+                    try {
+                        const response = await fetch(`/api/waifu/${waifuId}/toggle-favorite`, {
+                            method: 'POST'
+                        });
+                        if (response.ok) {
+                            tg.showAlert('✅ Изменено!');
+                        } else {
+                            tg.showAlert('❌ Ошибка при изменении статуса');
+                        }
+                    } catch (error) {
+                        tg.showAlert('❌ Ошибка: ' + error.message);
+                    }
                 });
                 
             } catch (error) {

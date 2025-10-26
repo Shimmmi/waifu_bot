@@ -89,6 +89,7 @@ async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[s
         logger.info(f"   XP: {waifu.xp}")
         logger.info(f"   Image URL: {waifu.image_url}")
         logger.info(f"   Dynamic: {waifu.dynamic}")
+        logger.info(f"   Nationality: {waifu.nationality}")
         
         # Формируем ответ
         waifu_data = {
@@ -188,6 +189,66 @@ async def get_profile(user_id: int, db: Session = Depends(get_db)) -> Dict[str, 
         
         logger.info(f"✅ Profile data fetched for user {user_id}")
         return profile_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+@app.post("/api/waifu/{waifu_id}/set-active")
+async def set_active_waifu(waifu_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Установить вайфу как активную"""
+    try:
+        logger.info(f"📡 API REQUEST: POST /api/waifu/{waifu_id}/set-active")
+        
+        if Waifu is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Get waifu
+        waifu = db.query(Waifu).filter(Waifu.id == waifu_id).first()
+        if not waifu:
+            raise HTTPException(status_code=404, detail="Вайфу не найдена")
+        
+        # Set all user's waifus to inactive
+        db.query(Waifu).filter(
+            Waifu.owner_id == waifu.owner_id
+        ).update({"is_active": False})
+        
+        # Set this waifu to active
+        waifu.is_active = True
+        db.commit()
+        
+        logger.info(f"✅ Waifu {waifu_id} set as active")
+        return {"success": True, "message": "Вайфу установлена как активная"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+@app.post("/api/waifu/{waifu_id}/toggle-favorite")
+async def toggle_favorite(waifu_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Переключить статус избранного для вайфу"""
+    try:
+        logger.info(f"📡 API REQUEST: POST /api/waifu/{waifu_id}/toggle-favorite")
+        
+        if Waifu is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Get waifu
+        waifu = db.query(Waifu).filter(Waifu.id == waifu_id).first()
+        if not waifu:
+            raise HTTPException(status_code=404, detail="Вайфу не найдена")
+        
+        # Toggle favorite status
+        waifu.is_favorite = not waifu.is_favorite
+        db.commit()
+        
+        status = "добавлена в избранное" if waifu.is_favorite else "удалена из избранного"
+        logger.info(f"✅ Waifu {waifu_id} {status}")
+        return {"success": True, "message": f"Вайфу {status}", "is_favorite": waifu.is_favorite}
         
     except HTTPException:
         raise
