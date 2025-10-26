@@ -1,13 +1,17 @@
 from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, CallbackQuery
 from sqlalchemy import select
+import os
 
 from bot.db import SessionLocal
 from bot.models import User
 
 
 router = Router()
+
+# Get WebApp URL from environment
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://waifu-bot-webapp.onrender.com")
 
 
 @router.message(Command("start"))
@@ -34,7 +38,7 @@ async def cmd_start(message: Message) -> None:
 
         # Создаем кнопки меню
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="👤 Профиль", callback_data="profile")],
+            [InlineKeyboardButton(text="👤 Профиль", web_app=WebAppInfo(url=f"{WEBAPP_URL}/webapp/profile.html"))],
             [InlineKeyboardButton(text="🎁 Ежедневный бонус", callback_data="daily")],
             [InlineKeyboardButton(text="🎭 Вайфу", callback_data="waifu_menu")],
             [InlineKeyboardButton(text="🎯 События", callback_data="events_menu")],

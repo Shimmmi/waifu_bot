@@ -229,7 +229,16 @@
 
         async function loadProfile() {
             try {
-                const response = await fetch('/api/profile');
+                // Get user_id from Telegram WebApp
+                const tg = window.Telegram.WebApp;
+                const user = tg.initDataUnsafe?.user;
+                const user_id = user?.id;
+                
+                if (!user_id) {
+                    throw new Error('User ID not found');
+                }
+                
+                const response = await fetch(`/api/profile?user_id=${user_id}`);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);

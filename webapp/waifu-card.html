@@ -32,12 +32,14 @@
             position: relative;
         }
 
-        /* Фон по национальности */
-        .card.nationality-japanese { background: linear-gradient(135deg, #ffe6f0 0%, #fff0f5 100%); }
-        .card.nationality-chinese { background: linear-gradient(135deg, #fff5e6 0%, #ffede0 100%); }
-        .card.nationality-american { background: linear-gradient(135deg, #e6f3ff 0%, #f0f7ff 100%); }
-        .card.nationality-european { background: linear-gradient(135deg, #f0e6ff 0%, #f7f0ff 100%); }
-        .card.nationality-other { background: linear-gradient(135deg, #e6ffe6 0%, #f0fff0 100%); }
+        /* Фон по профессии */
+        .card.profession-Warrior { background: linear-gradient(135deg, #ffe6e6 0%, #fff0f0 100%); }
+        .card.profession-Mage { background: linear-gradient(135deg, #e6e6ff 0%, #f0f0ff 100%); }
+        .card.profession-Assassin { background: linear-gradient(135deg, #e6e6e6 0%, #f5f5f5 100%); }
+        .card.profession-Knight { background: linear-gradient(135deg, #fff4e6 0%, #fffaf0 100%); }
+        .card.profession-Archer { background: linear-gradient(135deg, #e6ffe6 0%, #f0fff0 100%); }
+        .card.profession-Healer { background: linear-gradient(135deg, #e6ffe6 0%, #f0fff0 100%); }
+        .card.profession-Merchant { background: linear-gradient(135deg, #fff9e6 0%, #fffdf0 100%); }
 
         /* Верхнее поле (чердак) */
         .card-header {
@@ -118,6 +120,11 @@
             font-weight: 700;
             text-transform: uppercase;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .nationality-flag {
+            font-size: 16px;
+            padding: 0 4px;
         }
 
         .rarity-common { background: #95a5a6; color: white; }
@@ -371,15 +378,40 @@
             };
         }
 
-        // Получение класса национальности
-        function getNationalityClass(nationality) {
-            const map = {
-                'Japanese': 'japanese',
-                'Chinese': 'chinese',
-                'American': 'american',
-                'European': 'european'
+        // Получение класса профессии
+        function getProfessionClass(profession) {
+            return `profession-${profession}`;
+        }
+        
+        // Получение флага национальности
+        function getNationalityFlag(nationality) {
+            const flags = {
+                'JP': '🇯🇵',
+                'CN': '🇨🇳',
+                'KR': '🇰🇷',
+                'US': '🇺🇸',
+                'GB': '🇬🇧',
+                'FR': '🇫🇷',
+                'DE': '🇩🇪',
+                'IT': '🇮🇹',
+                'RU': '🇷🇺',
+                'BR': '🇧🇷',
+                'IN': '🇮🇳',
+                'CA': '🇨🇦',
+                'Japanese': '🇯🇵',
+                'Chinese': '🇨🇳',
+                'Korean': '🇰🇷',
+                'American': '🇺🇸',
+                'British': '🇬🇧',
+                'French': '🇫🇷',
+                'German': '🇩🇪',
+                'Italian': '🇮🇹',
+                'Russian': '🇷🇺',
+                'Brazilian': '🇧🇷',
+                'Indian': '🇮🇳',
+                'Canadian': '🇨🇦'
             };
-            return `nationality-${map[nationality] || 'other'}`;
+            return flags[nationality] || '🌎';
         }
 
         // Отображение карточки вайфу
@@ -395,10 +427,11 @@
             const xpPercent = xpProgress.percent;
             
             const rarityClass = `rarity-${waifu.rarity.toLowerCase()}`;
-            const nationalityClass = getNationalityClass(waifu.nationality);
+            const professionClass = getProfessionClass(waifu.profession);
+            const nationalityFlag = getNationalityFlag(waifu.nationality);
             
             container.innerHTML = `
-                <div class="card ${nationalityClass}">
+                <div class="card ${professionClass}">
                     <!-- Верхнее поле (чердак) -->
                     <div class="card-header">
                         <div class="header-left">
@@ -424,6 +457,7 @@
                             <div class="rarity-badge ${rarityClass}">${waifu.rarity}</div>
                             <div class="card-meta">
                                 <div class="meta-badge">🧬 ${waifu.race}</div>
+                                <div class="meta-badge"><span class="nationality-flag">${nationalityFlag}</span> ${waifu.nationality}</div>
                                 <div class="meta-badge">💼 ${waifu.profession}</div>
                             </div>
                         </div>
