@@ -165,9 +165,12 @@ async def get_profile(user_id: int, db: Session = Depends(get_db)) -> Dict[str, 
         # Get active waifu
         active_waifu = None
         waifu = db.query(Waifu).filter(
-            Waifu.owner_id == user_id,
+            Waifu.owner_id == user.id,  # Use user.id, not user_id
             Waifu.is_active == True
         ).first()
+        
+        logger.info(f"🔍 Active waifu query: owner_id={user.id}")
+        logger.info(f"   Active waifu found: {waifu.name if waifu else 'None'}")
         
         if waifu:
             power = calculate_waifu_power(waifu.__dict__)
@@ -175,7 +178,8 @@ async def get_profile(user_id: int, db: Session = Depends(get_db)) -> Dict[str, 
                 "name": waifu.name,
                 "level": waifu.level,
                 "power": power,
-                "image_url": waifu.image_url
+                "image_url": waifu.image_url,
+                "is_active": True
             }
         
         profile_data = {

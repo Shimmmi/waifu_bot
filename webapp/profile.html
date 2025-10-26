@@ -128,6 +128,13 @@
             font-size: 18px;
             font-weight: bold;
             margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .active-icon {
+            font-size: 16px;
         }
 
         .waifu-level {
@@ -208,7 +215,10 @@
             <div id="activeWaifu">
                 <div class="waifu-card">
                     <div class="waifu-info">
-                        <div class="waifu-name" id="waifuName">Загрузка...</div>
+                                                            <div class="waifu-name" id="waifuName">
+                                        <span class="active-icon">⭐</span>
+                                        <span>Загрузка...</span>
+                                    </div>
                         <div class="waifu-level" id="waifuLevel">Уровень: ?</div>
                         <div class="waifu-power" id="waifuPower">Сила: ?</div>
                     </div>
@@ -268,7 +278,10 @@
                     document.getElementById('activeWaifu').style.display = 'block';
                     document.getElementById('noActiveWaifu').style.display = 'none';
                     
-                    document.getElementById('waifuName').textContent = waifu.name || 'Unknown';
+                    // Set waifu name with active icon
+                    const waifuNameElement = document.getElementById('waifuName');
+                    waifuNameElement.innerHTML = `<span class="active-icon">❤️</span><span>${waifu.name || 'Unknown'}</span>`;
+                    
                     document.getElementById('waifuLevel').textContent = `Уровень: ${waifu.level || 1}`;
                     document.getElementById('waifuPower').textContent = `Сила: ${waifu.power || 0}`;
                     

@@ -146,7 +146,7 @@
             border-radius: 12px;
             font-size: 11px;
             font-weight: 600;
-            text-align: right;
+            text-align: left;
         }
 
         /* Нижнее поле (подвал) */
@@ -242,6 +242,9 @@
         .actions {
             padding: 12px 15px;
             border-top: 1px solid rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .btn {
@@ -253,6 +256,15 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+        }
+        
+        .btn-row {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-row .btn {
+            flex: 1;
         }
 
         .btn-secondary {
@@ -415,7 +427,7 @@
         }
 
         // Отображение карточки вайфу
-        function renderWaifuCard(waifu) {
+        function renderWaifuCard(waifu, waifuId) {
             const container = document.getElementById('waifu-card-container');
             
             console.log('Rendering waifu card:', waifu.name);
@@ -523,12 +535,14 @@
                     
                     <!-- Кнопки -->
                     <div class="actions">
-                        <button id="set-active-btn" class="btn" style="background: #28a745; color: white; margin-bottom: 8px;">
-                            ⭐ Сделать активной
-                        </button>
-                        <button id="toggle-favorite-btn" class="btn" style="background: #dc3545; color: white; margin-bottom: 8px;">
-                            ❤️ Добавить в избранное
-                        </button>
+                        <div class="btn-row">
+                            <button id="set-active-btn" class="btn" style="background: #28a745; color: white;">
+                                ⭐ Активна
+                            </button>
+                            <button id="toggle-favorite-btn" class="btn" style="background: #dc3545; color: white;">
+                                ❤️ Избранное
+                            </button>
+                        </div>
                         <button id="close-btn" class="btn btn-secondary">Закрыть</button>
                     </div>
                 </div>
@@ -558,7 +572,7 @@
                 }
                 
                 const waifu = await fetchWaifuData(waifuId);
-                renderWaifuCard(waifu);
+                renderWaifuCard(waifu, waifuId);
                 
                 // Настройка кнопки закрытия
                 document.getElementById('close-btn').addEventListener('click', () => {
@@ -566,7 +580,8 @@
                 });
                 
                 // Настройка кнопки "Сделать активной"
-                document.getElementById('set-active-btn').addEventListener('click', async () => {
+                const setActiveBtn = document.getElementById('set-active-btn');
+                setActiveBtn.addEventListener('click', async () => {
                     try {
                         const response = await fetch(`/api/waifu/${waifuId}/set-active`, {
                             method: 'POST'
@@ -582,13 +597,23 @@
                 });
                 
                 // Настройка кнопки "Добавить в избранное"
-                document.getElementById('toggle-favorite-btn').addEventListener('click', async () => {
+                const toggleFavoriteBtn = document.getElementById('toggle-favorite-btn');
+                toggleFavoriteBtn.addEventListener('click', async () => {
                     try {
                         const response = await fetch(`/api/waifu/${waifuId}/toggle-favorite`, {
                             method: 'POST'
                         });
                         if (response.ok) {
-                            tg.showAlert('✅ Изменено!');
+                            const data = await response.json();
+                            // Update button text based on favorite status
+                            if (data.is_favorite) {
+                                toggleFavoriteBtn.textContent = '❤️ В избранном';
+                                toggleFavoriteBtn.style.background = '#28a745';
+                            } else {
+                                toggleFavoriteBtn.textContent = '❤️ Избранное';
+                                toggleFavoriteBtn.style.background = '#dc3545';
+                            }
+                            tg.showAlert('✅ ' + data.message);
                         } else {
                             tg.showAlert('❌ Ошибка при изменении статуса');
                         }
