@@ -11,30 +11,14 @@ from ..data_tables import (
 
 logger = logging.getLogger(__name__)
 
-# Curated list of anime waifu images (safe for work)
-# Using placeholder service that generates consistent anime-style avatars
-# Format: https://api.dicebear.com/7.x/[style]/svg?seed=[unique_seed]
+# Fallback images (should rarely be used since all races have images)
+# Using GitHub-hosted images from Human race as fallback
 WAIFU_IMAGES = [
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Bella",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Sophie",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Luna",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Mia",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Zoe",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Lily",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Chloe",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Emma",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Ava",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Aria",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Nora",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Ruby",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Jade",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Rose",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Iris",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Maya",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Nova",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Star",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Sky",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Dawn",
+    "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/human/Human_1.jpeg",
+    "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/human/Human_2.jpeg",
+    "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/human/Human_3.jpeg",
+    "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/human/Human_4.jpeg",
+    "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/human/Human_5.jpeg",
 ]
 
 
@@ -44,20 +28,26 @@ def get_waifu_image(race: str = None, profession: str = None, nationality: str =
     Priority: race > profession > nationality > fallback
     Returns image URL
     """
+    logger.debug(f"🎨 Getting image for: race={race}, profession={profession}, nationality={nationality}")
+    
     # Try to get image by race first (most distinctive)
     if race and race in WAIFU_IMAGES_BY_RACE:
         images = WAIFU_IMAGES_BY_RACE[race]
         if images:
             image_url = random.choice(images)
-            logger.info(f"🎨 Selected {race} waifu image: {image_url}")
+            logger.info(f"✅ Selected {race} image from race category: {image_url[:60]}...")
             return image_url
+        else:
+            logger.warning(f"⚠️  Race {race} found in WAIFU_IMAGES_BY_RACE but images list is empty")
+    else:
+        logger.warning(f"⚠️  Race {race} not found in WAIFU_IMAGES_BY_RACE (available: {list(WAIFU_IMAGES_BY_RACE.keys())})")
     
     # Try profession if race doesn't have images
     if profession and profession in WAIFU_IMAGES_BY_PROFESSION:
         images = WAIFU_IMAGES_BY_PROFESSION[profession]
         if images:
             image_url = random.choice(images)
-            logger.info(f"🎨 Selected {profession} waifu image: {image_url}")
+            logger.info(f"✅ Selected {profession} image from profession category: {image_url[:60]}...")
             return image_url
     
     # Try nationality as last resort
@@ -65,12 +55,12 @@ def get_waifu_image(race: str = None, profession: str = None, nationality: str =
         images = WAIFU_IMAGES_BY_NATIONALITY[nationality]
         if images:
             image_url = random.choice(images)
-            logger.info(f"🎨 Selected {nationality} waifu image: {image_url}")
+            logger.info(f"✅ Selected {nationality} image from nationality category: {image_url[:60]}...")
             return image_url
     
     # Fallback to generic images
     image_url = random.choice(WAIFU_IMAGES)
-    logger.info(f"🎨 Selected fallback waifu image: {image_url}")
+    logger.warning(f"⚠️  Using fallback image (no specific match found): {image_url[:60]}...")
     return image_url
 
 
