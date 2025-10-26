@@ -49,10 +49,13 @@ def get_waifu_image(race: str = None, profession: str = None, nationality: str =
     # Convert nationality code to full name
     nationality_full = nationality_map.get(nationality, nationality)
     
-    # Build hierarchical image URL
+    # Build hierarchical image URL with random variant support
     if race and profession and nationality_full:
-        image_url = f"https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/{race}/{nationality_full}/{profession}.jpeg"
-        logger.info(f"✅ Selected specific image: {race}/{nationality_full}/{profession}.jpeg")
+        # Choose a random variant number (1-5 for now, adjust based on your images)
+        # If you have more variants, increase the range
+        variant_number = random.randint(1, 5)
+        image_url = f"https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/{race}/{nationality_full}/{profession}_{variant_number}.jpeg"
+        logger.info(f"✅ Selected specific image: {race}/{nationality_full}/{profession}_{variant_number}.jpeg")
         return image_url
     
     # Fallback if missing any parameter

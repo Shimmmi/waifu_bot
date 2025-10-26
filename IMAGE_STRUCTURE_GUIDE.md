@@ -7,7 +7,8 @@ New hierarchical image system with 3 levels of specificity:
 2. **Nationality** (2nd priority) - 12 nationalities  
 3. **Profession** (3rd priority) - 7 professions
 
-**Total images needed:** 8 × 12 × 7 = **672 images** (for 1 variant each)
+**Base images:** 8 × 12 × 7 = **672 images** (one variant each)  
+**With variants:** **672+ images** (add as many variants as you want per profession)
 
 ---
 
@@ -22,20 +23,25 @@ waifu-images/
 
 ### **Example Paths:**
 ```
-waifu-images/Angel/Japanese/Warrior.jpeg
-waifu-images/Angel/Japanese/Mage.jpeg
-waifu-images/Angel/Japanese/Assassin.jpeg
-waifu-images/Angel/Japanese/Knight.jpeg
-waifu-images/Angel/Japanese/Archer.jpeg
-waifu-images/Angel/Japanese/Healer.jpeg
-waifu-images/Angel/Japanese/Merchant.jpeg
+waifu-images/Angel/Japanese/Warrior_1.jpeg
+waifu-images/Angel/Japanese/Mage_1.jpeg
+waifu-images/Angel/Japanese/Assassin_1.jpeg
+waifu-images/Angel/Japanese/Knight_1.jpeg
+waifu-images/Angel/Japanese/Archer_1.jpeg
+waifu-images/Angel/Japanese/Healer_1.jpeg
+waifu-images/Angel/Japanese/Merchant_1.jpeg
 
-waifu-images/Angel/Chinese/Warrior.jpeg
-waifu-images/Angel/Chinese/Mage.jpeg
+# With variants:
+waifu-images/Angel/Japanese/Warrior_1.jpeg
+waifu-images/Angel/Japanese/Warrior_2.jpeg
+waifu-images/Angel/Japanese/Warrior_3.jpeg
+
+waifu-images/Angel/Chinese/Warrior_1.jpeg
+waifu-images/Angel/Chinese/Mage_1.jpeg
 ... (and so on)
 
-waifu-images/Demon/Japanese/Warrior.jpeg
-waifu-images/Demon/Japanese/Mage.jpeg
+waifu-images/Demon/Japanese/Warrior_1.jpeg
+waifu-images/Demon/Japanese/Mage_1.jpeg
 ... (and so on)
 ```
 
@@ -98,13 +104,15 @@ waifu-images/Demon/Japanese/Mage.jpeg
 waifu-images/
 ├── Angel/
 │   ├── Japanese/
-│   │   ├── Warrior.jpeg
-│   │   ├── Mage.jpeg
-│   │   ├── Assassin.jpeg
-│   │   ├── Knight.jpeg
-│   │   ├── Archer.jpeg
-│   │   ├── Healer.jpeg
-│   │   └── Merchant.jpeg
+│   │   ├── Warrior_1.jpeg
+│   │   ├── Warrior_2.jpeg
+│   │   ├── Mage_1.jpeg
+│   │   ├── Mage_2.jpeg
+│   │   ├── Assassin_1.jpeg
+│   │   ├── Knight_1.jpeg
+│   │   ├── Archer_1.jpeg
+│   │   ├── Healer_1.jpeg
+│   │   └── Merchant_1.jpeg
 │   ├── Chinese/ (same 7 professions)
 │   ├── Korean/ (same 7 professions)
 │   ├── American/ (same 7 professions)
@@ -140,7 +148,7 @@ When generating a waifu:
 - Race: Angel
 - Nationality: Japanese  
 - Profession: Warrior
-- **Image:** `waifu-images/Angel/Japanese/Warrior.jpeg`
+- **Image:** `waifu-images/Angel/Japanese/Warrior_1.jpeg` (random variant 1-5)
 
 ---
 
@@ -166,8 +174,9 @@ No changes needed! The structure is determined by:
 Modify `get_waifu_image()` to use new structure:
 ```python
 def get_waifu_image(race, profession, nationality):
-    # Build path: waifu-images/{Race}/{Nationality}/{Profession}.jpeg
-    image_url = f"https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/{race}/{nationality}/{profession}.jpeg"
+    # Build path with random variant: waifu-images/{Race}/{Nationality}/{Profession}_{1-5}.jpeg
+    variant = random.randint(1, 5)
+    image_url = f"https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/{race}/{nationality}/{profession}_{variant}.jpeg"
     return image_url
 ```
 
@@ -188,8 +197,24 @@ def get_waifu_image(race, profession, nationality):
 - Max file size: **500KB** per image
 
 ### **Naming Convention:**
-- Exact match with profession names (case-sensitive)
-- Examples: `Warrior.jpeg`, `Mage.jpeg`, `Healer.jpeg`
+- **Format:** `{Profession}_{VariantNumber}.jpeg`
+- **Examples:** `Warrior_1.jpeg`, `Warrior_2.jpeg`, `Mage_1.jpeg`
+- Each profession supports multiple variants (_1, _2, _3, etc.)
+- System randomly selects one variant per waifu
+
+**Example files:**
+```
+Angel/Japanese/Warrior_1.jpeg
+Angel/Japanese/Warrior_2.jpeg
+Angel/Japanese/Warrior_3.jpeg
+Angel/Japanese/Mage_1.jpeg
+Angel/Japanese/Mage_2.jpeg
+```
+
+**Important:**
+- Always include `_1` as minimum variant
+- Can add up to `_5` variants (adjustable in code)
+- Random selection provides variety
 
 ### **Content Guidelines:**
 - Match race theme (Angel: wings/halo, Demon: horns, etc.)
