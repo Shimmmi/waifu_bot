@@ -20,6 +20,7 @@ async def handle_debug_menu_callback(callback: CallbackQuery) -> None:
         [InlineKeyboardButton(text="⚡ Восстановить энергию всем вайфу", callback_data="debug_restore_energy")],
         [InlineKeyboardButton(text="💰 +10000 монет и +100 гемов", callback_data="debug_add_currency")],
         [InlineKeyboardButton(text="✨ +1000 XP для вайфу", callback_data="debug_add_xp_menu")],
+        [InlineKeyboardButton(text="🗑️ Удалить всех вайфу", callback_data="debug_wipe_confirm")],
         [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu")]
     ])
     
@@ -46,6 +47,10 @@ async def handle_debug_action_callback(callback: CallbackQuery) -> None:
         await handle_debug_add_currency(callback, tg_user_id)
     elif callback.data == "debug_add_xp_menu":
         await handle_debug_add_xp_menu(callback, tg_user_id)
+    elif callback.data == "debug_wipe_confirm":
+        await handle_debug_wipe_confirm(callback, tg_user_id)
+    elif callback.data == "debug_wipe_execute":
+        await handle_debug_wipe_execute(callback, tg_user_id)
     elif callback.data.startswith("debug_add_xp_"):
         await handle_debug_add_xp_to_waifu(callback, tg_user_id)
 
@@ -265,6 +270,92 @@ async def handle_debug_add_xp_to_waifu(callback: CallbackQuery, tg_user_id: int)
         await callback.answer("✅ 1000 XP добавлено!")
         await callback.message.edit_text(
             text,
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Назад", callback_data="debug_menu")]
+            ]),
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        await callback.answer(f"Ошибка: {str(e)}")
+    finally:
+        session.close()
+
+
+async def handle_debug_wipe_confirm(callback: CallbackQuery, tg_user_id: int) -> None:
+    """Подтверждение удаления всех вайфу"""
+    session = SessionLocal()
+    try:
+        # Получаем пользователя
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            await callback.answer("Пользователь не найден")
+            return
+        
+        # Подсчитываем количество вайфу
+        waifus_result = session.execute(
+            select(Waifu).where(Waifu.owner_id == user.id)
+        )
+        waifus = waifus_result.scalars().all()
+        count = len(waifus)
+        
+        if count == 0:
+            await callback.answer("❌ У вас нет вайфу для удаления")
+            return
+        
+        # Показываем подтверждение
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="❌ Да, удалить всех", callback_data="debug_wipe_execute")],
+            [InlineKeyboardButton(text="✅ Нет, отменить", callback_data="debug_menu")]
+        ])
+        
+        await callback.message.edit_text(
+            f"🗑️ <b>Удаление всех вайфу</b>\n\n"
+            f"⚠️ <b>ВНИМАНИЕ!</b> Это действие нельзя отменить!\n\n"
+            f"У вас {count} вайфу. Вы уверены, что хотите удалить их всех?\n\n"
+            f"Все данные вайфу (уровень, опыт, характеристики) будут безвозвратно потеряны!",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        await callback.answer()
+        
+    except Exception as e:
+        await callback.answer(f"Ошибка: {str(e)}")
+    finally:
+        session.close()
+
+
+async def handle_debug_wipe_execute(callback: CallbackQuery, tg_user_id: int) -> None:
+    """Выполнение удаления всех вайфу"""
+    session = SessionLocal()
+    try:
+        # Получаем пользователя
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            await callback.answer("Пользователь не найден")
+            return
+        
+        # Удаляем всех вайфу пользователя
+        waifus_result = session.execute(
+            select(Waifu).where(Waifu.owner_id == user.id)
+        )
+        waifus = waifus_result.scalars().all()
+        count = len(waifus)
+        
+        for waifu in waifus:
+            session.delete(waifu)
+        
+        session.commit()
+        
+        await callback.answer("✅ Все вайфу удалены!")
+        await callback.message.edit_text(
+            f"🗑️ <b>Вайфу удалены</b>\n\n"
+            f"✅ Удалено вайфу: {count}\n\n"
+            f"Теперь вы можете начать заново!",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🔙 Назад", callback_data="debug_menu")]
             ]),
