@@ -2,6 +2,7 @@ import uuid
 import random
 import datetime
 import logging
+import requests
 from typing import Dict, List, Optional
 from ..data_tables import (
     RACES, PROFESSIONS, NATIONALITIES, RARITIES, STATS_DISTRIBUTION, 
@@ -14,6 +15,19 @@ logger = logging.getLogger(__name__)
 # Configurable: Maximum number of image variants per profession
 # Set this to match the highest variant number you have (e.g., if you have _1 through _10, set this to 10)
 MAX_IMAGE_VARIANTS = 10
+
+
+def check_image_exists(url: str, timeout: int = 2) -> bool:
+    """
+    Check if an image URL exists by making a HEAD request
+    Returns True if image exists (200 or 301/302 redirect), False otherwise
+    """
+    try:
+        response = requests.head(url, timeout=timeout, allow_redirects=True)
+        # Accept 200 (OK) and 301/302 (redirects)
+        return response.status_code in [200, 301, 302]
+    except (requests.exceptions.RequestException, requests.exceptions.Timeout):
+        return False
 
 # Fallback images (should rarely be used since all races have images)
 # Using GitHub-hosted images from Human race as fallback
@@ -30,6 +44,7 @@ def get_waifu_image(race: str = None, profession: str = None, nationality: str =
     """
     Get a waifu image based on race, profession, and nationality
     Uses new hierarchical structure: race/nationality/profession.jpeg
+    Intelligently tries available variants before falling back
     Returns image URL
     """
     logger.debug(f"🎨 Getting image for: race={race}, profession={profession}, nationality={nationality}")
@@ -53,13 +68,27 @@ def get_waifu_image(race: str = None, profession: str = None, nationality: str =
     # Convert nationality code to full name
     nationality_full = nationality_map.get(nationality, nationality)
     
-    # Build hierarchical image URL with random variant support
+    # Build hierarchical image URL with smart variant detection
     if race and profession and nationality_full:
-        # Choose a random variant number (1 to MAX_IMAGE_VARIANTS)
-        # If you add more variants, just change MAX_IMAGE_VARIANTS at the top of this file
-        variant_number = random.randint(1, MAX_IMAGE_VARIANTS)
-        image_url = f"https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/{race}/{nationality_full}/{profession}_{variant_number}.jpeg"
-        logger.info(f"✅ Selected specific image: {race}/{nationality_full}/{profession}_{variant_number}.jpeg")
+        # Smart variant selection: try variants 1-10 in random order
+        # This ensures we pick an available variant if it exists
+        variants_to_try = list(range(1, MAX_IMAGE_VARIANTS + 1))
+        random.shuffle(variants_to_try)
+        
+        for variant_number in variants_to_try:
+            image_url = f"https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/{race}/{nationality_full}/{profession}_{variant_number}.jpeg"
+            logger.debug(f"🔍 Checking variant {variant_number}: {profession}_{variant_number}.jpeg")
+            
+            # Check if this variant actually exists
+            if check_image_exists(image_url):
+                logger.info(f"✅ Selected image: {race}/{nationality_full}/{profession}_{variant_number}.jpeg (exists)")
+                return image_url
+            else:
+                logger.debug(f"❌ Variant {variant_number} does not exist, trying next...")
+        
+        # If we tried all variants, default to variant 1 (should always exist)
+        image_url = f"https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/{race}/{nationality_full}/{profession}_1.jpeg"
+        logger.info(f"✅ Selected default image: {race}/{nationality_full}/{profession}_1.jpeg")
         return image_url
     
     # Fallback if missing any parameter

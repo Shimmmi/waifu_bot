@@ -87,10 +87,13 @@ waifu-images/
 ## 🎲 **How It Works**
 
 When generating a waifu:
-1. System picks random number between 1 to `MAX_IMAGE_VARIANTS` (default: 10)
-2. Looks for: `{Profession}_{random_number}.jpeg`
-3. If not found, 404 error → falls back to old images
-4. **Result:** Different images for each waifu of same type!
+1. System tries variants 1-10 in **random order**
+2. For each variant, checks if the image exists via HTTP request
+3. If image exists → uses it immediately ✅
+4. If no variants exist → falls back to default images
+5. **Result:** Only selects images that actually exist!
+
+**Smart Selection:** The system won't pick `Mage_8.jpeg` if only `Mage_1.jpeg`, `Mage_2.jpeg`, and `Mage_3.jpeg` exist!
 
 **Want more variants?** Just change `MAX_IMAGE_VARIANTS` in the code!
 
