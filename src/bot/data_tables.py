@@ -7,136 +7,70 @@ Data tables for waifu generation system with image URLs
 
 WAIFU_IMAGES_BY_RACE = {
     "Human": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Human1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Human2",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Human3",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Human4",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Human5",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/human/Human_1.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/human/Human_2.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/human/Human_3.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/human/Human_4.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/human/Human_5.jpeg",
     ],
     "Elf": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Elf1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Elf2",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Elf3",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Elf4",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/elf/Elf_1.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/elf/Elf_2.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/elf/Elf_3.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/elf/Elf_4.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/elf/Elf_5.jpeg",
     ],
     "Demon": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Demon1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Demon2",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Demon3",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Demon4",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/demon/Demon_1.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/demon/Demon_2.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/demon/Demon_3.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/demon/Demon_4.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/demon/Demon_5.jpeg",
     ],
     "Angel": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Angel1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Angel2",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Angel3",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Angel4",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/angel/Angel_1.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/angel/Angel_2.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/angel/Angel_3.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/angel/Angel_4.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/angel/Angel_5.jpeg",
     ],
     "Vampire": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Vampire1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Vampire2",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Vampire3",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Vampire4",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/vampire/Vampire_1.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/vampire/Vampire_2.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/vampire/Vampire_3.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/vampire/Vampire_4.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/vampire/Vampire_5.jpeg",
     ],
     "Dragon": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Dragon1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Dragon2",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Dragon3",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/dragon/Dragon_1.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/dragon/Dragon_2.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/dragon/Dragon_3.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/dragon/Dragon_4.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/dragon/Dragon_5.jpeg",
     ],
     "Beast": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Beast1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Beast2",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Beast3",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/beast/Beast_1.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/beast/Beast_2.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/beast/Beast_3.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/beast/Beast_4.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/beast/Beast_5.jpeg",
     ],
     "Fairy": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Fairy1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Fairy2",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Fairy3",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/fairy/Fairy_1.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/fairy/Fairy_2.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/fairy/Fairy_3.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/fairy/Fairy_4.jpeg",
+        "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/races/fairy/Fairy_5.jpeg",
     ],
 }
 
 # Optional: Images by profession for more variety
-WAIFU_IMAGES_BY_PROFESSION = {
-    "Warrior": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Warrior1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Warrior2",
-    ],
-    "Mage": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Mage1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Mage2",
-    ],
-    "Assassin": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Assassin1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Assassin2",
-    ],
-    "Knight": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Knight1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Knight2",
-    ],
-    "Archer": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Archer1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Archer2",
-    ],
-    "Healer": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Healer1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Healer2",
-    ],
-    "Merchant": [
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Merchant1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Merchant2",
-    ],
-}
+# Leave empty to use race-based images only
+WAIFU_IMAGES_BY_PROFESSION = {}
 
 # Optional: Images by nationality for cultural themes
-WAIFU_IMAGES_BY_NATIONALITY = {
-    "JP": [  # Japanese
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Japanese1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Japanese2",
-    ],
-    "CN": [  # Chinese
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Chinese1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Chinese2",
-    ],
-    "KR": [  # Korean
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Korean1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Korean2",
-    ],
-    "US": [  # American
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=American1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=American2",
-    ],
-    "GB": [  # British
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=British1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=British2",
-    ],
-    "FR": [  # French
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=French1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=French2",
-    ],
-    "DE": [  # German
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=German1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=German2",
-    ],
-    "IT": [  # Italian
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Italian1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Italian2",
-    ],
-    "RU": [  # Russian
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Russian1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Russian2",
-    ],
-    "BR": [  # Brazilian
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Brazilian1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Brazilian2",
-    ],
-    "IN": [  # Indian
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Indian1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Indian2",
-    ],
-    "CA": [  # Canadian
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Canadian1",
-        "https://api.dicebear.com/7.x/adventurer/svg?seed=Canadian2",
-    ],
-}
+# Leave empty to use race-based images only
+WAIFU_IMAGES_BY_NATIONALITY = {}
 
 # Existing data tables (races, professions, etc.)
 RACES = {
