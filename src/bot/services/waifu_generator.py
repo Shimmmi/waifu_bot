@@ -24,43 +24,51 @@ WAIFU_IMAGES = [
 
 def get_waifu_image(race: str = None, profession: str = None, nationality: str = None) -> str:
     """
-    Get a waifu image based on race, profession, or nationality
-    Priority: race > profession > nationality > fallback
+    Get a waifu image based on race, profession, and nationality
+    Uses new hierarchical structure: race/nationality/profession.jpeg
     Returns image URL
     """
     logger.debug(f"🎨 Getting image for: race={race}, profession={profession}, nationality={nationality}")
     
-    # Try to get image by race first (most distinctive)
+    # Map nationality codes to full names
+    nationality_map = {
+        "JP": "Japanese",
+        "CN": "Chinese",
+        "KR": "Korean",
+        "US": "American",
+        "GB": "British",
+        "FR": "French",
+        "DE": "German",
+        "IT": "Italian",
+        "RU": "Russian",
+        "BR": "Brazilian",
+        "IN": "Indian",
+        "CA": "Canadian"
+    }
+    
+    # Convert nationality code to full name
+    nationality_full = nationality_map.get(nationality, nationality)
+    
+    # Build hierarchical image URL
+    if race and profession and nationality_full:
+        image_url = f"https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/{race}/{nationality_full}/{profession}.jpeg"
+        logger.info(f"✅ Selected specific image: {race}/{nationality_full}/{profession}.jpeg")
+        return image_url
+    
+    # Fallback if missing any parameter
+    logger.warning(f"⚠️  Missing parameters for image selection: race={race}, profession={profession}, nationality={nationality}")
+    
+    # Try old race-based images as fallback
     if race and race in WAIFU_IMAGES_BY_RACE:
         images = WAIFU_IMAGES_BY_RACE[race]
         if images:
             image_url = random.choice(images)
-            logger.info(f"✅ Selected {race} image from race category: {image_url[:60]}...")
-            return image_url
-        else:
-            logger.warning(f"⚠️  Race {race} found in WAIFU_IMAGES_BY_RACE but images list is empty")
-    else:
-        logger.warning(f"⚠️  Race {race} not found in WAIFU_IMAGES_BY_RACE (available: {list(WAIFU_IMAGES_BY_RACE.keys())})")
-    
-    # Try profession if race doesn't have images
-    if profession and profession in WAIFU_IMAGES_BY_PROFESSION:
-        images = WAIFU_IMAGES_BY_PROFESSION[profession]
-        if images:
-            image_url = random.choice(images)
-            logger.info(f"✅ Selected {profession} image from profession category: {image_url[:60]}...")
+            logger.info(f"✅ Using fallback race image: {image_url[:60]}...")
             return image_url
     
-    # Try nationality as last resort
-    if nationality and nationality in WAIFU_IMAGES_BY_NATIONALITY:
-        images = WAIFU_IMAGES_BY_NATIONALITY[nationality]
-        if images:
-            image_url = random.choice(images)
-            logger.info(f"✅ Selected {nationality} image from nationality category: {image_url[:60]}...")
-            return image_url
-    
-    # Fallback to generic images
+    # Ultimate fallback to generic images
     image_url = random.choice(WAIFU_IMAGES)
-    logger.warning(f"⚠️  Using fallback image (no specific match found): {image_url[:60]}...")
+    logger.warning(f"⚠️  Using ultimate fallback image: {image_url[:60]}...")
     return image_url
 
 
