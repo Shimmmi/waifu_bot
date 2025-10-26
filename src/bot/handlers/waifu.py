@@ -3,6 +3,8 @@ from aiogram.filters import Command
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
+import logging
+import traceback
 
 from bot.db import SessionLocal
 from bot.models import User, Waifu, Event, EventParticipation
@@ -13,6 +15,7 @@ from bot.services.event_system import (
     can_participate_in_event
 )
 
+logger = logging.getLogger(__name__)
 router = Router()
 
 
@@ -46,63 +49,114 @@ async def cmd_waifu(message: Message) -> None:
 async def handle_waifu_pull(callback: CallbackQuery) -> None:
     """Обработка призыва вайфу"""
     if callback.from_user is None:
+        logger.warning("Waifu pull callback with no user")
         return
 
     tg_user_id = callback.from_user.id
+    logger.info(f"🎰 Waifu pull requested by user {tg_user_id}")
+    
     session = SessionLocal()
     try:
         # Проверяем пользователя
+        logger.debug(f"Checking user {tg_user_id} in database")
         result = session.execute(select(User).where(User.tg_id == tg_user_id))
         user = result.scalar_one_or_none()
 
         if user is None:
+            logger.warning(f"User {tg_user_id} not found in database")
             await callback.answer("Сначала используйте /start")
             return
 
+        logger.info(f"User found: {user.username}, coins: {user.coins}")
+
         # Проверяем баланс
         if user.coins < 100:
+            logger.info(f"Insufficient coins for user {user.username}: {user.coins}")
             await callback.answer("Недостаточно монет! Нужно 100 монет для призыва.")
             return
 
         # Генерируем новую вайфу
-        # Получаем следующий номер карты
+        logger.debug("Getting max card number")
         max_card = session.execute(select(func.max(Waifu.card_number))).scalar() or 0
-        new_waifu_data = generate_waifu(max_card + 1, user.id)
+        logger.info(f"Max card number: {max_card}, generating new waifu #{max_card + 1}")
+        
+        try:
+            new_waifu_data = generate_waifu(max_card + 1, user.id)
+            logger.info(f"✅ Generated waifu: {new_waifu_data['name']} ({new_waifu_data['race']}, {new_waifu_data['rarity']})")
+            logger.debug(f"Waifu data: {new_waifu_data}")
+        except Exception as gen_error:
+            logger.error(f"❌ Error generating waifu: {gen_error}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
         
         # Создаем вайфу в базе
-        waifu = Waifu(**new_waifu_data)
-        session.add(waifu)
+        try:
+            logger.debug("Creating Waifu model instance")
+            waifu = Waifu(**new_waifu_data)
+            session.add(waifu)
+            logger.debug("Waifu added to session")
+        except Exception as db_error:
+            logger.error(f"❌ Error creating Waifu in database: {db_error}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
         
         # Списываем монеты
         user.coins -= 100
+        logger.debug(f"Deducted 100 coins, remaining: {user.coins}")
         
         # Записываем транзакцию
-        from bot.models import Transaction
-        transaction = Transaction(
-            user_id=user.id,
-            kind="spend",
-            amount=100,
-            currency="coins",
-            reason="waifu_pull",
-            meta={"waifu_id": waifu.id}
-        )
-        session.add(transaction)
+        try:
+            from bot.models import Transaction
+            transaction = Transaction(
+                user_id=user.id,
+                kind="spend",
+                amount=100,
+                currency="coins",
+                reason="waifu_pull",
+                meta={"waifu_id": waifu.id}
+            )
+            session.add(transaction)
+            logger.debug("Transaction added to session")
+        except Exception as trans_error:
+            logger.error(f"❌ Error creating transaction: {trans_error}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
         
-        session.commit()
+        # Commit to database
+        try:
+            logger.debug("Committing to database...")
+            session.commit()
+            logger.info("✅ Database commit successful")
+        except Exception as commit_error:
+            logger.error(f"❌ Error committing to database: {commit_error}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
 
         # Отправляем результат
-        card_text = format_waifu_card(new_waifu_data)
-        await callback.message.edit_text(
-            f"🎰 <b>Призыв завершен!</b>\n\n{card_text}\n\n"
-            f"💰 Осталось монет: {user.coins}",
-            parse_mode="HTML"
-        )
-        await callback.answer("Вайфу успешно призвана!")
+        try:
+            logger.debug("Formatting waifu card")
+            card_text = format_waifu_card(new_waifu_data)
+            logger.debug("Sending response to user")
+            await callback.message.edit_text(
+                f"🎰 <b>Призыв завершен!</b>\n\n{card_text}\n\n"
+                f"💰 Осталось монет: {user.coins}",
+                parse_mode="HTML"
+            )
+            await callback.answer("Вайфу успешно призвана!")
+            logger.info(f"✅ Successfully summoned waifu {new_waifu_data['name']} for user {user.username}")
+        except Exception as msg_error:
+            logger.error(f"❌ Error sending message: {msg_error}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
 
     except Exception as e:
+        logger.error(f"❌ WAIFU PULL ERROR for user {tg_user_id}: {type(e).__name__}: {str(e)}")
+        logger.error(f"Full traceback:\n{traceback.format_exc()}")
         await callback.answer(f"Ошибка при призыве: {str(e)}")
+        session.rollback()
     finally:
         session.close()
+        logger.debug("Session closed")
 
 
 @router.callback_query(lambda c: c.data == "waifu_list")
