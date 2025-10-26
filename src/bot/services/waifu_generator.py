@@ -11,6 +11,10 @@ from ..data_tables import (
 
 logger = logging.getLogger(__name__)
 
+# Configurable: Maximum number of image variants per profession
+# Set this to match the highest variant number you have (e.g., if you have _1 through _10, set this to 10)
+MAX_IMAGE_VARIANTS = 10
+
 # Fallback images (should rarely be used since all races have images)
 # Using GitHub-hosted images from Human race as fallback
 WAIFU_IMAGES = [
@@ -51,9 +55,9 @@ def get_waifu_image(race: str = None, profession: str = None, nationality: str =
     
     # Build hierarchical image URL with random variant support
     if race and profession and nationality_full:
-        # Choose a random variant number (1-5 for now, adjust based on your images)
-        # If you have more variants, increase the range
-        variant_number = random.randint(1, 5)
+        # Choose a random variant number (1 to MAX_IMAGE_VARIANTS)
+        # If you add more variants, just change MAX_IMAGE_VARIANTS at the top of this file
+        variant_number = random.randint(1, MAX_IMAGE_VARIANTS)
         image_url = f"https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/{race}/{nationality_full}/{profession}_{variant_number}.jpeg"
         logger.info(f"✅ Selected specific image: {race}/{nationality_full}/{profession}_{variant_number}.jpeg")
         return image_url

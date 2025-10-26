@@ -78,19 +78,21 @@ waifu-images/
    - ❌ `warrior`, `WARRIOR`, `warrior-1`
 
 ### **Optional (But Recommended):**
-3. Add up to 5 variants (`_2`, `_3`, `_4`, `_5`)
+3. Add up to 10 variants (`_2`, `_3`, `_4`, `_5`, etc.) - easily expandable!
 4. More variants = more visual variety
-5. You can have more than 5 if you update the code
+5. To change max variants, edit `MAX_IMAGE_VARIANTS` in `waifu_generator.py`
 
 ---
 
 ## 🎲 **How It Works**
 
 When generating a waifu:
-1. System picks random number between 1-5
+1. System picks random number between 1 to `MAX_IMAGE_VARIANTS` (default: 10)
 2. Looks for: `{Profession}_{random_number}.jpeg`
 3. If not found, 404 error → falls back to old images
 4. **Result:** Different images for each waifu of same type!
+
+**Want more variants?** Just change `MAX_IMAGE_VARIANTS` in the code!
 
 ---
 
@@ -108,9 +110,9 @@ Add 2-3 variants for your favorite combinations:
 - `Warrior_1.jpeg`, `Warrior_2.jpeg`, `Warrior_3.jpeg`
 
 ### **Maximum Variety:**
-Fill all 5 variants for all professions:
-- That's 5 × 7 = 35 images per nationality!
-- 35 × 12 nationalities = 420 images per race!
+Fill all 10 variants (or more!) for all professions:
+- That's 10 × 7 = 70 images per nationality!
+- 70 × 12 nationalities = 840 images per race!
 
 ---
 
@@ -123,6 +125,8 @@ Fill all 5 variants for all professions:
 | 3        | 21                   | 252             | 2,016             |
 | 4        | 28                   | 336             | 2,688             |
 | 5        | 35                   | 420             | 3,360             |
+| 10       | 70                   | 840             | 6,720             |
+| 20       | 140                  | 1,680           | 13,440            |
 
 ---
 
