@@ -184,11 +184,46 @@ RARITIES = {
 }
 
 STATS_DISTRIBUTION = {
-    "Common": {"min": 5, "max": 15},
-    "Uncommon": {"min": 10, "max": 20},
-    "Rare": {"min": 15, "max": 25},
-    "Epic": {"min": 20, "max": 35},
-    "Legendary": {"min": 30, "max": 50},
+    "Common": {
+        "power": (5, 15),
+        "charm": (5, 15),
+        "luck": (5, 15),
+        "affection": (5, 15),
+        "intellect": (5, 15),
+        "speed": (5, 15)
+    },
+    "Uncommon": {
+        "power": (10, 20),
+        "charm": (10, 20),
+        "luck": (10, 20),
+        "affection": (10, 20),
+        "intellect": (10, 20),
+        "speed": (10, 20)
+    },
+    "Rare": {
+        "power": (15, 25),
+        "charm": (15, 25),
+        "luck": (15, 25),
+        "affection": (15, 25),
+        "intellect": (15, 25),
+        "speed": (15, 25)
+    },
+    "Epic": {
+        "power": (20, 35),
+        "charm": (20, 35),
+        "luck": (20, 30),
+        "affection": (20, 30),
+        "intellect": (20, 30),
+        "speed": (20, 30)
+    },
+    "Legendary": {
+        "power": (30, 45),
+        "charm": (30, 45),
+        "luck": (30, 40),
+        "affection": (30, 40),
+        "intellect": (30, 40),
+        "speed": (30, 40)
+    }
 }
 
 NAMES_BY_NATIONALITY = {
