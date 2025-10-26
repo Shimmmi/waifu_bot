@@ -84,9 +84,9 @@ def generate_waifu(card_number: int, owner_id: int = None) -> Dict:
     )[0]
     
     # Выбираем расу, профессию и национальность
-    race = random.choice(RACES)
-    profession = random.choice(PROFESSIONS)
-    nationality = random.choice(NATIONALITIES)
+    race = random.choice(list(RACES.keys()))
+    profession = random.choice(list(PROFESSIONS.keys()))
+    nationality = random.choice(list(NATIONALITIES.keys()))
     
     # Генерируем характеристики на основе редкости
     base_stats = STATS_DISTRIBUTION[rarity]
