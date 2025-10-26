@@ -138,6 +138,8 @@ class Waifu(Base):
     stats: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     dynamic: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     tags: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=False, server_default=text("false"))
+    is_favorite: Mapped[bool] = mapped_column(nullable=False, default=False, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(
         nullable=False, server_default=text("now()")
     )
