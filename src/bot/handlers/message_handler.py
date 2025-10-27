@@ -77,11 +77,12 @@ async def handle_group_message(message: Message) -> None:
                     logger.info("   Message contains link")
                     break
         
-        # Calculate XP amount
+        # Calculate XP and gold amounts
         xp_amount = global_xp_service.calculate_xp_for_message(message_type, text_length)
-        logger.info(f"   Calculated XP: {xp_amount} (type: {message_type})")
+        gold_amount = global_xp_service.calculate_gold_for_message(message_type, text_length)
+        logger.info(f"   Calculated XP: {xp_amount}, Gold: {gold_amount} (type: {message_type})")
         
-        if xp_amount > 0:
+        if xp_amount > 0 or gold_amount > 0:
             # Award global XP - pass both tg_user_id for rate limiting and user.id for DB
             logger.info(f"   Awarding {xp_amount} XP to user {user.id} (TG: {tg_user_id})")
             # We need to override the rate limit check to use tg_user_id
@@ -95,6 +96,7 @@ async def handle_group_message(message: Message) -> None:
                 session=session,
                 user_id=user.id,
                 xp_amount=xp_amount,
+                gold_amount=gold_amount,
                 source="message",
                 meta={
                     "message_type": message_type,
@@ -105,14 +107,15 @@ async def handle_group_message(message: Message) -> None:
                 skip_rate_limit=True
             )
             
-            logger.info(f"   XP award result: {result}")
+            logger.info(f"   Award result: XP={result.get('global_xp', 0)}, Gold={result.get('gold_awarded', 0)}")
             
             # Log level up if it occurred
             if result.get("level_up"):
                 logger.info(
                     f"🎉 Level up for user {user.username} ({user.id}): "
                     f"Level {result['old_level']} → {result['new_level']} "
-                    f"(+{result['skill_points_gained']} skill points)"
+                    f"(+{result['skill_points_gained']} skill points, "
+                    f"+{result.get('gold_awarded', 0)} gold)"
                 )
         else:
             logger.info("   No XP awarded (amount = 0)")

@@ -37,6 +37,11 @@ class User(Base):
     last_global_xp: Mapped[datetime] = mapped_column(
         nullable=False, server_default=text("now()")
     )
+    # Daily gold tracking
+    daily_gold: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    last_gold_reset: Mapped[datetime] = mapped_column(
+        nullable=False, server_default=text("now()")
+    )
 
     # Relationships
     waifus: Mapped[list["WaifuInstance"]] = relationship("WaifuInstance", back_populates="owner")

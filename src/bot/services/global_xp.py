@@ -29,7 +29,17 @@ class GlobalXPService:
         "reaction": 0.5,     # Reaction/like (accumulated)
     }
     
+    # Gold rates per action type (same as XP for now)
+    GOLD_RATES = {
+        "text": 1,           # Text message >=5 chars
+        "media": 2,          # Image/sticker
+        "link": 5,           # Link/video
+        "voice": 4,          # Voice message
+        "reaction": 0.5,     # Reaction/like (accumulated)
+    }
+    
     DAILY_XP_CAP = 500
+    DAILY_GOLD_CAP = 500  # Max gold per day
     RATE_LIMIT_SECONDS = 30
     
     def __init__(self):
@@ -52,6 +62,12 @@ class GlobalXPService:
         if message_type == "text":
             return self.XP_RATES["text"] if text_length >= 5 else 0
         return self.XP_RATES.get(message_type, 0)
+    
+    def calculate_gold_for_message(self, message_type: str, text_length: int = 0) -> int:
+        """Calculate gold based on message type and content."""
+        if message_type == "text":
+            return self.GOLD_RATES["text"] if text_length >= 5 else 0
+        return self.GOLD_RATES.get(message_type, 0)
     
     async def is_rate_limited(self, user_id: int) -> bool:
         """Check if user is rate limited (max 1 XP per user every 30 seconds)."""
@@ -138,18 +154,20 @@ class GlobalXPService:
         session: Session,
         user_id: int,
         xp_amount: int,
+        gold_amount: int = 0,
         source: str = "message",
         meta: dict[str, Any] | None = None,
         skip_rate_limit: bool = False,
     ) -> dict[str, Any]:
         """
-        Award global XP to user account.
+        Award global XP and gold to user account.
         Returns dict with level_up info if leveled up.
         
         Args:
             session: Database session
             user_id: Database user ID
             xp_amount: Amount of XP to award
+            gold_amount: Amount of gold to award (default: 0)
             source: Source of XP (e.g., "message")
             meta: Additional metadata
             skip_rate_limit: If True, skip rate limit check (already done externally)
@@ -195,10 +213,34 @@ class GlobalXPService:
         remaining_daily_xp = self.DAILY_XP_CAP - user.daily_xp
         actual_xp = min(xp_amount, remaining_daily_xp)
         
+        # Handle daily gold reset
+        last_gold_reset = user.last_gold_reset
+        if last_gold_reset.tzinfo is not None and now.tzinfo is None:
+            from datetime import timezone
+            now_for_gold = now.replace(tzinfo=timezone.utc)
+        elif last_gold_reset.tzinfo is None and now.tzinfo is not None:
+            now_for_gold = now.replace(tzinfo=None)
+        else:
+            now_for_gold = now
+            
+        time_since_gold_reset = now_for_gold - last_gold_reset
+        if time_since_gold_reset >= timedelta(days=1):
+            # Reset daily gold
+            user.daily_gold = 0
+            user.last_gold_reset = now_for_gold
+            logger.info(f"Reset daily gold for user {user_id}")
+        
+        # Check daily gold cap
+        remaining_daily_gold = self.DAILY_GOLD_CAP - user.daily_gold
+        actual_gold = min(gold_amount, remaining_daily_gold)
+        
         # Update global XP and daily XP
         old_level = user.account_level
         user.global_xp += actual_xp
         user.daily_xp += actual_xp
+        # Update gold
+        user.coins += actual_gold
+        user.daily_gold += actual_gold
         # Ensure last_global_xp is set properly based on now's timezone
         if now.tzinfo is None:
             from datetime import timezone
@@ -229,7 +271,10 @@ class GlobalXPService:
                 "skill_points_gained": skill_points_gained,
                 "total_skill_points": user.skill_points,
                 "global_xp": user.global_xp,
-                "daily_xp": user.daily_xp
+                "daily_xp": user.daily_xp,
+                "gold_awarded": actual_gold,
+                "total_coins": user.coins,
+                "daily_gold": user.daily_gold
             }
         
         session.commit()
@@ -237,7 +282,10 @@ class GlobalXPService:
         return {
             "level_up": False,
             "global_xp": user.global_xp,
-            "daily_xp": user.daily_xp
+            "daily_xp": user.daily_xp,
+            "gold_awarded": actual_gold,
+            "total_coins": user.coins,
+            "daily_gold": user.daily_gold
         }
 
 
