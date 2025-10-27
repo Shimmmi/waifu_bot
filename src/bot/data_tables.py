@@ -161,18 +161,91 @@ STATS_DISTRIBUTION = {
 }
 
 NAMES_BY_NATIONALITY = {
-    "JP": ["Sakura", "Yuki", "Hana", "Rei", "Mai", "Ayumi", "Hinata"],
-    "CN": ["Mei", "Li", "Hua", "Ying", "Xiu", "Jing", "Yan"],
-    "KR": ["Min-ji", "Ji-woo", "Soo-jin", "Hye-jin", "So-young", "Hae-in"],
-    "US": ["Emma", "Olivia", "Ava", "Isabella", "Sophia", "Mia"],
-    "GB": ["Emily", "Charlotte", "Sophie", "Amelia", "Grace"],
-    "FR": ["Camille", "Léa", "Chloé", "Emma", "Manon"],
-    "DE": ["Emma", "Hannah", "Mia", "Sophia", "Anna"],
-    "IT": ["Sofia", "Giulia", "Aurora", "Alice", "Ginevra"],
-    "RU": ["Anastasia", "Maria", "Daria", "Ekaterina", "Polina"],
-    "BR": ["Maria", "Ana", "Julia", "Beatriz", "Larissa"],
-    "IN": ["Priya", "Ananya", "Diya", "Aanya", "Aadhya", "Shreya"],
-    "CA": ["Emma", "Olivia", "Ava", "Charlotte", "Sophia"],
+    "JP": [
+        "Sakura", "Yuki", "Hana", "Rei", "Mai", "Ayumi", "Hinata", "Akari", "Chika", "Elena",
+        "Fumiko", "Haruka", "Iroha", "Kaede", "Kiko", "Momoka", "Nana", "Osaki", "Rin",
+        "Saki", "Tomomi", "Umi", "Yuna", "Aiko", "Botan", "Chiyo", "Emi", "Fuka", "Haru",
+        "Ichika", "Juri", "Kana", "Luna", "Mio", "Nanami", "Oriko", "Riko", "Satsuki",
+        "Tsubaki", "Ume", "Yoshino", "Akane", "Ayame", "Chiyoko", "Eri", "Fubuki", "Hotaru",
+        "Ibuki", "Kazumi", "Midori"
+    ],
+    "CN": [
+        "Mei", "Li", "Hua", "Ying", "Xiu", "Jing", "Yan", "Bai", "Chen", "Dai",
+        "Fang", "Guan", "Hong", "Jia", "Kai", "Lan", "Ming", "Ning", "Peng",
+        "Qian", "Rui", "Shan", "Tao", "Wei", "Xia", "Ye", "Zhen", "An", "Bing",
+        "Cai", "Dan", "En", "Fei", "Gao", "Hui", "In", "Jin", "Ke", "Lian",
+        "Mei-Li", "Na", "Ou", "Pei", "Qi", "Ran", "Shui", "Tang", "U", "Ve", "Wen"
+    ],
+    "KR": [
+        "Min-ji", "Ji-woo", "Soo-jin", "Hye-jin", "So-young", "Hae-in", "Bo-ra", "Chae-won", "Da-eun", "Eun-bi",
+        "Ga-young", "Ha-yoon", "I-seul", "Jae-ah", "Kang-mi", "Lee-na", "Mi-sun", "Na-young", "Ok-ju", "Park-seo",
+        "Ra-ae", "Seo-yeon", "Tae-hee", "U-ri", "Ye-jin", "Yoo-na", "Ae-cha", "Bae-su", "Chin-ae", "Dae-ri",
+        "Eun-ah", "Geu-roo", "Hae-rin", "Il-mae", "Jia-ae", "Kyong-ja", "Min-seo", "Nayoon", "Ok-ran", "Pil-gyu",
+        "Ri-na", "Seong-mi", "Tae-im", "Un-mi", "Yeon-mi", "Yoo-ri", "A-ran", "Bin-na", "Cha-rin", "Doh-un"
+    ],
+    "US": [
+        "Emma", "Olivia", "Ava", "Isabella", "Sophia", "Mia", "Charlotte", "Amelia", "Harper", "Evelyn",
+        "Abigail", "Emily", "Elizabeth", "Mila", "Ella", "Avery", "Sofia", "Camila", "Aria", "Scarlett",
+        "Victoria", "Madison", "Luna", "Grace", "Chloe", "Penelope", "Layla", "Riley", "Zoey", "Nora",
+        "Lily", "Eleanor", "Hannah", "Lillian", "Addison", "Aubrey", "Ellie", "Stella", "Natalie", "Zoe",
+        "Leah", "Hazel", "Violet", "Aurora", "Savannah", "Audrey", "Brooklyn", "Bella", "Claire", "Skylar"
+    ],
+    "GB": [
+        "Emily", "Charlotte", "Sophie", "Amelia", "Grace", "Olivia", "Jessica", "Sophia", "Isabella", "Lily",
+        "Ella", "Mia", "Ruby", "Poppy", "Freya", "Florence", "Evie", "Willow", "Isla", "Rosie",
+        "Phoebe", "Georgia", "Matilda", "Harriet", "Maya", "Ava", "Eva", "Luna", "Rose", "Esme",
+        "Hannah", "Lucy", "Grace", "Alice", "Flora", "Violet", "Sienna", "Chloe", "Zara", "Elsie",
+        "Anna", "Emma", "Tilly", "Iris", "Thea", "Bonnie", "Nancy", "Erin", "Holly", "Lottie"
+    ],
+    "FR": [
+        "Camille", "Léa", "Chloé", "Emma", "Manon", "Sarah", "Inès", "Lola", "Jade", "Marie",
+        "Anaïs", "Louise", "Romane", "Mila", "Ambre", "Rose", "Julia", "Alice", "Anna", "Zoé",
+        "Lucie", "Jeanne", "Léna", "Pauline", "Margot", "Lina", "Elise", "Olivia", "Eva", "Giulia",
+        "Clara", "Sophie", "Raphaëlle", "Laura", "Alicia", "Élise", "Luna", "Charlotte", "Garance", "Inaya",
+        "Victoire", "Sara", "Capucine", "Valentine", "Lou", "Juliette", "Amélie", "Éva", "Lise", "Maëlys"
+    ],
+    "DE": [
+        "Emma", "Hannah", "Mia", "Sophia", "Anna", "Marie", "Emilia", "Mila", "Lina", "Leni",
+        "Ella", "Clara", "Mathilda", "Frieda", "Luise", "Greta", "Lilly", "Paula", "Maya", "Nora",
+        "Amelie", "Lia", "Leni", "Helena", "Charlotte", "Ida", "Leonie", "Luisa", "Emely", "Elisa",
+        "Lotta", "Melina", "Isabella", "Thea", "Nele", "Finja", "Antonia", "Laura", "Leni", "Alina",
+        "Marlene", "Stella", "Olivia", "Amalia", "Helene", "Marie", "Elena", "Malina", "Lea", "Mathilde"
+    ],
+    "IT": [
+        "Sofia", "Giulia", "Aurora", "Alice", "Ginevra", "Beatrice", "Emma", "Giorgia", "Vittoria", "Matilde",
+        "Francesca", "Anna", "Bianca", "Noemi", "Greta", "Isabella", "Nicole", "Alessia", "Elisa", "Camilla",
+        "Chiara", "Ludovica", "Martina", "Margherita", "Arianna", "Gaia", "Cecilia", "Rebecca", "Sara", "Emma",
+        "Valentina", "Viola", "Azur", "Carolina", "Linda", "Lucia", "Rosa", "Luna", "Asia", "Elena",
+        "Eva", "Lara", "Miriam", "Olivia", "Paola", "Rachele", "Serena", "Stella", "Sveva", "Teresa"
+    ],
+    "RU": [
+        "Anastasia", "Maria", "Daria", "Ekaterina", "Polina", "Viktoria", "Ksenia", "Anastasiya", "Anna", "Sophia",
+        "Alisa", "Arina", "Kristina", "Elizaveta", "Yelena", "Irina", "Natalia", "Olga", "Tatiana", "Yulia",
+        "Alexandra", "Veronika", "Valeria", "Milana", "Margarita", "Vera", "Sofia", "Angelina", "Yana", "Karina",
+        "Diana", "Mariya", "Anastasiia", "Yulia", "Elizaveta", "Varvara", "Liza", "Alina", "Mila", "Zoya",
+        "Nadezhda", "Svetlana", "Taisiya", "Valentina", "Lilia", "Galina", "Lyudmila", "Raisa", "Larisa", "Tanya"
+    ],
+    "BR": [
+        "Maria", "Ana", "Julia", "Beatriz", "Larissa", "Gabriela", "Fernanda", "Mariana", "Carolina", "Amanda",
+        "Priscila", "Camila", "Bruna", "Patricia", "Vanessa", "Renata", "Cristina", "Leticia", "Roberta", "Isabela",
+        "Daniela", "Juliana", "Julieta", "Pamela", "Samantha", "Tatiana", "Thais", "Valentina", "Victoria", "Yasmin",
+        "Adriana", "Bianca", "Carla", "Diana", "Elaine", "Fabiana", "Giovanna", "Helena", "Ingrid", "Joana",
+        "Karina", "Larissa", "Marina", "Natasha", "Paula", "Raquel", "Sandra", "Tais", "Ursula", "Vania"
+    ],
+    "IN": [
+        "Priya", "Ananya", "Diya", "Aanya", "Aadhya", "Shreya", "Arushi", "Avni", "Ishani", "Kavya",
+        "Meera", "Niya", "Riya", "Saanvi", "Tanya", "Urvi", "Vanya", "Aditi", "Amisha", "Bhumika",
+        "Charvi", "Devika", "Esha", "Fatima", "Gauri", "Harsha", "Indira", "Juhi", "Khushi", "Lavanya",
+        "Mahika", "Naina", "Ojasvi", "Pari", "Rashi", "Samaira", "Tara", "Uma", "Veda", "Yashika",
+        "Zara", "Aarohi", "Bhavya", "Chhavi", "Disha", "Ekta", "Falguni", "Gayatri", "Hamsika", "Ishika"
+    ],
+    "CA": [
+        "Emma", "Olivia", "Ava", "Charlotte", "Sophia", "Isabella", "Mia", "Amelia", "Harper", "Evelyn",
+        "Abigail", "Emily", "Ella", "Elizabeth", "Camila", "Luna", "Sofia", "Avery", "Mila", "Scarlett",
+        "Victoria", "Madison", "Lily", "Grace", "Chloe", "Penelope", "Layla", "Riley", "Zoey", "Nora",
+        "Eleanor", "Hannah", "Lillian", "Addison", "Aubrey", "Ellie", "Stella", "Natalie", "Zoe", "Leah",
+        "Hazel", "Violet", "Aurora", "Savannah", "Audrey", "Brooklyn", "Bella", "Claire", "Skylar", "Lucy"
+    ],
 }
 
 TAGS = [
