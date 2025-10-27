@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Waifu Bot</title>
+    <title>Waifu Bot - Профиль</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -14,202 +14,359 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            background: var(--tg-theme-bg-color, #fff);
-            color: var(--tg-theme-text-color, #000);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
             overflow-x: hidden;
-        }
-        
-        .view {
-            padding: 16px;
             min-height: 100vh;
+            padding: 16px;
         }
         
-        .view.hidden {
-            display: none;
+        .container {
+            max-width: 420px;
+            margin: 0 auto;
         }
         
-        /* Profile View */
-        .profile-header {
+        /* Header */
+        .header {
             text-align: center;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
         
-        .profile-header h1 {
-            font-size: 24px;
-            margin-bottom: 8px;
+        .profile-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+            color: #333;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         }
         
-        .active-waifu-section {
-            margin-top: 24px;
+        .profile-top {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
         }
         
-        .active-waifu-section h2 {
-            font-size: 18px;
-            margin-bottom: 12px;
+        .avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            flex-shrink: 0;
         }
         
-        .active-waifu-card {
-            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            border-radius: 12px;
-            padding: 12px;
-            cursor: pointer;
-            transition: transform 0.2s;
+        .profile-info h2 {
+            font-size: 20px;
+            margin-bottom: 4px;
         }
         
-        .active-waifu-card:active {
-            transform: scale(0.98);
+        .profile-info p {
+            font-size: 14px;
+            color: #666;
         }
         
-        .active-waifu-card img {
-            width: 100%;
-            max-height: 300px;
-            object-fit: cover;
-            border-radius: 8px;
-            margin-bottom: 8px;
-        }
-        
-        .active-waifu-info {
-            text-align: center;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            margin-top: 16px;
-        }
-        
-        .stat-item {
-            background: var(--tg-theme-bg-color, #fff);
-            padding: 8px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .stat-label {
-            font-size: 12px;
-            opacity: 0.7;
-        }
-        
-        .stat-value {
-            font-size: 18px;
-            font-weight: bold;
-            margin-top: 4px;
-        }
-        
-        /* Waifu Grid View */
-        .waifu-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
+        /* Currency */
+        .currency {
+            display: flex;
             gap: 12px;
-            margin-top: 16px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .currency-item {
+            flex: 1;
+            min-width: 80px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 12px;
+            padding: 8px 12px;
+            text-align: center;
+            color: white;
+        }
+        
+        .currency-item emoji {
+            font-size: 16px;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .currency-value {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        /* Level Bar */
+        .level-section {
+            margin-bottom: 16px;
+        }
+        
+        .level-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .level-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .xp-bar {
+            height: 12px;
+            background: #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+        
+        /* Active Waifu */
+        .active-waifu {
+            margin-bottom: 20px;
         }
         
         .waifu-card {
-            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            border-radius: 12px;
-            overflow: hidden;
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
             cursor: pointer;
             transition: transform 0.2s;
-            position: relative;
         }
         
         .waifu-card:active {
             transform: scale(0.98);
         }
         
-        .waifu-card.active {
-            border: 3px solid #4CAF50;
-        }
-        
-        .waifu-card img {
+        .waifu-image {
             width: 100%;
-            aspect-ratio: 1;
+            max-height: 200px;
             object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 12px;
         }
         
-        .waifu-card-info {
-            padding: 8px;
-            text-align: center;
-        }
-        
-        .waifu-card-name {
+        .waifu-name {
+            font-size: 18px;
             font-weight: bold;
-            font-size: 14px;
             margin-bottom: 4px;
+            color: #333;
         }
         
-        .waifu-card-level {
-            font-size: 12px;
-            opacity: 0.7;
+        .waifu-info {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
         }
         
-        .active-badge {
+        .change-waifu-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        /* Navigation Grid */
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            color: #333;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+        
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .nav-btn emoji {
+            font-size: 32px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .nav-btn label {
+            font-size: 14px;
+            font-weight: 600;
+            display: block;
+        }
+        
+        /* Badge for notifications */
+        .badge {
             position: absolute;
             top: 8px;
             right: 8px;
-            background: #4CAF50;
+            background: #f5576c;
             color: white;
-            padding: 4px 8px;
-            border-radius: 12px;
+            border-radius: 10px;
+            padding: 2px 6px;
             font-size: 10px;
             font-weight: bold;
         }
         
-        .back-button {
-            background: var(--tg-theme-button-color, #0088cc);
-            color: var(--tg-theme-button-text-color, #fff);
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-bottom: 16px;
-            font-size: 16px;
-            width: 100%;
+        .nav-btn-wrapper {
+            position: relative;
         }
         
-        .back-button:active {
-            opacity: 0.8;
+        .hidden {
+            display: none;
         }
         
+        /* Loading */
         .loading {
             text-align: center;
             padding: 40px;
             font-size: 18px;
-            opacity: 0.6;
         }
         
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            opacity: 0.6;
+        /* Back button */
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 20px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 16px;
+            width: 100%;
         }
     </style>
 </head>
 <body>
-    <!-- Profile View -->
-    <div id="profile-view" class="view hidden">
-        <div class="profile-header">
-            <h1>👤 Профиль</h1>
-            <div id="profile-info"></div>
-        </div>
-        
-        <div class="active-waifu-section">
-            <h2>⭐ Активная вайфу</h2>
-            <div id="active-waifu-card" class="active-waifu-card">
-                <p class="empty-state">Нет активной вайфу</p>
+    <div class="container">
+        <!-- Profile View -->
+        <div id="profile-view" class="view">
+            <div class="header">
+                <h1 style="font-size: 24px; margin-bottom: 4px;">👤 Профиль игрока</h1>
+            </div>
+            
+            <!-- Profile Card -->
+            <div class="profile-card">
+                <div class="profile-top">
+                    <div class="avatar" id="user-avatar">👤</div>
+                    <div class="profile-info">
+                        <h2 id="user-name">Загрузка...</h2>
+                        <p id="user-id">ID: ...</p>
+                    </div>
+                </div>
+                
+                <!-- Currency -->
+                <div class="currency">
+                    <div class="currency-item">
+                        <emoji>💰</emoji>
+                        <div class="currency-value" id="gold-value">0</div>
+                    </div>
+                    <div class="currency-item">
+                        <emoji>💎</emoji>
+                        <div class="currency-value" id="gem-value">0</div>
+                    </div>
+                    <div class="currency-item">
+                        <emoji>🔮</emoji>
+                        <div class="currency-value" id="token-value">0</div>
+                    </div>
+                </div>
+                
+                <!-- Level -->
+                <div class="level-section">
+                    <div class="level-header">
+                        <span style="font-weight: bold;">⭐ Уровень: <span id="player-level">1</span></span>
+                        <button class="level-btn" id="level-btn">Прокачка</button>
+                    </div>
+                    <div class="xp-bar">
+                        <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
+                    </div>
+                    <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                        Опыт: <span id="xp-current">0</span> / <span id="xp-next">100</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Active Waifu -->
+            <div class="profile-card active-waifu">
+                <h3 style="margin-bottom: 12px; font-size: 16px;">⭐ Активная вайфу</h3>
+                <div id="active-waifu-card" class="waifu-card">
+                    <p class="loading">Загрузка...</p>
+                </div>
+            </div>
+            
+            <!-- Navigation -->
+            <div class="nav-grid">
+                <div class="nav-btn-wrapper">
+                    <button class="nav-btn" onclick="navigateTo('waifus')">
+                        <emoji>🎴</emoji>
+                        <label>Мои вайфу</label>
+                    </button>
+                </div>
+                <div class="nav-btn-wrapper">
+                    <button class="nav-btn" onclick="navigateTo('shop')">
+                        <emoji>🏪</emoji>
+                        <label>Магазин</label>
+                    </button>
+                </div>
+                <div class="nav-btn-wrapper">
+                    <button class="nav-btn" onclick="navigateTo('clan')">
+                        <emoji>🏰</emoji>
+                        <label>Клан</label>
+                    </button>
+                </div>
+                <div class="nav-btn-wrapper">
+                    <button class="nav-btn" onclick="navigateTo('quests')">
+                        <emoji>📅</emoji>
+                        <label>Задания</label>
+                    </button>
+                </div>
+                <div class="nav-btn-wrapper">
+                    <button class="nav-btn" onclick="navigateTo('skills')">
+                        <emoji>🧬</emoji>
+                        <label>Прокачка</label>
+                    </button>
+                </div>
+                <div class="nav-btn-wrapper">
+                    <button class="nav-btn" onclick="navigateTo('settings')">
+                        <emoji>⚙️</emoji>
+                        <label>Настройки</label>
+                    </button>
+                </div>
             </div>
         </div>
         
-        <button class="back-button" onclick="closeWebApp()">Закрыть</button>
-    </div>
-    
-    <!-- Waifu List View -->
-    <div id="waifu-list-view" class="view hidden">
-        <h2>📋 Мои вайфу</h2>
-        <button class="back-button" onclick="navigateToState('profile')">← Назад к профилю</button>
-        <div id="waifu-grid" class="waifu-grid">
-            <p class="loading">Загрузка...</p>
+        <!-- Placeholder for other views -->
+        <div id="other-views" class="hidden">
+            <button class="back-btn" onclick="navigateTo('profile')">← Назад</button>
+            <div class="profile-card">
+                <h2 id="view-title">Другая страница</h2>
+                <p id="view-content">Контент будет добавлен</p>
+            </div>
         </div>
     </div>
     
