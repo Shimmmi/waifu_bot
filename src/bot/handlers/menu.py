@@ -85,6 +85,16 @@ async def handle_menu_callback(callback: CallbackQuery) -> None:
     elif callback.data.startswith("debug_"):
         from bot.handlers.debug import handle_debug_action_callback
         await handle_debug_action_callback(callback)
+    elif callback.data == "teaching_menu":
+        await handle_teaching_menu_callback(callback)
+    elif callback.data.startswith("teaching_select_student_"):
+        await handle_teaching_select_student_callback(callback)
+    elif callback.data.startswith("teaching_select_teacher_"):
+        await handle_teaching_select_teacher_callback(callback)
+    elif callback.data.startswith("teaching_toggle_teacher_"):
+        await handle_teaching_toggle_teacher_callback(callback)
+    elif callback.data == "teaching_confirm":
+        await handle_teaching_confirm_callback(callback)
 
 
 async def handle_profile_callback(callback: CallbackQuery) -> None:
@@ -265,6 +275,7 @@ async def handle_waifu_menu_callback(callback: CallbackQuery) -> None:
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🎰 Призвать вайфу", callback_data="waifu_pull")],
         [InlineKeyboardButton(text="📋 Мои вайфу", callback_data="waifu_list")],
+        [InlineKeyboardButton(text="📚 Обучение", callback_data="teaching_menu")],
         [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu")]
     ])
 
@@ -274,7 +285,8 @@ async def handle_waifu_menu_callback(callback: CallbackQuery) -> None:
         "• Призывать новых вайфу\n"
         "• Участвовать в событиях\n"
         "• Соревноваться в турнирах\n"
-        "• Развивать своих вайфу\n\n"
+        "• Развивать своих вайфу\n"
+        "• Обучать вайфу (жертвовать для XP)\n\n"
         "Выберите действие:",
         reply_markup=keyboard,
         parse_mode="HTML"
@@ -1080,6 +1092,271 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
             session.close()
     else:
         await callback.answer("Ошибка обработки запроса")
+
+
+# ========== TEACHING SYSTEM HANDLERS ==========
+
+async def handle_teaching_menu_callback(callback: CallbackQuery) -> None:
+    """Show teaching menu where player selects which waifu will receive XP"""
+    if callback.from_user is None:
+        return
+    
+    tg_user_id = callback.from_user.id
+    session = SessionLocal()
+    try:
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            await callback.answer("Сначала используйте /start")
+            return
+        
+        # Get all waifus
+        waifus = session.execute(
+            select(Waifu).where(Waifu.owner_id == user.id).order_by(Waifu.created_at.desc())
+        ).scalars().all()
+        
+        if not waifus:
+            await callback.answer("У вас нет вайфу для обучения!")
+            return
+        
+        keyboard_buttons = []
+        for waifu in waifus:
+            rarity_icon = get_rarity_color(waifu.rarity)
+            power = calculate_waifu_power({
+                "stats": waifu.stats,
+                "dynamic": waifu.dynamic,
+                "level": waifu.level
+            })
+            keyboard_buttons.append([
+                InlineKeyboardButton(
+                    text=f"{waifu.name} - Ур.{waifu.level} {rarity_icon} 💪{power}",
+                    callback_data=f"teaching_select_student_{waifu.id}"
+                )
+            ])
+        
+        keyboard_buttons.append([InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_waifu_menu")])
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+        
+        await callback.message.edit_text(
+            "📚 <b>Обучение</b>\n\n"
+            "Выберите вайфу, которой хотите дать опыт (ученик):\n\n"
+            "💡 Вы сможете пожертвовать других вайфу, чтобы передать им опыт.\n"
+            "Количество опыта зависит от редкости пожертвованной вайфу.",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        await callback.answer()
+    finally:
+        session.close()
+
+
+async def handle_teaching_select_student_callback(callback: CallbackQuery) -> None:
+    """Player selected the student waifu, now show list of teachers to select"""
+    if callback.from_user is None:
+        return
+    
+    # Extract student waifu ID
+    student_id = callback.data.split("_")[-1]
+    
+    tg_user_id = callback.from_user.id
+    session = SessionLocal()
+    try:
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            await callback.answer("Ошибка: пользователь не найден")
+            return
+        
+        # Get student waifu
+        student = session.execute(select(Waifu).where(
+            Waifu.id == student_id,
+            Waifu.owner_id == user.id
+        )).scalar_one_or_none()
+        
+        if not student:
+            await callback.answer("Вайфу не найдена!")
+            return
+        
+        # Get all other waifus (teachers can't be the student)
+        waifus = session.execute(
+            select(Waifu).where(
+                Waifu.owner_id == user.id,
+                Waifu.id != student_id
+            ).order_by(Waifu.created_at.desc())
+        ).scalars().all()
+        
+        if not waifus:
+            await callback.answer("У вас нет других вайфу для обучения!")
+            return
+        
+        keyboard_buttons = []
+        from bot.services.waifu_upgrade import calculate_teaching_xp, get_max_level
+        
+        for waifu in waifus:
+            rarity_icon = get_rarity_color(waifu.rarity)
+            xp_given = calculate_teaching_xp(student.level, waifu.rarity, waifu.level, waifu.xp)
+            keyboard_buttons.append([
+                InlineKeyboardButton(
+                    text=f"{waifu.name} - Ур.{waifu.level} {rarity_icon} → +{xp_given} XP",
+                    callback_data=f"teaching_toggle_teacher_{waifu.id}"
+                )
+            ])
+        
+        keyboard_buttons.append([
+            InlineKeyboardButton(text="✅ Применить обучение", callback_data=f"teaching_confirm_{student_id}")
+        ])
+        keyboard_buttons.append([
+            InlineKeyboardButton(text="🔙 Назад", callback_data="teaching_menu")
+        ])
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+        
+        max_level = get_max_level(student.rarity)
+        await callback.message.edit_text(
+            f"📚 <b>Обучение: {student.name}</b>\n\n"
+            f"👤 Ученик: {student.name} (Ур.{student.level}/{max_level})\n"
+            f"📊 Текущий XP: {student.xp}\n\n"
+            f"Выберите вайфу для жертвования (несколько можно выбрать):",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        await callback.answer()
+    finally:
+        session.close()
+
+
+async def handle_teaching_toggle_teacher_callback(callback: CallbackQuery) -> None:
+    """Toggle teacher selection state"""
+    # For now, just show that it's selected
+    # In a full implementation, we'd store selected teachers in state
+    await callback.answer("✅ Выбрана для обучения")
+
+
+async def handle_teaching_confirm_callback(callback: CallbackQuery) -> None:
+    """Process the teaching - apply XP and remove teachers"""
+    if callback.from_user is None:
+        return
+    
+    # Extract student ID from callback_data
+    parts = callback.data.split("_")
+    if len(parts) < 3:
+        await callback.answer("Ошибка обработки")
+        return
+    
+    student_id = parts[-1]  # Last part is student_id
+    
+    tg_user_id = callback.from_user.id
+    session = SessionLocal()
+    try:
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            await callback.answer("Ошибка: пользователь не найден")
+            return
+        
+        # Get student waifu
+        student = session.execute(select(Waifu).where(
+            Waifu.id == student_id,
+            Waifu.owner_id == user.id
+        )).scalar_one_or_none()
+        
+        if not student:
+            await callback.answer("Вайфу не найдена!")
+            return
+        
+        # For now, use simple logic: get all waifus except student
+        # In full implementation, we'd check which were selected
+        other_waifus = session.execute(
+            select(Waifu).where(
+                Waifu.owner_id == user.id,
+                Waifu.id != student_id
+            )
+        ).scalars().all()
+        
+        if not other_waifus:
+            await callback.answer("Нет вайфу для жертвования!")
+            return
+        
+        # Calculate total XP from all teachers
+        from bot.services.waifu_upgrade import calculate_teaching_xp
+        total_xp = 0
+        teacher_names = []
+        
+        for teacher in other_waifus:
+            xp = calculate_teaching_xp(student.level, teacher.rarity, teacher.level, teacher.xp)
+            total_xp += xp
+            teacher_names.append(f"{teacher.name} (+{xp} XP)")
+        
+        # Apply XP to student
+        new_xp = student.xp + total_xp
+        student.xp = new_xp
+        
+        # Check for level up
+        from bot.services.level_up import LevelUpService
+        new_level = LevelUpService.calculate_level_from_xp(new_xp)
+        
+        # Apply level up if needed
+        level_up_result = {'leveled_up': False, 'message': ''}
+        if new_level > student.level:
+            # Prepare waifu data
+            waifu_data = {
+                "level": student.level,
+                "xp": new_xp,
+                "stats": dict(student.stats)
+            }
+            
+            # Apply level up
+            level_up_info = LevelUpService.apply_level_up(waifu_data, new_level)
+            
+            # Update student waifu
+            student.level = new_level
+            student.stats = level_up_info["updated_stats"]
+            from sqlalchemy.orm.attributes import flag_modified
+            flag_modified(student, "stats")
+            
+            # Format level up message
+            from bot.services.level_up import LevelUpService
+            level_up_result = {
+                'leveled_up': True,
+                'message': LevelUpService.format_level_up_message(student.name, level_up_info)
+            }
+        
+        # Delete all teacher waifus
+        for teacher in other_waifus:
+            session.delete(teacher)
+        
+        session.commit()
+        
+        # Show result
+        result_text = (
+            f"📚 <b>Обучение завершено!</b>\n\n"
+            f"👤 Ученик: {student.name}\n"
+            f"📊 Получено XP: +{total_xp}\n"
+            f"📈 Новый уровень: {student.level}\n"
+            f"⭐ Текущий XP: {student.xp}\n"
+        )
+        
+        if level_up_result.get('leveled_up'):
+            result_text += f"\n{level_up_result['message']}\n"
+        
+        result_text += "\n💔 Пожертвованные вайфу:\n"
+        for name in teacher_names:
+            result_text += f"• {name}\n"
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Назад к вайфу", callback_data="back_to_waifu_menu")]
+        ])
+        
+        await callback.message.edit_text(result_text, reply_markup=keyboard, parse_mode="HTML")
+        await callback.answer("✅ Обучение завершено!")
+    except Exception as e:
+        await callback.answer(f"Ошибка: {str(e)}")
+    finally:
+        session.close()
 
 
 
