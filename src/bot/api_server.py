@@ -237,7 +237,7 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
             "user_id": user.tg_id,
             "gold": user.coins,
             "gems": user.gems,
-            "tokens": 0,  # TODO: Add tokens to User model
+            "tokens": getattr(user, 'tokens', 0),
             "level": getattr(user, 'account_level', 1),
             "xp": getattr(user, 'global_xp', 0),
             "active_waifu": active_waifu

@@ -42,6 +42,8 @@ class User(Base):
     last_gold_reset: Mapped[datetime] = mapped_column(
         nullable=False, server_default=text("now()")
     )
+    # Tokens (special currency for rare purchases)
+    tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
 
     # Relationships
     waifus: Mapped[list["WaifuInstance"]] = relationship("WaifuInstance", back_populates="owner")
