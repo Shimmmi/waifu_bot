@@ -187,7 +187,9 @@ async def get_profile(user_id: int, db: Session = Depends(get_db)) -> Dict[str, 
             "username": user.username or "username",
             "coins": user.coins,
             "gems": user.gems,
-            "account_level": 1,  # Placeholder for future system
+            "account_level": getattr(user, 'account_level', 1),
+            "global_xp": getattr(user, 'global_xp', 0),
+            "skill_points": getattr(user, 'skill_points', 0),
             "active_waifu": active_waifu
         }
         

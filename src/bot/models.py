@@ -30,6 +30,13 @@ class User(Base):
     last_xp_reset: Mapped[datetime] = mapped_column(
         nullable=False, server_default=text("now()")
     )
+    # Global account XP system
+    account_level: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default=text("1"))
+    global_xp: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    skill_points: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    last_global_xp: Mapped[datetime] = mapped_column(
+        nullable=False, server_default=text("now()")
+    )
 
     # Relationships
     waifus: Mapped[list["WaifuInstance"]] = relationship("WaifuInstance", back_populates="owner")

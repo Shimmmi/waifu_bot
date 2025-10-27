@@ -207,9 +207,19 @@
 
         <div class="stats-section">
             <h3>🎮 Аккаунт</h3>
-            <div class="stat-card" style="grid-column: 1 / -1;">
-                <div class="stat-value" id="accountLevel">1</div>
-                <div class="stat-label">Уровень аккаунта</div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="accountLevel">1</div>
+                    <div class="stat-label">Уровень</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="skillPoints">0</div>
+                    <div class="stat-label">Очки</div>
+                </div>
+            </div>
+            <div class="stat-card" style="grid-column: 1 / -1; margin-top: 8px;">
+                <div class="stat-value" id="globalXp" style="font-size: 16px;">0 XP</div>
+                <div class="stat-label">Опыт</div>
             </div>
         </div>
 
@@ -276,6 +286,8 @@
                 document.getElementById('coins').textContent = data.coins || 0;
                 document.getElementById('gems').textContent = data.gems || 0;
                 document.getElementById('accountLevel').textContent = data.account_level || 1;
+                document.getElementById('globalXp').textContent = (data.global_xp || 0) + ' XP';
+                document.getElementById('skillPoints').textContent = data.skill_points || 0;
                 
                 // Active waifu
                 if (data.active_waifu) {
