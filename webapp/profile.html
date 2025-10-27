@@ -22,72 +22,72 @@
         .profile-header {
             display: flex;
             align-items: center;
-            gap: 16px;
-            margin-bottom: 24px;
-            padding: 20px;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding: 12px;
             background: var(--tg-theme-secondary-bg-color, #f1f1f1);
-            border-radius: 16px;
+            border-radius: 12px;
         }
 
         .avatar {
-            width: 80px;
-            height: 80px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 32px;
+            font-size: 20px;
             font-weight: bold;
             flex-shrink: 0;
         }
 
         .user-info h2 {
-            font-size: 24px;
-            margin-bottom: 4px;
+            font-size: 16px;
+            margin-bottom: 2px;
         }
 
         .username {
             color: var(--tg-theme-hint-color, #999999);
-            font-size: 16px;
+            font-size: 12px;
         }
 
         .stats-section {
             background: var(--tg-theme-secondary-bg-color, #f1f1f1);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 16px;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
         }
 
         .stats-section h3 {
-            font-size: 18px;
-            margin-bottom: 16px;
+            font-size: 14px;
+            margin-bottom: 8px;
             color: var(--tg-theme-text-color, #000000);
         }
 
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 8px;
         }
 
         .stat-card {
             background: var(--tg-theme-bg-color, #ffffff);
-            padding: 16px;
-            border-radius: 12px;
+            padding: 12px;
+            border-radius: 8px;
             text-align: center;
         }
 
         .stat-value {
-            font-size: 24px;
+            font-size: 18px;
             font-weight: bold;
             color: var(--tg-theme-button-color, #0088cc);
             margin-bottom: 4px;
         }
 
         .stat-label {
-            font-size: 14px;
+            font-size: 11px;
             color: var(--tg-theme-hint-color, #999999);
         }
 
@@ -106,45 +106,48 @@
         .waifu-card {
             background: var(--tg-theme-bg-color, #ffffff);
             border-radius: 12px;
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .waifu-image-container {
+            width: 100%;
+            height: 200px;
+            overflow: hidden;
+            position: relative;
         }
 
         .waifu-image {
-            width: 80px;
-            height: 80px;
-            border-radius: 12px;
+            width: 100%;
+            height: 100%;
             object-fit: cover;
-            flex-shrink: 0;
         }
 
         .waifu-info {
-            flex: 1;
+            padding: 16px;
         }
 
         .waifu-name {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
-            margin-bottom: 4px;
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
         
         .active-icon {
-            font-size: 16px;
+            font-size: 18px;
         }
 
         .waifu-level {
-            font-size: 14px;
+            font-size: 16px;
             color: var(--tg-theme-hint-color, #999999);
             margin-bottom: 4px;
         }
 
         .waifu-power {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: bold;
             color: var(--tg-theme-button-color, #0088cc);
         }
@@ -214,15 +217,17 @@
             <h3>⭐ Активная вайфу</h3>
             <div id="activeWaifu">
                 <div class="waifu-card">
+                    <div class="waifu-image-container">
+                        <img class="waifu-image" id="waifuImage" src="" alt="Waifu">
+                    </div>
                     <div class="waifu-info">
-                                                            <div class="waifu-name" id="waifuName">
-                                        <span class="active-icon">⭐</span>
-                                        <span>Загрузка...</span>
-                                    </div>
+                        <div class="waifu-name" id="waifuName">
+                            <span class="active-icon">⭐</span>
+                            <span>Загрузка...</span>
+                        </div>
                         <div class="waifu-level" id="waifuLevel">Уровень: ?</div>
                         <div class="waifu-power" id="waifuPower">Сила: ?</div>
                     </div>
-                    <img class="waifu-image" id="waifuImage" src="" alt="Waifu">
                 </div>
             </div>
             <div id="noActiveWaifu" class="placeholder" style="display: none;">

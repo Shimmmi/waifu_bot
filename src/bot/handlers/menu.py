@@ -202,22 +202,62 @@ async def handle_gacha_callback(callback: CallbackQuery) -> None:
 
 async def handle_stats_callback(callback: CallbackQuery) -> None:
     """Обработка кнопки Статистика"""
-    text = (
-        "📊 <b>Статистика</b>\n\n"
-        "🎯 <b>Общая статистика:</b>\n"
-        "• Всего пользователей: 1\n"
-        "• Активных сегодня: 1\n"
-        "• Всего монет в системе: 100\n\n"
-        "🏆 <b>Топ игроки:</b>\n"
-        "1. @Shimmmmmi - 100 монет"
-    )
+    if callback.from_user is None:
+        return
+    
+    session = SessionLocal()
+    try:
+        # Get current user
+        tg_user_id = callback.from_user.id
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        current_user = result.scalar_one_or_none()
+        
+        # Get total users count
+        total_users = session.execute(select(func.count(User.id))).scalar() or 0
+        
+        # Get total coins in system
+        total_coins = session.execute(select(func.sum(User.coins))).scalar() or 0
+        
+        # Get top users by coins
+        top_users = session.execute(
+            select(User).order_by(User.coins.desc()).limit(5)
+        ).scalars().all()
+        
+        # Build top players text
+        top_players = ""
+        for i, user in enumerate(top_users, 1):
+            username = f"@{user.username}" if user.username else user.display_name or "Anonymous"
+            coins = user.coins
+            if user.id == current_user.id if current_user else False:
+                top_players += f"<b>{i}. {username} - {coins} монет ⭐ (Вы)</b>\n"
+            else:
+                top_players += f"{i}. {username} - {coins} монет\n"
+        
+        # Get user stats
+        user_waifus = session.execute(
+            select(func.count(Waifu.id)).where(Waifu.owner_id == current_user.id if current_user else 0)
+        ).scalar() or 0
+        
+        text = (
+            f"📊 <b>Статистика</b>\n\n"
+            f"🎯 <b>Общая статистика:</b>\n"
+            f"• Всего пользователей: {total_users}\n"
+            f"• Всего монет в системе: {total_coins}\n\n"
+            f"👤 <b>Ваша статистика:</b>\n"
+            f"• Монеты: {current_user.coins if current_user else 0}\n"
+            f"• Гемы: {current_user.gems if current_user else 0}\n"
+            f"• Вайфу: {user_waifus}\n\n"
+            f"🏆 <b>Топ игроки:</b>\n{top_players}"
+        )
 
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu")]
-    ])
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu")]
+        ])
 
-    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
-    await callback.answer()
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+        await callback.answer()
+    finally:
+        session.close()
 
 
 async def handle_waifu_menu_callback(callback: CallbackQuery) -> None:
@@ -244,8 +284,13 @@ async def handle_waifu_menu_callback(callback: CallbackQuery) -> None:
 
 async def handle_back_to_menu(callback: CallbackQuery) -> None:
     """Возврат в главное меню"""
+    from aiogram.types import WebAppInfo
+    import os
+    
+    webapp_url = os.getenv("WEBAPP_URL", "https://waifu-bot-webapp.onrender.com")
+    
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="👤 Профиль", callback_data="profile")],
+        [InlineKeyboardButton(text="👤 Профиль", web_app=WebAppInfo(url=f"{webapp_url}/webapp/profile.html"))],
         [InlineKeyboardButton(text="🎁 Ежедневный бонус", callback_data="daily")],
         [InlineKeyboardButton(text="🎭 Вайфу", callback_data="waifu_menu")],
         [InlineKeyboardButton(text="🎯 События", callback_data="events_menu")],
