@@ -12,13 +12,6 @@ if (window.Telegram && window.Telegram.WebApp) {
 // Load profile data on page load
 document.addEventListener('DOMContentLoaded', async () => {
     await loadProfile();
-    
-    // Set up level button
-    document.getElementById('level-btn').addEventListener('click', () => {
-        if (window.Telegram?.WebApp?.showAlert) {
-            window.Telegram.WebApp.showAlert('Функция прокачки навыков будет добавлена в следующем обновлении!');
-        }
-    });
 });
 
 // Navigation function
@@ -87,15 +80,21 @@ async function loadWaifuList(container) {
             return;
         }
         
-        // Render waifu grid
+        // Render waifu list (1 column)
         container.innerHTML = `
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 16px;">
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
                 ${waifuList.map(waifu => `
-                    <div class="waifu-card" onclick="selectWaifu('${waifu.id}')" style="background: white; border-radius: 12px; padding: 12px; cursor: pointer; transition: transform 0.2s; ${waifu.is_active ? 'border: 3px solid #4CAF50;' : ''}">
-                        ${waifu.is_active ? '<div style="position: absolute; top: 4px; right: 4px; background: #4CAF50; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px;">✓ АКТИВНА</div>' : ''}
-                        <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 8px;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
-                        <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${waifu.name}</div>
-                        <div style="font-size: 12px; color: #666;">Ур.${waifu.level} • 💪${waifu.power}</div>
+                    <div onclick="openWaifuDetail('${waifu.id}')" style="background: white; border-radius: 12px; padding: 16px; cursor: pointer; transition: transform 0.2s; display: flex; align-items: center; gap: 12px; ${waifu.is_active ? 'border: 3px solid #4CAF50;' : ''}">
+                        <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; flex-shrink: 0;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <div style="font-weight: bold; font-size: 16px;">${waifu.name}</div>
+                                ${waifu.is_active ? '<span style="background: #4CAF50; color: white; padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: bold;">АКТИВНА</span>' : ''}
+                            </div>
+                            <div style="font-size: 14px; color: #666;">Уровень ${waifu.level}</div>
+                            <div style="font-size: 14px; color: #666;">💪 Общая сила: ${waifu.power}</div>
+                        </div>
+                        <div style="font-size: 24px;">→</div>
                     </div>
                 `).join('')}
             </div>
@@ -104,6 +103,15 @@ async function loadWaifuList(container) {
     } catch (error) {
         console.error('Error loading waifu list:', error);
         container.innerHTML = '<p style="color: red; padding: 20px;">Ошибка загрузки</p>';
+    }
+}
+
+// Open waifu detail
+function openWaifuDetail(waifuId) {
+    // Open waifu detail WebApp
+    if (window.Telegram?.WebApp?.openLink) {
+        const webappUrl = `${window.location.origin}/waifu-card/${waifuId}`;
+        window.Telegram.WebApp.openLink(webappUrl);
     }
 }
 
@@ -453,20 +461,37 @@ async function loadProfile() {
         document.getElementById('user-name').textContent = '@' + (profileData.username || 'Unknown');
         document.getElementById('user-id').textContent = `ID: ${profileData.user_id || '...'}`;
         
+        // Update avatar (generate random number for now, will use user avatar field later)
+        const avatarNum = Math.floor(Math.random() * 20) + 1;
+        const avatarUrl = `https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/avatars/avatar_${avatarNum}.png`;
+        document.getElementById('user-avatar').style.backgroundImage = `url(${avatarUrl})`;
+        document.getElementById('user-avatar').textContent = '';
+        
         // Update currency
         document.getElementById('gold-value').textContent = profileData.gold || 0;
         document.getElementById('gem-value').textContent = profileData.gems || 0;
         document.getElementById('token-value').textContent = profileData.tokens || 0;
         
         // Update level and XP
-        document.getElementById('player-level').textContent = profileData.level || 1;
+        const currentLevel = profileData.level || 1;
+        document.getElementById('player-level').textContent = currentLevel;
         
-        // Calculate XP progress (simplified)
+        // Calculate XP progress correctly
         const currentXP = profileData.xp || 0;
-        const nextLevelXP = 100 * Math.pow(profileData.level || 1, 1.1);
-        const currentLevelXP = profileData.level > 1 ? 100 * Math.pow(profileData.level - 1, 1.1) : 0;
-        const xpInLevel = currentXP - currentLevelXP;
-        const xpNeeded = nextLevelXP - currentLevelXP;
+        
+        // Calculate XP needed for current level
+        let xpNeededForCurrent = 0;
+        for (let i = 1; i < currentLevel; i++) {
+            xpNeededForCurrent += Math.floor(100 * Math.pow(i, 1.1));
+        }
+        
+        // Calculate XP needed for next level
+        const xpForNextLevel = Math.floor(100 * Math.pow(currentLevel, 1.1));
+        
+        // XP in current level
+        const xpInLevel = currentXP - xpNeededForCurrent;
+        const xpNeeded = xpForNextLevel;
+        
         const xpPercent = Math.min(100, (xpInLevel / xpNeeded) * 100);
         
         document.getElementById('xp-fill').style.width = xpPercent + '%';

@@ -58,6 +58,8 @@
             justify-content: center;
             font-size: 28px;
             flex-shrink: 0;
+            background-size: cover;
+            background-position: center;
         }
         
         .profile-info h2 {
@@ -187,7 +189,7 @@
         /* Navigation Grid */
         .nav-grid {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 12px;
         }
         
@@ -266,10 +268,6 @@
     <div class="container">
         <!-- Profile View -->
         <div id="profile-view" class="view">
-            <div class="header">
-                <h1 style="font-size: 24px; margin-bottom: 4px;">👤 Профиль игрока</h1>
-            </div>
-            
             <!-- Profile Card -->
             <div class="profile-card">
                 <div class="profile-top">
@@ -300,7 +298,6 @@
                 <div class="level-section">
                     <div class="level-header">
                         <span style="font-weight: bold;">⭐ Уровень: <span id="player-level">1</span></span>
-                        <button class="level-btn" id="level-btn">Прокачка</button>
                     </div>
                     <div class="xp-bar">
                         <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
@@ -313,7 +310,6 @@
             
             <!-- Active Waifu -->
             <div class="profile-card active-waifu">
-                <h3 style="margin-bottom: 12px; font-size: 16px;">⭐ Активная вайфу</h3>
                 <div id="active-waifu-card" class="waifu-card">
                     <p class="loading">Загрузка...</p>
                 </div>
@@ -328,27 +324,27 @@
                     </button>
                 </div>
                 <div class="nav-btn-wrapper">
-                    <button class="nav-btn" onclick="navigateTo('shop')">
-                        <emoji>🏪</emoji>
-                        <label>Магазин</label>
-                    </button>
-                </div>
-                <div class="nav-btn-wrapper">
                     <button class="nav-btn" onclick="navigateTo('clan')">
                         <emoji>🏰</emoji>
                         <label>Клан</label>
                     </button>
                 </div>
                 <div class="nav-btn-wrapper">
-                    <button class="nav-btn" onclick="navigateTo('quests')">
-                        <emoji>📅</emoji>
-                        <label>Задания</label>
-                    </button>
-                </div>
-                <div class="nav-btn-wrapper">
                     <button class="nav-btn" onclick="navigateTo('skills')">
                         <emoji>🧬</emoji>
                         <label>Прокачка</label>
+                    </button>
+                </div>
+                <div class="nav-btn-wrapper">
+                    <button class="nav-btn" onclick="navigateTo('shop')">
+                        <emoji>🏪</emoji>
+                        <label>Магазин</label>
+                    </button>
+                </div>
+                <div class="nav-btn-wrapper">
+                    <button class="nav-btn" onclick="navigateTo('quests')">
+                        <emoji>📅</emoji>
+                        <label>Задания</label>
                     </button>
                 </div>
                 <div class="nav-btn-wrapper">
