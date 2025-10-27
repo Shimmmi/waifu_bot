@@ -34,29 +34,35 @@ function navigateTo(view) {
         const viewTitle = document.getElementById('view-title');
         const viewContent = document.getElementById('view-content');
         
-                 const views = {
-             'waifus': { title: '🎴 Мои вайфу', content: 'loadWaifuList()' },
-             'shop': { title: '🏪 Магазин', content: 'loadShopItems()' },
-             'clan': { title: '🏰 Клан', content: 'Система кланов (в разработке)' },
-             'quests': { title: '📅 Ежедневные задания', content: 'Активные миссии (в разработке)' },
-             'skills': { title: '🧬 Прокачка навыков', content: 'loadSkillsTree()' },
-             'settings': { title: '⚙️ Настройки профиля', content: 'Кастомизация профиля (в разработке)' }
-         };
-         
-         if (views[view]) {
-             viewTitle.textContent = views[view].title;
-             
-             // Special handling for different views
-             if (view === 'waifus') {
-                 loadWaifuList(viewContent);
-             } else if (view === 'shop') {
-                 loadShopItems(viewContent);
-             } else if (view === 'skills') {
-                 loadSkillsTree(viewContent);
-             } else {
-                 viewContent.textContent = views[view].content;
-             }
-         }
+                               const views = {
+              'waifus': { title: '🎴 Мои вайфу', content: 'loadWaifuList()' },
+              'shop': { title: '🏪 Магазин', content: 'loadShopItems()' },
+              'clan': { title: '🏰 Клан', content: 'loadClanInfo()' },
+              'quests': { title: '📅 Ежедневные задания', content: 'loadQuests()' },
+              'skills': { title: '🧬 Прокачка навыков', content: 'loadSkillsTree()' },
+              'settings': { title: '⚙️ Настройки профиля', content: 'loadSettings()' }
+          };
+          
+          if (views[view]) {
+              viewTitle.textContent = views[view].title;
+              
+              // Special handling for different views
+              if (view === 'waifus') {
+                  loadWaifuList(viewContent);
+              } else if (view === 'shop') {
+                  loadShopItems(viewContent);
+              } else if (view === 'skills') {
+                  loadSkillsTree(viewContent);
+              } else if (view === 'quests') {
+                  loadQuests(viewContent);
+              } else if (view === 'clan') {
+                  loadClanInfo(viewContent);
+              } else if (view === 'settings') {
+                  loadSettings(viewContent);
+              } else {
+                  viewContent.textContent = views[view].content;
+              }
+          }
         
         currentView = view;
     }
@@ -334,6 +340,101 @@ async function upgradeSkill(skillId) {
             window.Telegram.WebApp.showAlert(`❌ Ошибка: ${error.message}`);
         }
     }
+}
+
+// Load quests
+async function loadQuests(container) {
+    container.innerHTML = '<p class="loading">Загрузка...</p>';
+    
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/quests?' + new URLSearchParams({ initData }));
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch quests');
+        }
+        
+        const data = await response.json();
+        const quests = data.quests || [];
+        
+        if (quests.length === 0) {
+            container.innerHTML = '<p style="padding: 20px; color: #666;">Нет активных заданий</p>';
+            return;
+        }
+        
+        // Render quests
+        container.innerHTML = `
+            <div style="margin-top: 16px;">
+                ${quests.map(quest => `
+                    <div style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; ${quest.completed ? 'border: 2px solid #4CAF50;' : ''}">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <div style="font-size: 32px;">${quest.icon}</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${quest.name}</div>
+                                <div style="font-size: 12px; color: #666;">${quest.description}</div>
+                            </div>
+                            ${quest.completed ? '<div style="font-size: 24px;">✅</div>' : ''}
+                        </div>
+                        <div style="background: #e0e0e0; border-radius: 8px; height: 8px; margin-bottom: 8px; overflow: hidden;">
+                            <div style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); height: 100%; width: ${Math.min(100, (quest.progress / quest.target) * 100)}%; transition: width 0.3s;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #666;">
+                            <span>Прогресс: ${quest.progress}/${quest.target}</span>
+                            <span>🎁 ${quest.reward_gold} 💰 + ${quest.reward_xp} ⭐</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Error loading quests:', error);
+        container.innerHTML = '<p style="color: red; padding: 20px;">Ошибка загрузки</p>';
+    }
+}
+
+// Load clan info
+async function loadClanInfo(container) {
+    container.innerHTML = `
+        <div style="padding: 20px; text-align: center;">
+            <div style="background: white; border-radius: 12px; padding: 40px; margin-bottom: 20px;">
+                <div style="font-size: 64px; margin-bottom: 16px;">🏰</div>
+                <div style="font-weight: bold; font-size: 20px; margin-bottom: 8px;">Система кланов</div>
+                <div style="color: #666; font-size: 14px;">Функция в разработке</div>
+                <div style="color: #999; font-size: 12px; margin-top: 12px;">
+                    Скоро вы сможете:<br>
+                    • Создавать и вступать в кланы<br>
+                    • Участвовать в клановых битвах<br>
+                    • Получать бонусы от клана
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Load settings
+async function loadSettings(container) {
+    container.innerHTML = `
+        <div style="padding: 20px;">
+            <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 12px;">
+                <div style="font-weight: bold; font-size: 16px; margin-bottom: 12px;">🎨 Кастомизация профиля</div>
+                <div style="color: #999; font-size: 14px; margin-bottom: 16px;">Функция в разработке</div>
+                <button style="width: 100%; background: #e0e0e0; border: none; border-radius: 8px; padding: 12px; color: #666; font-weight: bold; cursor: not-allowed;" disabled>Изменить фон профиля</button>
+            </div>
+            
+            <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 12px;">
+                <div style="font-weight: bold; font-size: 16px; margin-bottom: 12px;">🔔 Уведомления</div>
+                <div style="color: #999; font-size: 14px; margin-bottom: 16px;">Функция в разработке</div>
+                <button style="width: 100%; background: #e0e0e0; border: none; border-radius: 8px; padding: 12px; color: #666; font-weight: bold; cursor: not-allowed;" disabled>Настроить уведомления</button>
+            </div>
+            
+            <div style="background: white; border-radius: 12px; padding: 20px;">
+                <div style="font-weight: bold; font-size: 16px; margin-bottom: 12px;">🌐 Язык</div>
+                <div style="color: #999; font-size: 14px; margin-bottom: 16px;">Функция в разработке</div>
+                <button style="width: 100%; background: #e0e0e0; border: none; border-radius: 8px; padding: 12px; color: #666; font-weight: bold; cursor: not-allowed;" disabled>Изменить язык</button>
+            </div>
+        </div>
+    `;
 }
 
 // Load profile data

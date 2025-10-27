@@ -660,6 +660,71 @@ async def upgrade_skill(request: Request, skill_id: str, db: Session = Depends(g
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
 
+@app.get("/api/quests")
+async def get_quests(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Получение списка ежедневных заданий"""
+    try:
+        logger.info(f"📡 API REQUEST: GET /api/quests")
+        
+        if User is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if not telegram_user_id:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Define quests (in future, these can be stored in database)
+        quests = [
+            {
+                "id": "daily_message",
+                "name": "Отправить 10 сообщений",
+                "description": "Напишите 10 сообщений в группе",
+                "icon": "💬",
+                "reward_gold": 50,
+                "reward_xp": 10,
+                "progress": 0,
+                "target": 10,
+                "completed": False
+            },
+            {
+                "id": "daily_waifu",
+                "name": "Призвать вайфу",
+                "description": "Призовите хотя бы одну вайфу",
+                "icon": "🎴",
+                "reward_gold": 100,
+                "reward_xp": 20,
+                "progress": 0,
+                "target": 1,
+                "completed": False
+            },
+            {
+                "id": "daily_active",
+                "name": "Быть активным",
+                "description": "Получите 100 опыта за день",
+                "icon": "⭐",
+                "reward_gold": 150,
+                "reward_xp": 30,
+                "progress": getattr(user, 'daily_xp', 0),
+                "target": 100,
+                "completed": getattr(user, 'daily_xp', 0) >= 100
+            }
+        ]
+        
+        logger.info(f"✅ Returning {len(quests)} quests")
+        return {"quests": quests}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
 @app.get("/health")
 async def health_check():
     """Проверка здоровья сервиса"""
