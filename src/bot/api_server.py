@@ -199,8 +199,8 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
         
         if telegram_user_id:
             # Find user by Telegram user ID
-            user = db.query(User).filter(User.telegram_id == telegram_user_id).first()
-            logger.info(f"🔍 Searching for user with telegram_id={telegram_user_id}")
+            user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+            logger.info(f"🔍 Searching for user with tg_id={telegram_user_id}")
         else:
             # Fallback to first user if initData not available (for testing)
             logger.warning("⚠️ No telegram_user_id, using first user as fallback")
@@ -264,8 +264,8 @@ async def get_waifus(request: Request, db: Session = Depends(get_db)):
         
         if telegram_user_id:
             # Find user by Telegram user ID
-            user = db.query(User).filter(User.telegram_id == telegram_user_id).first()
-            logger.info(f"🔍 Searching for user with telegram_id={telegram_user_id}")
+            user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+            logger.info(f"🔍 Searching for user with tg_id={telegram_user_id}")
         else:
             # Fallback to first user if initData not available (for testing)
             logger.warning("⚠️ No telegram_user_id, using first user as fallback")
