@@ -96,6 +96,8 @@ async function renderProfile() {
             const stats = calculateStats(waifu.stats);
             const power = calculatePower(waifu);
             
+            const dynamic = waifu.dynamic || {};
+            
             activeWaifuCard.innerHTML = `
                 <img src="${waifu.image_url}" alt="${waifu.name}" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27200%27%20height=%27200%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2714%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
                 <div class="active-waifu-info">
@@ -107,16 +109,38 @@ async function renderProfile() {
                             <div class="stat-value">${stats.power}</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-label">🛡️ Защита</div>
-                            <div class="stat-value">${stats.intellect}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">🧙 Магия</div>
+                            <div class="stat-label">💖 Обаяние</div>
                             <div class="stat-value">${stats.charm}</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-label">🏃 Скорость</div>
-                            <div class="stat-value">${stats.charisma}</div>
+                            <div class="stat-label">🍀 Удача</div>
+                            <div class="stat-value">${stats.luck}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">💕 Привязанность</div>
+                            <div class="stat-value">${stats.affection}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">🧠 Интеллект</div>
+                            <div class="stat-value">${stats.intellect}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">⚡ Скорость</div>
+                            <div class="stat-value">${stats.speed}</div>
+                        </div>
+                    </div>
+                    <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 12px;">
+                        <div class="stat-item">
+                            <div class="stat-label">😊 Настроение</div>
+                            <div class="stat-value">${dynamic.mood || 50}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">❤️ Лояльность</div>
+                            <div class="stat-value">${dynamic.loyalty || 50}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">⚡ Энергия</div>
+                            <div class="stat-value">${dynamic.energy || 100}</div>
                         </div>
                     </div>
                 </div>
@@ -218,7 +242,9 @@ function calculateStats(stats) {
         power: stats.power || 0,
         intellect: stats.intellect || 0,
         charm: stats.charm || 0,
-        charisma: stats.charisma || 0
+        luck: stats.luck || 0,
+        affection: stats.affection || 0,
+        speed: stats.speed || 0
     };
 }
 
