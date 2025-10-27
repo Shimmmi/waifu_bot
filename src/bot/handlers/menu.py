@@ -93,7 +93,7 @@ async def handle_menu_callback(callback: CallbackQuery) -> None:
         await handle_teaching_select_teacher_callback(callback)
     elif callback.data.startswith("teaching_toggle_teacher_"):
         await handle_teaching_toggle_teacher_callback(callback)
-    elif callback.data == "teaching_confirm":
+    elif callback.data.startswith("teaching_confirm_"):
         await handle_teaching_confirm_callback(callback)
 
 

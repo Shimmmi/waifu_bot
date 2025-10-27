@@ -58,7 +58,7 @@ def calculate_teaching_xp(
     """
     Calculate XP given when a waifu teaches another.
     
-    Formula: (XP needed for student's next level * teacher's rarity ratio) / 2
+    Formula: (XP needed for teacher's current level * rarity ratio) / 2
     
     Args:
         student_level: Current level of the waifu receiving XP
@@ -69,19 +69,28 @@ def calculate_teaching_xp(
     Returns:
         Amount of XP to award
     """
-    # Get XP needed for student's next level using the level up service
-    xp_needed = LevelUpService.calculate_xp_for_next_level(student_level)
+    # Calculate XP the teacher would need for their next level from their current level
+    if teacher_level > 0:
+        # Calculate cumulative XP to reach teacher's current level
+        cumulative_xp = sum(
+            LevelUpService.calculate_xp_for_next_level(level)
+            for level in range(1, teacher_level + 1)
+        )
+        # Use teacher's XP value instead (their earned XP)
+        teacher_total_xp = cumulative_xp + teacher_xp
+    else:
+        teacher_total_xp = teacher_xp
     
     # Get teacher's rarity ratio
     ratio = get_rarity_ratio(teacher_rarity)
     
-    # Calculate base XP
-    base_xp = xp_needed * ratio
+    # Calculate base XP based on teacher's total accumulated XP
+    base_xp = teacher_total_xp * ratio
     
     # Divide by 2 as specified
     xp_awarded = int(base_xp / 2)
     
-    return xp_awarded
+    return max(1, xp_awarded)  # Minimum 1 XP
 
 
 def can_upgrade(rarity: str, waifus_list: list[dict]) -> bool:
