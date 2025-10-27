@@ -34,27 +34,29 @@ function navigateTo(view) {
         const viewTitle = document.getElementById('view-title');
         const viewContent = document.getElementById('view-content');
         
-        const views = {
-            'waifus': { title: '🎴 Мои вайфу', content: 'loadWaifuList()' },
-            'shop': { title: '🏪 Магазин', content: 'loadShopItems()' },
-            'clan': { title: '🏰 Клан', content: 'Система кланов (в разработке)' },
-            'quests': { title: '📅 Ежедневные задания', content: 'Активные миссии (в разработке)' },
-            'skills': { title: '🧬 Прокачка навыков', content: 'Дерево навыков (в разработке)' },
-            'settings': { title: '⚙️ Настройки профиля', content: 'Кастомизация профиля (в разработке)' }
-        };
-        
-        if (views[view]) {
-            viewTitle.textContent = views[view].title;
-            
-            // Special handling for different views
-            if (view === 'waifus') {
-                loadWaifuList(viewContent);
-            } else if (view === 'shop') {
-                loadShopItems(viewContent);
-            } else {
-                viewContent.textContent = views[view].content;
-            }
-        }
+                 const views = {
+             'waifus': { title: '🎴 Мои вайфу', content: 'loadWaifuList()' },
+             'shop': { title: '🏪 Магазин', content: 'loadShopItems()' },
+             'clan': { title: '🏰 Клан', content: 'Система кланов (в разработке)' },
+             'quests': { title: '📅 Ежедневные задания', content: 'Активные миссии (в разработке)' },
+             'skills': { title: '🧬 Прокачка навыков', content: 'loadSkillsTree()' },
+             'settings': { title: '⚙️ Настройки профиля', content: 'Кастомизация профиля (в разработке)' }
+         };
+         
+         if (views[view]) {
+             viewTitle.textContent = views[view].title;
+             
+             // Special handling for different views
+             if (view === 'waifus') {
+                 loadWaifuList(viewContent);
+             } else if (view === 'shop') {
+                 loadShopItems(viewContent);
+             } else if (view === 'skills') {
+                 loadSkillsTree(viewContent);
+             } else {
+                 viewContent.textContent = views[view].content;
+             }
+         }
         
         currentView = view;
     }
@@ -214,6 +216,120 @@ async function purchaseItem(itemId) {
         
     } catch (error) {
         console.error('Error purchasing item:', error);
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert(`❌ Ошибка: ${error.message}`);
+        }
+    }
+}
+
+// Load skills tree
+async function loadSkillsTree(container) {
+    container.innerHTML = '<p class="loading">Загрузка...</p>';
+    
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/skills?' + new URLSearchParams({ initData }));
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch skills');
+        }
+        
+        const data = await response.json();
+        
+        // Render skills tree
+        let html = `
+            <div style="margin-top: 16px;">
+                <div style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; text-align: center;">
+                    <div style="font-weight: bold; font-size: 18px; margin-bottom: 4px;">⭐ Очков навыков: ${data.skill_points}</div>
+                    <div style="font-size: 12px; color: #666;">Получайте очки за повышение уровня</div>
+                </div>
+        `;
+        
+        // Render each category
+        for (const [category, skills] of Object.entries(data.skills)) {
+            const categoryNames = {
+                'combat': '⚔️ Боевые',
+                'economy': '💰 Экономика',
+                'waifu': '👥 Вайфу'
+            };
+            
+            html += `<div style="margin-bottom: 20px;">`;
+            html += `<h3 style="font-size: 16px; margin-bottom: 12px; color: white;">${categoryNames[category] || category}</h3>`;
+            
+            skills.forEach(skill => {
+                const currentLevel = data.user_skills[skill.id] || 0;
+                const canUpgrade = data.skill_points > 0 && currentLevel < skill.max_level;
+                
+                html += `
+                    <div style="background: white; border-radius: 12px; padding: 12px; margin-bottom: 8px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="font-size: 32px;">${skill.icon}</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${skill.name}</div>
+                                <div style="font-size: 11px; color: #666; margin-bottom: 4px;">${skill.description}</div>
+                                <div style="font-size: 12px; color: #999;">Уровень: ${currentLevel}/${skill.max_level}</div>
+                            </div>
+                            <button 
+                                onclick="upgradeSkill('${skill.id}')"
+                                ${!canUpgrade ? 'disabled' : ''}
+                                style="
+                                    background: ${canUpgrade ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#ccc'}; 
+                                    color: white; 
+                                    border: none; 
+                                    border-radius: 8px; 
+                                    padding: 8px 16px; 
+                                    font-weight: bold; 
+                                    cursor: ${canUpgrade ? 'pointer' : 'not-allowed'}; 
+                                    font-size: 12px;
+                                    opacity: ${canUpgrade ? '1' : '0.6'};
+                                ">
+                                +1
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `</div>`;
+        }
+        
+        html += `</div>`;
+        
+        container.innerHTML = html;
+        
+    } catch (error) {
+        console.error('Error loading skills tree:', error);
+        container.innerHTML = '<p style="color: red; padding: 20px;">Ошибка загрузки</p>';
+    }
+}
+
+// Upgrade skill
+async function upgradeSkill(skillId) {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch(`/api/skills/upgrade?skill_id=${skillId}&${new URLSearchParams({ initData })}`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to upgrade skill');
+        }
+        
+        const result = await response.json();
+        
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert(result.message);
+        }
+        
+        // Reload skills tree
+        const viewContent = document.getElementById('view-content');
+        if (currentView === 'skills') {
+            loadSkillsTree(viewContent);
+        }
+        
+    } catch (error) {
+        console.error('Error upgrading skill:', error);
         if (window.Telegram?.WebApp?.showAlert) {
             window.Telegram.WebApp.showAlert(`❌ Ошибка: ${error.message}`);
         }

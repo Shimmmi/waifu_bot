@@ -44,6 +44,8 @@ class User(Base):
     )
     # Tokens (special currency for rare purchases)
     tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    # User skills (passive upgrades)
+    user_skills: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict, server_default=text("'{}'"))
 
     # Relationships
     waifus: Mapped[list["WaifuInstance"]] = relationship("WaifuInstance", back_populates="owner")

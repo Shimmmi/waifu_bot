@@ -511,6 +511,155 @@ async def purchase_item(request: Request, item_id: str, db: Session = Depends(ge
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
 
+@app.get("/api/skills")
+async def get_skills_tree(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Получение дерева навыков и текущего прогресса пользователя"""
+    try:
+        logger.info(f"📡 API REQUEST: GET /api/skills")
+        
+        if User is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if not telegram_user_id:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Define skill tree structure
+        skills_tree = {
+            "combat": [
+                {
+                    "id": "attack_boost",
+                    "name": "Усиление атаки",
+                    "description": "Увеличивает урон на 5% за уровень",
+                    "max_level": 10,
+                    "icon": "⚔️"
+                },
+                {
+                    "id": "defense_boost",
+                    "name": "Усиление защиты",
+                    "description": "Увеличивает защиту на 5% за уровень",
+                    "max_level": 10,
+                    "icon": "🛡️"
+                }
+            ],
+            "economy": [
+                {
+                    "id": "gold_bonus",
+                    "name": "Золотой бонус",
+                    "description": "Получайте на 10% больше золота",
+                    "max_level": 5,
+                    "icon": "💰"
+                },
+                {
+                    "id": "xp_bonus",
+                    "name": "Бонус опыта",
+                    "description": "Получайте на 10% больше опыта",
+                    "max_level": 5,
+                    "icon": "⭐"
+                }
+            ],
+            "waifu": [
+                {
+                    "id": "waifu_power",
+                    "name": "Мощь вайфу",
+                    "description": "Увеличивает мощность вайфу на 5%",
+                    "max_level": 10,
+                    "icon": "💪"
+                },
+                {
+                    "id": "waifu_energy",
+                    "name": "Энергия вайфу",
+                    "description": "Увеличивает максимальную энергию на 10",
+                    "max_level": 5,
+                    "icon": "⚡"
+                }
+            ]
+        }
+        
+        # Get user's current skills
+        user_skills = getattr(user, 'user_skills', {}) or {}
+        skill_points = getattr(user, 'skill_points', 0)
+        
+        logger.info(f"✅ Returning skills tree for user {user.id}")
+        return {
+            "skill_points": skill_points,
+            "skills": skills_tree,
+            "user_skills": user_skills
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+@app.post("/api/skills/upgrade")
+async def upgrade_skill(request: Request, skill_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Улучшение навыка"""
+    try:
+        logger.info(f"📡 API REQUEST: POST /api/skills/upgrade (skill_id: {skill_id})")
+        
+        if User is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if not telegram_user_id:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Check skill points
+        skill_points = getattr(user, 'skill_points', 0)
+        if skill_points < 1:
+            raise HTTPException(status_code=400, detail="Недостаточно очков навыков")
+        
+        # Get current skills
+        user_skills = getattr(user, 'user_skills', {}) or {}
+        
+        # Define max levels
+        max_levels = {
+            "attack_boost": 10, "defense_boost": 10,
+            "gold_bonus": 5, "xp_bonus": 5,
+            "waifu_power": 10, "waifu_energy": 5
+        }
+        
+        current_level = user_skills.get(skill_id, 0)
+        max_level = max_levels.get(skill_id, 10)
+        
+        if current_level >= max_level:
+            raise HTTPException(status_code=400, detail="Навык уже максимального уровня")
+        
+        # Upgrade skill
+        user_skills[skill_id] = current_level + 1
+        user.user_skills = user_skills
+        user.skill_points = skill_points - 1
+        
+        db.commit()
+        
+        logger.info(f"✅ Skill {skill_id} upgraded to level {user_skills[skill_id]}")
+        return {
+            "success": True,
+            "message": f"Навык улучшен до уровня {user_skills[skill_id]}",
+            "skill_points": user.skill_points,
+            "user_skills": user_skills
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
 @app.get("/health")
 async def health_check():
     """Проверка здоровья сервиса"""
