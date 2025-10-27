@@ -131,7 +131,7 @@ if webapp_dir.exists():
 @app.get("/")
 async def read_root():
     """Главная страница WebApp"""
-    webapp_path = Path(__file__).parent.parent.parent / "webapp" / "waifu-card.html"
+    webapp_path = Path(__file__).parent.parent.parent / "webapp" / "index.html"
     if webapp_path.exists():
         return FileResponse(str(webapp_path))
     else:
@@ -147,25 +147,25 @@ async def waifu_card_page(waifu_id: str):
         return {"message": f"Waifu card page for ID: {waifu_id}", "status": "running"}
 
 @app.get("/api/profile")
-async def get_profile(user_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
-    """Получение данных профиля пользователя"""
+async def get_profile(user_id: int = None, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Получение данных профиля пользователя (из Telegram WebApp initData)"""
     try:
-        logger.info(f"📡 API REQUEST: GET /api/profile?user_id={user_id}")
+        logger.info(f"📡 API REQUEST: GET /api/profile")
         
         if User is None or SessionLocal is None:
             logger.error("❌ Database models not configured")
             raise HTTPException(status_code=500, detail="Database models not configured")
         
-        # Get user
-        user = db.query(User).filter(User.tg_id == user_id).first()
+        # For now, we'll use the first user (in production, get from Telegram initData)
+        # TODO: Extract user from Telegram WebApp initData
+        user = db.query(User).first()
         if not user:
-            logger.warning(f"⚠️ User not found: {user_id}")
             raise HTTPException(status_code=404, detail="Пользователь не найден")
         
         # Get active waifu
         active_waifu = None
         waifu = db.query(Waifu).filter(
-            Waifu.owner_id == user.id,  # Use user.id, not user_id
+            Waifu.owner_id == user.id,
             Waifu.is_active == True
         ).first()
         
@@ -175,26 +175,68 @@ async def get_profile(user_id: int, db: Session = Depends(get_db)) -> Dict[str, 
         if waifu:
             power = calculate_waifu_power(waifu.__dict__)
             active_waifu = {
+                "id": waifu.id,
                 "name": waifu.name,
                 "level": waifu.level,
                 "power": power,
                 "image_url": waifu.image_url,
+                "stats": waifu.stats,
+                "dynamic": waifu.dynamic,
                 "is_active": True
             }
         
         profile_data = {
-            "display_name": user.display_name or "Пользователь",
             "username": user.username or "username",
-            "coins": user.coins,
+            "gold": user.coins,
             "gems": user.gems,
-            "account_level": getattr(user, 'account_level', 1),
-            "global_xp": getattr(user, 'global_xp', 0),
-            "skill_points": getattr(user, 'skill_points', 0),
+            "level": getattr(user, 'account_level', 1),
+            "xp": getattr(user, 'global_xp', 0),
             "active_waifu": active_waifu
         }
         
-        logger.info(f"✅ Profile data fetched for user {user_id}")
+        logger.info(f"✅ Profile data fetched")
         return profile_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+@app.get("/api/waifus")
+async def get_waifus(user_id: int = None, db: Session = Depends(get_db)):
+    """Получение списка всех вайфу пользователя"""
+    try:
+        logger.info(f"📡 API REQUEST: GET /api/waifus")
+        
+        if User is None or Waifu is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # For now, we'll use the first user (in production, get from Telegram initData)
+        # TODO: Extract user from Telegram WebApp initData
+        user = db.query(User).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Get all waifus for user
+        waifus = db.query(Waifu).filter(Waifu.owner_id == user.id).all()
+        
+        waifu_list = []
+        for waifu in waifus:
+            power = calculate_waifu_power(waifu.__dict__)
+            waifu_list.append({
+                "id": waifu.id,
+                "name": waifu.name,
+                "level": waifu.level,
+                "power": power,
+                "image_url": waifu.image_url,
+                "stats": waifu.stats,
+                "dynamic": waifu.dynamic,
+                "is_active": waifu.is_active or False
+            })
+        
+        logger.info(f"✅ Fetched {len(waifu_list)} waifus")
+        return waifu_list
         
     except HTTPException:
         raise

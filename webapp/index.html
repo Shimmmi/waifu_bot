@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Waifu Bot</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
+            overflow-x: hidden;
+        }
+        
+        .view {
+            padding: 16px;
+            min-height: 100vh;
+        }
+        
+        .view.hidden {
+            display: none;
+        }
+        
+        /* Profile View */
+        .profile-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .profile-header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .active-waifu-section {
+            margin-top: 24px;
+        }
+        
+        .active-waifu-section h2 {
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
+        
+        .active-waifu-card {
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            border-radius: 12px;
+            padding: 12px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .active-waifu-card:active {
+            transform: scale(0.98);
+        }
+        
+        .active-waifu-card img {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .active-waifu-info {
+            text-align: center;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 16px;
+        }
+        
+        .stat-item {
+            background: var(--tg-theme-bg-color, #fff);
+            padding: 8px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+        
+        /* Waifu Grid View */
+        .waifu-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .waifu-card {
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+            position: relative;
+        }
+        
+        .waifu-card:active {
+            transform: scale(0.98);
+        }
+        
+        .waifu-card.active {
+            border: 3px solid #4CAF50;
+        }
+        
+        .waifu-card img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+        }
+        
+        .waifu-card-info {
+            padding: 8px;
+            text-align: center;
+        }
+        
+        .waifu-card-name {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        
+        .waifu-card-level {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        .active-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #4CAF50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        .back-button {
+            background: var(--tg-theme-button-color, #0088cc);
+            color: var(--tg-theme-button-text-color, #fff);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 16px;
+            font-size: 16px;
+            width: 100%;
+        }
+        
+        .back-button:active {
+            opacity: 0.8;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            opacity: 0.6;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <!-- Profile View -->
+    <div id="profile-view" class="view hidden">
+        <div class="profile-header">
+            <h1>👤 Профиль</h1>
+            <div id="profile-info"></div>
+        </div>
+        
+        <div class="active-waifu-section">
+            <h2>⭐ Активная вайфу</h2>
+            <div id="active-waifu-card" class="active-waifu-card">
+                <p class="empty-state">Нет активной вайфу</p>
+            </div>
+        </div>
+        
+        <button class="back-button" onclick="closeWebApp()">Закрыть</button>
+    </div>
+    
+    <!-- Waifu List View -->
+    <div id="waifu-list-view" class="view hidden">
+        <h2>📋 Мои вайфу</h2>
+        <button class="back-button" onclick="navigateToState('profile')">← Назад к профилю</button>
+        <div id="waifu-grid" class="waifu-grid">
+            <p class="loading">Загрузка...</p>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
