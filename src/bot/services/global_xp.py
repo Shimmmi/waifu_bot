@@ -67,7 +67,9 @@ class GlobalXPService:
             await redis_client.setex(key, self.RATE_LIMIT_SECONDS, "1")
             return False
         except Exception as e:
-            logger.error(f"Error checking rate limit: {e}")
+            # Log error but don't fail - allow XP to be awarded
+            # This prevents Redis issues from breaking the XP system
+            logger.warning(f"Rate limit check failed (Redis issue): {e}. Allowing XP award.")
             return False  # Don't block if Redis fails
     
     def get_xp_required_for_level(self, level: int) -> int:
@@ -139,8 +141,20 @@ class GlobalXPService:
             return {"level_up": False, "daily_cap_reached": True}
         
         # Check if we need to reset daily XP (next day)
+        # Handle timezone-aware and timezone-naive datetimes
         now = datetime.utcnow()
-        time_since_reset = now - user.last_xp_reset
+        last_reset = user.last_xp_reset
+        
+        # Make both datetimes timezone-aware or both naive for comparison
+        if last_reset.tzinfo is not None and now.tzinfo is None:
+            # last_reset is aware, now is naive - make now aware
+            from datetime import timezone
+            now = now.replace(tzinfo=timezone.utc)
+        elif last_reset.tzinfo is None and now.tzinfo is not None:
+            # last_reset is naive, now is aware - make now naive
+            now = now.replace(tzinfo=None)
+        
+        time_since_reset = now - last_reset
         if time_since_reset >= timedelta(days=1):
             # Reset daily XP
             user.daily_xp = 0
@@ -155,7 +169,12 @@ class GlobalXPService:
         old_level = user.account_level
         user.global_xp += actual_xp
         user.daily_xp += actual_xp
-        user.last_global_xp = now
+        # Ensure last_global_xp is set properly based on now's timezone
+        if now.tzinfo is None:
+            from datetime import timezone
+            user.last_global_xp = now.replace(tzinfo=timezone.utc)
+        else:
+            user.last_global_xp = now
         
         # Check for level up
         should_level_up, new_level = self.check_level_up(user.account_level, user.global_xp)
