@@ -1158,7 +1158,22 @@ async def handle_teaching_select_student_callback(callback: CallbackQuery) -> No
         return
     
     # Extract student waifu ID
-    student_id = callback.data.split("_")[-1]
+    # Format: teaching_select_student_{waifu_id}
+    # waifu_id can contain underscores (e.g., wf_5ddf4f29)
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    parts = callback.data.split("_", 3)  # Split into max 4 parts
+    logger.info(f"📚 Teaching select student callback data: {callback.data}")
+    logger.info(f"   Parts: {parts}")
+    
+    if len(parts) < 4:
+        logger.error(f"   ERROR: Invalid callback data format")
+        await callback.answer("Ошибка обработки")
+        return
+    
+    student_id = parts[3]  # Everything after "teaching_select_student_"
+    logger.info(f"   Student ID: {student_id}")
     
     tg_user_id = callback.from_user.id
     session = SessionLocal()
@@ -1241,12 +1256,14 @@ async def handle_teaching_confirm_callback(callback: CallbackQuery) -> None:
         return
     
     # Extract student ID from callback_data
-    parts = callback.data.split("_")
+    # Format: teaching_confirm_{waifu_id}
+    # waifu_id can contain underscores (e.g., wf_5ddf4f29)
+    parts = callback.data.split("_", 2)  # Split into max 3 parts
     if len(parts) < 3:
         await callback.answer("Ошибка обработки")
         return
     
-    student_id = parts[-1]  # Last part is student_id
+    student_id = parts[2]  # Everything after "teaching_confirm_"
     
     tg_user_id = callback.from_user.id
     session = SessionLocal()
