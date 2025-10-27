@@ -362,6 +362,155 @@ async def toggle_favorite(waifu_id: str, db: Session = Depends(get_db)) -> Dict[
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
 
+@app.get("/api/shop")
+async def get_shop_items(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Получение списка товаров магазина"""
+    try:
+        logger.info(f"📡 API REQUEST: GET /api/shop")
+        
+        # Define shop items (in future, these can be stored in database)
+        shop_items = [
+            {
+                "id": "wbox_1",
+                "name": "📦 Обычная коробка вайфу",
+                "description": "Случайная вайфу обычной редкости",
+                "price": 100,
+                "currency": "gold",
+                "category": "lootbox",
+                "emoji": "📦"
+            },
+            {
+                "id": "wbox_10",
+                "name": "📦 Комбо-набор (10 шт)",
+                "description": "10 коробок вайфу со скидкой!",
+                "price": 900,
+                "currency": "gold",
+                "category": "lootbox",
+                "emoji": "📦"
+            },
+            {
+                "id": "gem_100",
+                "name": "💎 100 Гемов",
+                "description": "Пополнение счета гемами",
+                "price": 500,
+                "currency": "gold",
+                "category": "currency",
+                "emoji": "💎"
+            },
+            {
+                "id": "energy_restore",
+                "name": "⚡ Полное восстановление энергии",
+                "description": "Все вайфу восстанавливают энергию на 100%",
+                "price": 50,
+                "currency": "gems",
+                "category": "utility",
+                "emoji": "⚡"
+            }
+        ]
+        
+        logger.info(f"✅ Returning {len(shop_items)} shop items")
+        return {"items": shop_items}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+@app.post("/api/shop/purchase")
+async def purchase_item(request: Request, item_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Покупка товара в магазине"""
+    try:
+        logger.info(f"📡 API REQUEST: POST /api/shop/purchase (item_id: {item_id})")
+        
+        if User is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if not telegram_user_id:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Define shop items with purchase logic
+        shop_items = {
+            "wbox_1": {
+                "name": "📦 Обычная коробка вайфу",
+                "price": 100,
+                "currency": "gold",
+                "action": "waifu_box_single"
+            },
+            "wbox_10": {
+                "name": "📦 Комбо-набор (10 шт)",
+                "price": 900,
+                "currency": "gold",
+                "action": "waifu_box_multi"
+            },
+            "gem_100": {
+                "name": "💎 100 Гемов",
+                "price": 500,
+                "currency": "gold",
+                "action": "add_gems"
+            },
+            "energy_restore": {
+                "name": "⚡ Полное восстановление энергии",
+                "price": 50,
+                "currency": "gems",
+                "action": "restore_energy"
+            }
+        }
+        
+        if item_id not in shop_items:
+            raise HTTPException(status_code=404, detail="Товар не найден")
+        
+        item = shop_items[item_id]
+        
+        # Check user has enough currency
+        user_currency = getattr(user, item["currency"], 0)
+        if user_currency < item["price"]:
+            raise HTTPException(status_code=400, detail=f"Недостаточно {item['currency']}")
+        
+        # Deduct currency
+        setattr(user, item["currency"], user_currency - item["price"])
+        
+        # Execute action
+        if item["action"] == "add_gems":
+            user.gems += 100
+            result_message = "✅ Получено 100 гемов!"
+        elif item["action"] == "restore_energy":
+            # Restore energy for all waifus
+            from bot.services.waifu_generator import Waifu
+            waifus = db.query(Waifu).filter(Waifu.owner_id == user.id).all()
+            for waifu in waifus:
+                if waifu.dynamic:
+                    waifu.dynamic["energy"] = 100
+            result_message = "✅ Энергия всех вайфу восстановлена!"
+        else:
+            # For waifu boxes, just return success - actual waifu generation happens elsewhere
+            result_message = "✅ Покупка успешна! Призовите вайфу через меню"
+        
+        db.commit()
+        
+        logger.info(f"✅ Purchase successful: {item_id} by user {user.id}")
+        return {
+            "success": True,
+            "message": result_message,
+            "new_balance": {
+                "gold": user.coins,
+                "gems": user.gems
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
 @app.get("/health")
 async def health_check():
     """Проверка здоровья сервиса"""

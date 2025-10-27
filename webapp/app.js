@@ -36,7 +36,7 @@ function navigateTo(view) {
         
         const views = {
             'waifus': { title: '🎴 Мои вайфу', content: 'loadWaifuList()' },
-            'shop': { title: '🏪 Магазин', content: 'Внутриигровой магазин' },
+            'shop': { title: '🏪 Магазин', content: 'loadShopItems()' },
             'clan': { title: '🏰 Клан', content: 'Система кланов (в разработке)' },
             'quests': { title: '📅 Ежедневные задания', content: 'Активные миссии (в разработке)' },
             'skills': { title: '🧬 Прокачка навыков', content: 'Дерево навыков (в разработке)' },
@@ -46,9 +46,11 @@ function navigateTo(view) {
         if (views[view]) {
             viewTitle.textContent = views[view].title;
             
-            // Special handling for waifus list
+            // Special handling for different views
             if (view === 'waifus') {
                 loadWaifuList(viewContent);
+            } else if (view === 'shop') {
+                loadShopItems(viewContent);
             } else {
                 viewContent.textContent = views[view].content;
             }
@@ -122,6 +124,98 @@ async function selectWaifu(waifuId) {
         console.error('Error setting active waifu:', error);
         if (window.Telegram?.WebApp?.showAlert) {
             window.Telegram.WebApp.showAlert('❌ Ошибка при установке активной вайфу');
+        }
+    }
+}
+
+// Load shop items
+async function loadShopItems(container) {
+    container.innerHTML = '<p class="loading">Загрузка...</p>';
+    
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/shop?' + new URLSearchParams({ initData }));
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch shop items');
+        }
+        
+        const data = await response.json();
+        const items = data.items || [];
+        
+        if (items.length === 0) {
+            container.innerHTML = '<p style="padding: 20px; color: #666;">В магазине пока нет товаров</p>';
+            return;
+        }
+        
+        // Render shop items
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+                ${items.map(item => `
+                    <div style="background: white; border-radius: 12px; padding: 16px;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <div style="font-size: 32px;">${item.emoji}</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${item.name}</div>
+                                <div style="font-size: 12px; color: #666;">${item.description}</div>
+                            </div>
+                        </div>
+                        <button 
+                            onclick="purchaseItem('${item.id}')" 
+                            style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; padding: 12px; font-weight: bold; cursor: pointer; font-size: 14px;">
+                            Купить за ${item.price} ${item.currency === 'gold' ? '💰' : item.currency === 'gems' ? '💎' : '🔮'}
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Error loading shop items:', error);
+        container.innerHTML = '<p style="color: red; padding: 20px;">Ошибка загрузки</p>';
+    }
+}
+
+// Purchase item
+async function purchaseItem(itemId) {
+    if (!window.Telegram?.WebApp?.showConfirm) {
+        alert('Покупка пока не доступна');
+        return;
+    }
+    
+    try {
+        const confirmed = await window.Telegram.WebApp.showConfirm('Подтвердите покупку');
+        if (!confirmed) return;
+        
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/shop/purchase?' + new URLSearchParams({ item_id: itemId, initData }), {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to purchase item');
+        }
+        
+        const result = await response.json();
+        
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert(result.message);
+        }
+        
+        // Reload profile to update currency
+        await loadProfile();
+        
+        // Reload shop to update prices if needed
+        const viewContent = document.getElementById('view-content');
+        if (currentView === 'shop') {
+            loadShopItems(viewContent);
+        }
+        
+    } catch (error) {
+        console.error('Error purchasing item:', error);
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert(`❌ Ошибка: ${error.message}`);
         }
     }
 }
