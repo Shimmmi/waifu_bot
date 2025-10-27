@@ -97,6 +97,14 @@ async def handle_menu_callback(callback: CallbackQuery) -> None:
         await handle_teaching_confirm_callback(callback)
     elif callback.data.startswith("view_profile_"):
         await handle_view_profile_callback(callback)
+    elif callback.data.startswith("group_event_start_"):
+        await handle_group_event_start_callback(callback)
+    elif callback.data.startswith("group_event_yes_"):
+        await handle_group_event_yes_callback(callback)
+    elif callback.data.startswith("group_event_no_"):
+        await handle_group_event_no_callback(callback)
+    elif callback.data.startswith("group_event_waifu_"):
+        await handle_group_event_waifu_callback(callback)
 
 
 async def handle_profile_callback(callback: CallbackQuery) -> None:
@@ -549,26 +557,66 @@ async def show_waifu_list_page(callback: CallbackQuery, page: int = 0, sort_by: 
 
 
 async def handle_waifu_events_callback(callback: CallbackQuery) -> None:
-    """События вайфу"""
-    if callback.from_user is None:
+    """События вайфу - different logic for private vs group"""
+    if callback.from_user is None or callback.message.chat is None:
         return
+    
+    # Check if this is a group or private chat
+    from aiogram.enums import ChatType
+    is_group = callback.message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]
+    
+    if is_group:
+        # Group chat: show event selection menu
+        await handle_group_events_menu(callback)
+    else:
+        # Private chat: show regular events
+        events = get_available_events()
+        
+        text = "🎯 <b>События вайфу</b>\n\n"
+        text += "Доступные события:\n\n"
+        
+        for event in events:
+            text += f"🎪 <b>{event['name']}</b>\n"
+            text += f"📝 {event['description']}\n"
+            text += f"📊 Нужные характеристики: {', '.join(event['base_stats'])}\n"
+            text += f"💼 Бонус профессии: {event['profession_bonus']}\n\n"
 
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🎲 Случайное событие", callback_data="random_event")],
+            [InlineKeyboardButton(text="🔙 Назад к вайфу", callback_data="back_to_waifu_menu")]
+        ])
+
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+        await callback.answer()
+
+
+async def handle_group_events_menu(callback: CallbackQuery) -> None:
+    """Show event selection menu in group chat"""
     events = get_available_events()
     
-    text = "🎯 <b>События вайфу</b>\n\n"
-    text += "Доступные события:\n\n"
+    text = "🎯 <b>Групповые события</b>\n\n"
+    text += "Выберите событие для группы:\n\n"
     
+    keyboard_buttons = []
     for event in events:
-        text += f"🎪 <b>{event['name']}</b>\n"
-        text += f"📝 {event['description']}\n"
-        text += f"📊 Нужные характеристики: {', '.join(event['base_stats'])}\n"
-        text += f"💼 Бонус профессии: {event['profession_bonus']}\n\n"
-
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎲 Случайное событие", callback_data="random_event")],
-        [InlineKeyboardButton(text="🔙 Назад к вайфу", callback_data="back_to_waifu_menu")]
-    ])
-
+        # Find event_type by matching event name
+        event_type = None
+        for key, value in EVENTS.items():
+            if value['name'] == event['name']:
+                event_type = key
+                break
+        
+        if event_type:
+            keyboard_buttons.append([
+                InlineKeyboardButton(
+                    text=f"🎪 {event['name']}", 
+                    callback_data=f"group_event_start_{event_type}"
+                )
+            ])
+    
+    keyboard_buttons.append([InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu")])
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
     await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
     await callback.answer()
 
@@ -1654,3 +1702,208 @@ async def handle_view_profile_callback(callback: CallbackQuery) -> None:
         await callback.answer()
     finally:
         session.close()
+
+
+async def handle_group_event_start_callback(callback: CallbackQuery) -> None:
+    """Start a group event - send invitations to all registered users"""
+    if callback.from_user is None or callback.message.chat is None:
+        return
+    
+    from aiogram import Bot
+    from bot.services.group_event_system import (
+        group_event_manager, send_event_invitations
+    )
+    import asyncio
+    
+    # Extract event_type from callback_data: group_event_start_{event_type}
+    parts = callback.data.split("_")
+    if len(parts) < 4:
+        await callback.answer("Ошибка обработки")
+        return
+    
+    event_type = parts[3]
+    
+    # Check if there's already an active event in this chat
+    chat_id = callback.message.chat.id
+    existing_event = group_event_manager.get_event(chat_id)
+    
+    if existing_event and not existing_event.is_expired():
+        await callback.answer("Уже есть активное событие в этой группе!")
+        return
+    
+    # Start the event
+    event_state = group_event_manager.start_event(chat_id, event_type)
+    
+    # Send invitations to all registered users
+    session = SessionLocal()
+    bot = callback.bot
+    
+    try:
+        await callback.answer("Отправка приглашений...")
+        
+        # Send invitations
+        invitations_sent = await send_event_invitations(
+            bot, session, event_type, chat_id, event_state.event_id
+        )
+        
+        # Start timer to finalize event after 60 seconds
+        async def finalize_after_delay():
+            await asyncio.sleep(60)
+            results_text = await finalize_group_event(bot, session, chat_id)
+            if results_text:
+                await bot.send_message(chat_id=chat_id, text=results_text, parse_mode="HTML")
+        
+        # Schedule finalization
+        asyncio.create_task(finalize_after_delay())
+        
+        # Send confirmation message
+        event = EVENTS.get(event_type, {})
+        text = (
+            f"🎪 <b>Групповое событие началось!</b>\n\n"
+            f"🎯 <b>{event.get('name', 'Событие')}</b>\n"
+            f"📝 {event.get('description', 'Описание отсутствует')}\n\n"
+            f"📬 Приглашения отправлены {len(invitations_sent)} игрокам!\n"
+            f"⏱️ Время на участие: 60 секунд"
+        )
+        
+        await callback.message.edit_text(text, parse_mode="HTML")
+        
+    except Exception as e:
+        await callback.answer(f"Ошибка: {str(e)}")
+    finally:
+        session.close()
+
+
+async def handle_group_event_yes_callback(callback: CallbackQuery) -> None:
+    """Handle 'Yes' response to group event invitation - show waifu selection"""
+    if callback.from_user is None:
+        return
+    
+    # Extract event_id from callback_data: group_event_yes_{event_id}
+    parts = callback.data.split("_")
+    if len(parts) < 4:
+        await callback.answer("Ошибка обработки")
+        return
+    
+    event_id = "_".join(parts[3:])  # In case event_id has underscores
+    
+    tg_user_id = callback.from_user.id
+    session = SessionLocal()
+    
+    try:
+        # Get user
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            await callback.answer("Пользователь не найден")
+            return
+        
+        # Get all waifus
+        waifus_result = session.execute(
+            select(Waifu).where(Waifu.owner_id == user.id)
+        )
+        waifus = waifus_result.scalars().all()
+        
+        if not waifus:
+            await callback.answer("У вас нет вайфу!")
+            return
+        
+        # Get event type from event_id
+        chat_id_str = event_id.split("_")[0]
+        from bot.services.group_event_system import group_event_manager
+        event_state = group_event_manager.get_event(int(chat_id_str))
+        
+        if not event_state:
+            await callback.answer("Событие уже завершено")
+            return
+        
+        # Build waifu selection keyboard
+        keyboard_buttons = []
+        for waifu in waifus:
+            power = calculate_waifu_power({
+                "stats": waifu.stats,
+                "dynamic": waifu.dynamic,
+                "level": waifu.level
+            })
+            rarity_icon = get_rarity_color(waifu.rarity)
+            
+            keyboard_buttons.append([
+                InlineKeyboardButton(
+                    text=f"{waifu.name} - Ур.{waifu.level} {rarity_icon} 💪{power}",
+                    callback_data=f"group_event_waifu_{event_id}_{waifu.id}"
+                )
+            ])
+        
+        event = EVENTS.get(event_state.event_type, {})
+        text = (
+            f"🎯 <b>{event.get('name', 'Событие')}</b>\n\n"
+            f"Выберите вайфу для участия:"
+        )
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+        await callback.answer()
+        
+    except Exception as e:
+        await callback.answer(f"Ошибка: {str(e)}")
+    finally:
+        session.close()
+
+
+async def handle_group_event_no_callback(callback: CallbackQuery) -> None:
+    """Handle 'No' response to group event invitation"""
+    await callback.message.edit_text(
+        "❌ Ты отказался от участия в событии.",
+        reply_markup=None
+    )
+    await callback.answer()
+
+
+async def handle_group_event_waifu_callback(callback: CallbackQuery) -> None:
+    """Handle waifu selection for group event"""
+    if callback.from_user is None:
+        return
+    
+    # Extract event_id and waifu_id from callback_data: group_event_waifu_{event_id}_{waifu_id}
+    parts = callback.data.split("_")
+    if len(parts) < 6:
+        await callback.answer("Ошибка обработки")
+        return
+    
+    waifu_id = parts[-1]  # Last part is waifu_id
+    event_id = "_".join(parts[3:-1])  # Everything between group_event_waifu and waifu_id
+    
+    tg_user_id = callback.from_user.id
+    session = SessionLocal()
+    
+    try:
+        # Get user
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            await callback.answer("Пользователь не найден")
+            return
+        
+        # Add participant
+        chat_id_str = event_id.split("_")[0]
+        from bot.services.group_event_system import group_event_manager
+        group_event_manager.add_participant(int(chat_id_str), user.id, waifu_id)
+        
+        await callback.message.edit_text(
+            "✅ Ты успешно зарегистрирован на событие!\n\n⏱️ Ожидай результатов через 60 секунд.",
+            reply_markup=None
+        )
+        await callback.answer("Регистрация подтверждена!")
+        
+    except Exception as e:
+        await callback.answer(f"Ошибка: {str(e)}")
+    finally:
+        session.close()
+
+
+async def finalize_group_event(bot, session, chat_id: int):
+    """Finalize a group event and return results text"""
+    from bot.services.group_event_system import finalize_group_event as finalize_func
+    return await finalize_func(bot, session, chat_id)
