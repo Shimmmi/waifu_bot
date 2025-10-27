@@ -73,15 +73,45 @@ class GlobalXPService:
             return False  # Don't block if Redis fails
     
     def get_xp_required_for_level(self, level: int) -> int:
-        """Calculate XP required for a specific level using formula: 100 * level^1.1"""
-        return int(100 * (level ** 1.1))
+        """
+        Calculate XP required for a specific level
+        Progressive scale like waifus: 0-100-250-400-600-850-1150...
+        Starting from level 1 to level 2: 100 XP
+        Then each level needs 50 XP more than previous
+        Level 1→2: 100
+        Level 2→3: 150 (100+50)
+        Level 3→4: 200 (150+50)
+        Level 4→5: 250 (200+50)
+        Formula: base + (level-1) * increment
+        """
+        if level <= 1:
+            return 0
+        # For level N, need: 100 + (N-2) * 50 XP
+        # This means going from level N-1 to level N
+        return 100 + (level - 2) * 50
     
     def get_total_xp_for_level(self, level: int) -> int:
-        """Calculate total XP accumulated to reach a specific level."""
-        total = 0
-        for lvl in range(1, level + 1):
-            total += self.get_xp_required_for_level(lvl)
-        return total
+        """
+        Calculate total XP accumulated to reach a specific level
+        Sums up all XP needed from level 1 to target level
+        
+        Level 1: 0 XP
+        Level 2: 100 XP
+        Level 3: 250 XP (100 + 150)
+        Level 4: 450 XP (100 + 150 + 200)
+        Level 5: 700 XP (100 + 150 + 200 + 250)
+        etc.
+        """
+        if level <= 1:
+            return 0
+        
+        # Sum from 100 to 100+(level-2)*50 with step 50
+        # This is arithmetic progression: a=100, d=50, n=level-1 terms
+        # Sum = n/2 * (2a + (n-1)d)
+        n = level - 1  # Number of levels to go through
+        a = 100  # First term
+        d = 50   # Common difference
+        return n * (2 * a + (n - 1) * d) // 2
     
     def calculate_level_from_xp(self, xp: int) -> int:
         """Calculate current level from total XP."""
