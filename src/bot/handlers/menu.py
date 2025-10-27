@@ -1234,7 +1234,8 @@ async def handle_teaching_select_student_callback(callback: CallbackQuery) -> No
             f"📚 <b>Обучение: {student.name}</b>\n\n"
             f"👤 Ученик: {student.name} (Ур.{student.level}/{max_level})\n"
             f"📊 Текущий XP: {student.xp}\n\n"
-            f"Выберите вайфу для жертвования (несколько можно выбрать):",
+            f"Выберите вайфу для жертвования (несколько можно выбрать):\n\n"
+            f"SELECTED_TEACHERS:",
             reply_markup=keyboard,
             parse_mode="HTML"
         )
@@ -1245,9 +1246,71 @@ async def handle_teaching_select_student_callback(callback: CallbackQuery) -> No
 
 async def handle_teaching_toggle_teacher_callback(callback: CallbackQuery) -> None:
     """Toggle teacher selection state"""
-    # For now, just show that it's selected
-    # In a full implementation, we'd store selected teachers in state
-    await callback.answer("✅ Выбрана для обучения")
+    if callback.from_user is None or callback.message is None:
+        return
+    
+    # Extract teacher ID from callback_data
+    # Format: teaching_toggle_teacher_{waifu_id}
+    parts = callback.data.split("_", 3)  # Split into max 4 parts
+    if len(parts) < 4:
+        await callback.answer("Ошибка обработки")
+        return
+    
+    teacher_id = parts[3]  # Everything after "teaching_toggle_teacher_"
+    
+    # Get current message text and parse selected teachers
+    message_text = callback.message.text or ""
+    selected_ids_str = message_text.split("SELECTED_TEACHERS:")[-1].strip() if "SELECTED_TEACHERS:" in message_text else ""
+    selected_ids = set(selected_ids_str.split(",")) if selected_ids_str else set()
+    
+    # Toggle selection
+    if teacher_id in selected_ids:
+        selected_ids.remove(teacher_id)
+        await callback.answer("❌ Убрана из выбора")
+    else:
+        selected_ids.add(teacher_id)
+        await callback.answer("✅ Выбрана для обучения")
+    
+    # Reconstruct message text with updated selected IDs
+    # Extract the base message text (before SELECTED_TEACHERS)
+    base_text = message_text.split("SELECTED_TEACHERS:")[0].strip() if "SELECTED_TEACHERS:" in message_text else message_text
+    
+    # Append selected IDs to message text
+    selected_ids_str = ",".join(sorted(selected_ids))
+    new_message_text = f"{base_text}\n\nSELECTED_TEACHERS:{selected_ids_str}"
+    
+    # Update button texts to show selection state
+    keyboard = callback.message.reply_markup
+    if keyboard:
+        new_keyboard = []
+        for row in keyboard.inline_keyboard:
+            new_row = []
+            for button in row:
+                # Check if this is a teacher toggle button
+                if button.callback_data and button.callback_data.startswith("teaching_toggle_teacher_"):
+                    # Check if this teacher is selected
+                    button_teacher_id = button.callback_data.split("_", 3)[3] if len(button.callback_data.split("_", 3)) > 3 else ""
+                    if button_teacher_id in selected_ids:
+                        # Add checkmark to button text
+                        new_text = button.text
+                        if "✅" not in new_text:
+                            new_text = "✅ " + new_text
+                    else:
+                        # Remove checkmark
+                        new_text = button.text.replace("✅ ", "")
+                    new_row.append(InlineKeyboardButton(text=new_text, callback_data=button.callback_data))
+                else:
+                    new_row.append(button)
+            new_keyboard.append(new_row)
+        
+        new_markup = InlineKeyboardMarkup(inline_keyboard=new_keyboard)
+        
+        # Update message
+        try:
+            await callback.message.edit_text(new_message_text, reply_markup=new_markup, parse_mode="HTML")
+        except Exception as e:
+            # Message not modified, that's okay
+            pass
 
 
 async def handle_teaching_confirm_callback(callback: CallbackQuery) -> None:
@@ -1285,12 +1348,20 @@ async def handle_teaching_confirm_callback(callback: CallbackQuery) -> None:
             await callback.answer("Вайфу не найдена!")
             return
         
-        # For now, use simple logic: get all waifus except student
-        # In full implementation, we'd check which were selected
+        # Get selected teachers from message text
+        message_text = callback.message.text or ""
+        selected_ids_str = message_text.split("SELECTED_TEACHERS:")[-1].strip() if "SELECTED_TEACHERS:" in message_text else ""
+        selected_ids = set(selected_ids_str.split(",")) if selected_ids_str else set()
+        
+        if not selected_ids:
+            await callback.answer("❌ Не выбраны вайфу для жертвования!")
+            return
+        
+        # Get selected teacher waifus
         other_waifus = session.execute(
             select(Waifu).where(
                 Waifu.owner_id == user.id,
-                Waifu.id != student_id
+                Waifu.id.in_(list(selected_ids))
             )
         ).scalars().all()
         
