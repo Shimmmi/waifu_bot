@@ -24,13 +24,30 @@ async def cmd_waifu(message: Message) -> None:
     """Главная команда вайфу"""
     if message.from_user is None:
         return
-
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🎰 Призвать вайфу", callback_data="waifu_pull")],
-        [InlineKeyboardButton(text="📋 Мои вайфу", callback_data="waifu_list")],
-        [InlineKeyboardButton(text="🎯 События", callback_data="waifu_events")],
-        [InlineKeyboardButton(text="🏆 Турниры", callback_data="waifu_tournaments")]
-    ])
+    
+    # Get user to check coins
+    session = SessionLocal()
+    try:
+        result = session.execute(select(User).where(User.tg_id == message.from_user.id))
+        user = result.scalar_one_or_none()
+        
+        keyboard_rows = [
+            [InlineKeyboardButton(text="🎰 Призвать 1 вайфу (100)", callback_data="waifu_pull_single")],
+        ]
+        
+        # Add 10-pull button if user has enough coins
+        if user and user.coins >= 1000:
+            keyboard_rows.append([InlineKeyboardButton(text="🎰 Призвать 10 вайфу (1000)", callback_data="waifu_pull_multi")])
+        
+        keyboard_rows.extend([
+            [InlineKeyboardButton(text="📋 Мои вайфу", callback_data="waifu_list")],
+            [InlineKeyboardButton(text="🎯 События", callback_data="waifu_events")],
+            [InlineKeyboardButton(text="🏆 Турниры", callback_data="waifu_tournaments")]
+        ])
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_rows)
+    finally:
+        session.close()
 
     await message.answer(
         "🎭 <b>Вайфу система</b>\n\n"
@@ -45,8 +62,8 @@ async def cmd_waifu(message: Message) -> None:
     )
 
 
-@router.callback_query(lambda c: c.data == "waifu_pull")
-async def handle_waifu_pull(callback: CallbackQuery) -> None:
+@router.callback_query(lambda c: c.data == "waifu_pull_single")
+async def handle_waifu_pull_single(callback: CallbackQuery) -> None:
     """Обработка призыва вайфу"""
     if callback.from_user is None:
         logger.warning("Waifu pull callback with no user")
@@ -157,6 +174,103 @@ async def handle_waifu_pull(callback: CallbackQuery) -> None:
     finally:
         session.close()
         logger.debug("Session closed")
+
+
+@router.callback_query(lambda c: c.data == "waifu_pull_multi")
+async def handle_waifu_pull_multi(callback: CallbackQuery) -> None:
+    """Обработка массового призыва 10 вайфу"""
+    if callback.from_user is None:
+        logger.warning("Waifu multi-pull callback with no user")
+        return
+
+    tg_user_id = callback.from_user.id
+    logger.info(f"🎰 Multi-waifu pull (10x) requested by user {tg_user_id}")
+    
+    session = SessionLocal()
+    try:
+        # Проверяем пользователя
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+
+        if user is None:
+            logger.warning(f"User {tg_user_id} not found in database")
+            await callback.answer("Сначала используйте /start")
+            return
+
+        logger.info(f"User found: {user.username}, coins: {user.coins}")
+
+        # Проверяем баланс
+        if user.coins < 1000:
+            logger.info(f"Insufficient coins for user {user.username}: {user.coins}")
+            await callback.answer("Недостаточно монет! Нужно 1000 монет для массового призыва.")
+            return
+
+        # Генерируем 10 вайфу
+        max_card = session.execute(select(func.max(Waifu.card_number))).scalar() or 0
+        logger.info(f"Max card number: {max_card}, generating 10 waifus")
+        
+        waifus_created = []
+        try:
+            for i in range(10):
+                new_waifu_data = generate_waifu(max_card + 1 + i, user.id)
+                waifu = Waifu(**new_waifu_data)
+                session.add(waifu)
+                waifus_created.append(new_waifu_data)
+                logger.debug(f"Generated waifu #{i+1}: {new_waifu_data['name']} ({new_waifu_data['rarity']})")
+            
+            logger.info(f"✅ Generated 10 waifus")
+        except Exception as gen_error:
+            logger.error(f"❌ Error generating waifus: {gen_error}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
+        
+        # Списываем монеты
+        user.coins -= 1000
+        logger.debug(f"Deducted 1000 coins, remaining: {user.coins}")
+        
+        # Записываем транзакцию
+        from bot.models import Transaction
+        transaction = Transaction(
+            user_id=user.id,
+            kind="spend",
+            amount=1000,
+            currency="coins",
+            reason="waifu_pull_multi",
+            meta={"count": 10}
+        )
+        session.add(transaction)
+        
+        # Commit to database
+        try:
+            session.commit()
+            logger.info("✅ Database commit successful")
+        except Exception as commit_error:
+            logger.error(f"❌ Error committing to database: {commit_error}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
+
+        # Формируем результат
+        text = "🎰 <b>Массовый призыв завершен!</b>\n\n"
+        text += f"🎁 Призвано вайфу: {len(waifus_created)}\n\n"
+        
+        # Показываем краткую информацию о каждой вайфу
+        for i, waifu_data in enumerate(waifus_created, 1):
+            text += f"{i}. {waifu_data['name']} [{waifu_data['rarity']}] - {waifu_data['race']}\n"
+        
+        text += f"\n💰 Осталось монет: {user.coins}"
+
+        # Отправляем результат
+        await callback.message.edit_text(text, parse_mode="HTML")
+        await callback.answer(f"Призвано {len(waifus_created)} вайфу!")
+        logger.info(f"✅ Successfully summoned 10 waifus for user {user.username}")
+
+    except Exception as e:
+        logger.error(f"❌ MULTI WAIFU PULL ERROR for user {tg_user_id}: {type(e).__name__}: {str(e)}")
+        logger.error(f"Full traceback:\n{traceback.format_exc()}")
+        await callback.answer(f"Ошибка при массовом призыве: {str(e)}")
+        session.rollback()
+    finally:
+        session.close()
 
 
 @router.callback_query(lambda c: c.data == "waifu_list")

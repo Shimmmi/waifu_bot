@@ -42,12 +42,12 @@ async def cmd_daily(message: Message) -> None:
             return
         
         # Simple daily reward
-        user.coins += 50
+        user.coins += 100
         user.last_daily = datetime.utcnow()
         session.commit()
         
         await message.answer(
-            f"Ежедневный бонус получен! +50 монет\n"
+            f"Ежедневный бонус получен! +100 монет\n"
             f"Твой баланс: {user.coins} монет"
         )
         
