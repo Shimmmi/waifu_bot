@@ -1,6 +1,7 @@
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, CallbackQuery
+from aiogram.enums import ChatType
 from sqlalchemy import select
 import os
 
@@ -37,14 +38,24 @@ async def cmd_start(message: Message) -> None:
             session.commit()
 
         # Создаем кнопки меню
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="👤 Профиль", web_app=WebAppInfo(url=f"{WEBAPP_URL}/webapp/profile.html"))],
+        # Check if this is a private chat (WebApp buttons only work in private chats)
+        is_private = message.chat.type == "private"
+        
+        keyboard_buttons = []
+        if is_private:
+            keyboard_buttons.append([InlineKeyboardButton(text="👤 Профиль", web_app=WebAppInfo(url=f"{WEBAPP_URL}/webapp/profile.html"))])
+        else:
+            keyboard_buttons.append([InlineKeyboardButton(text="👤 Профиль", callback_data="open_profile")])
+        
+        keyboard_buttons.extend([
             [InlineKeyboardButton(text="🎁 Ежедневный бонус", callback_data="daily")],
             [InlineKeyboardButton(text="🎭 Вайфу", callback_data="waifu_menu")],
             [InlineKeyboardButton(text="🎯 События", callback_data="events_menu")],
             [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")],
             [InlineKeyboardButton(text="🔧 Debug", callback_data="debug_menu")]
         ])
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
 
         await message.answer(
             "Привет! Я Waifu Bot. Твой профиль создан. Выбери действие:",
