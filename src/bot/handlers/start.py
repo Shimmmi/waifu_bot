@@ -43,17 +43,22 @@ async def cmd_start(message: Message) -> None:
         
         keyboard_buttons = []
         if is_private:
+            # Private chat - full menu
             keyboard_buttons.append([InlineKeyboardButton(text="👤 Профиль", web_app=WebAppInfo(url=f"{WEBAPP_URL}/webapp/profile.html"))])
+            keyboard_buttons.extend([
+                [InlineKeyboardButton(text="🎁 Ежедневный бонус", callback_data="daily")],
+                [InlineKeyboardButton(text="🎭 Вайфу", callback_data="waifu_menu")],
+                [InlineKeyboardButton(text="🎯 События", callback_data="events_menu")],
+                [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")],
+                [InlineKeyboardButton(text="🔧 Debug", callback_data="debug_menu")]
+            ])
         else:
+            # Group chat - limited menu
             keyboard_buttons.append([InlineKeyboardButton(text="👤 Профиль", callback_data="open_profile")])
-        
-        keyboard_buttons.extend([
-            [InlineKeyboardButton(text="🎁 Ежедневный бонус", callback_data="daily")],
-            [InlineKeyboardButton(text="🎭 Вайфу", callback_data="waifu_menu")],
-            [InlineKeyboardButton(text="🎯 События", callback_data="events_menu")],
-            [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")],
-            [InlineKeyboardButton(text="🔧 Debug", callback_data="debug_menu")]
-        ])
+            keyboard_buttons.extend([
+                [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")],
+                [InlineKeyboardButton(text="🎯 События", callback_data="events_menu")]
+            ])
         
         keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
 

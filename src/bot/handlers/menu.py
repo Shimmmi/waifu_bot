@@ -95,6 +95,8 @@ async def handle_menu_callback(callback: CallbackQuery) -> None:
         await handle_teaching_toggle_teacher_callback(callback)
     elif callback.data.startswith("teaching_confirm_"):
         await handle_teaching_confirm_callback(callback)
+    elif callback.data.startswith("view_profile_"):
+        await handle_view_profile_callback(callback)
 
 
 async def handle_profile_callback(callback: CallbackQuery) -> None:
@@ -222,6 +224,9 @@ async def handle_stats_callback(callback: CallbackQuery) -> None:
         result = session.execute(select(User).where(User.tg_id == tg_user_id))
         current_user = result.scalar_one_or_none()
         
+        # Check if it's a private chat
+        is_private = callback.message.chat.type == "private"
+        
         # Get total users count
         total_users = session.execute(select(func.count(User.id))).scalar() or 0
         
@@ -230,7 +235,7 @@ async def handle_stats_callback(callback: CallbackQuery) -> None:
         
         # Get top users by coins
         top_users = session.execute(
-            select(User).order_by(User.coins.desc()).limit(5)
+            select(User).order_by(User.coins.desc()).limit(10)
         ).scalars().all()
         
         # Build top players text
@@ -260,9 +265,31 @@ async def handle_stats_callback(callback: CallbackQuery) -> None:
             f"🏆 <b>Топ игроки:</b>\n{top_players}"
         )
 
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu")]
-        ])
+        # Create buttons for viewing profiles in group chats
+        keyboard_buttons = []
+        if not is_private:
+            # In group chats, add buttons to view other players' profiles
+            profile_row = []
+            for user in top_users[:6]:  # First 6 players
+                username_display = user.username if user.username else f"User_{user.id}"
+                button_text = username_display[:10]
+                if len(username_display) > 10:
+                    button_text = f"{username_display[:7]}..."
+                profile_row.append(
+                    InlineKeyboardButton(
+                        text=f"👤 {button_text}",
+                        callback_data=f"view_profile_{user.tg_id}"
+                    )
+                )
+                if len(profile_row) == 2:  # 2 buttons per row
+                    keyboard_buttons.append(profile_row)
+                    profile_row = []
+            if profile_row:  # Add remaining buttons
+                keyboard_buttons.append(profile_row)
+        
+        keyboard_buttons.append([InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu")])
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
 
         await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
         await callback.answer()
@@ -301,14 +328,29 @@ async def handle_back_to_menu(callback: CallbackQuery) -> None:
     
     webapp_url = os.getenv("WEBAPP_URL", "https://waifu-bot-webapp.onrender.com")
     
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="👤 Профиль", web_app=WebAppInfo(url=f"{webapp_url}/webapp/profile.html"))],
-        [InlineKeyboardButton(text="🎁 Ежедневный бонус", callback_data="daily")],
-        [InlineKeyboardButton(text="🎭 Вайфу", callback_data="waifu_menu")],
-        [InlineKeyboardButton(text="🎯 События", callback_data="events_menu")],
-        [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")],
-        [InlineKeyboardButton(text="🔧 Debug", callback_data="debug_menu")]
-    ])
+    # Check if it's a private chat
+    is_private = callback.message.chat.type == "private"
+    
+    keyboard_buttons = []
+    if is_private:
+        # Private chat - full menu
+        keyboard_buttons.append([InlineKeyboardButton(text="👤 Профиль", web_app=WebAppInfo(url=f"{webapp_url}/webapp/profile.html"))])
+        keyboard_buttons.extend([
+            [InlineKeyboardButton(text="🎁 Ежедневный бонус", callback_data="daily")],
+            [InlineKeyboardButton(text="🎭 Вайфу", callback_data="waifu_menu")],
+            [InlineKeyboardButton(text="🎯 События", callback_data="events_menu")],
+            [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")],
+            [InlineKeyboardButton(text="🔧 Debug", callback_data="debug_menu")]
+        ])
+    else:
+        # Group chat - limited menu
+        keyboard_buttons.append([InlineKeyboardButton(text="👤 Профиль", callback_data="open_profile")])
+        keyboard_buttons.extend([
+            [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")],
+            [InlineKeyboardButton(text="🎯 События", callback_data="events_menu")]
+        ])
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
 
     await callback.message.edit_text(
         "🤖 <b>Waifu Bot</b>\n\nВыбери действие:",
@@ -1548,3 +1590,67 @@ async def handle_waifu_details_menu_callback(callback: CallbackQuery) -> None:
             session.close()
     else:
         await callback.answer("Ошибка обработки запроса")
+
+
+async def handle_view_profile_callback(callback: CallbackQuery) -> None:
+    """Handle viewing another player's profile in group chat"""
+    if callback.from_user is None:
+        return
+    
+    # Extract target user's tg_id from callback_data: view_profile_{tg_id}
+    parts = callback.data.split("_")
+    if len(parts) < 3:
+        await callback.answer("Ошибка обработки")
+        return
+    
+    target_tg_id = int(parts[2])
+    
+    session = SessionLocal()
+    try:
+        # Get target user
+        result = session.execute(select(User).where(User.tg_id == target_tg_id))
+        target_user = result.scalar_one_or_none()
+        
+        if not target_user:
+            await callback.answer("Пользователь не найден")
+            return
+        
+        # Get active waifu
+        active_waifu = session.execute(
+            select(Waifu).where(Waifu.owner_id == target_user.id, Waifu.is_active == True)
+        ).scalar_one_or_none()
+        
+        # Build profile text (public info only)
+        username_display = f"@{target_user.username}" if target_user.username else target_user.display_name or "Anonymous"
+        text = (
+            f"👤 <b>Профиль игрока</b>\n\n"
+            f"📛 Игрок: {username_display}\n"
+            f"⭐ Уровень аккаунта: {getattr(target_user, 'account_level', 1)}\n\n"
+        )
+        
+        if active_waifu:
+            power = calculate_waifu_power({
+                "stats": active_waifu.stats,
+                "dynamic": active_waifu.dynamic,
+                "level": active_waifu.level
+            })
+            rarity_icon = get_rarity_color(active_waifu.rarity)
+            text += (
+                f"💙 <b>Активная вайфу:</b>\n"
+                f"{active_waifu.name} {rarity_icon}\n"
+                f"Уровень: {active_waifu.level}\n"
+                f"Сила: {power}\n"
+            )
+        else:
+            text += "💙 Активная вайфу: Нет\n"
+        
+        text += "\n💸 Золото и гемы скрыты"
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔙 Назад к статистике", callback_data="stats")]
+        ])
+        
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+        await callback.answer()
+    finally:
+        session.close()
