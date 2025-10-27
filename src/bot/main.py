@@ -15,6 +15,7 @@ from bot.handlers.menu import router as menu_router
 from bot.handlers.waifu import router as waifu_router
 from bot.handlers.debug import router as debug_router
 from bot.handlers.webapp import router as webapp_router
+from bot.handlers.commands import router as commands_router, setup_bot_commands
 from bot.services.stat_restoration import start_restoration_service, stop_restoration_service
 
 # Configure logging
@@ -47,6 +48,11 @@ async def main() -> None:
     dp.include_router(waifu_router)
     dp.include_router(debug_router)
     dp.include_router(webapp_router)
+    dp.include_router(commands_router)
+    
+    # Set up bot commands in Telegram
+    await setup_bot_commands(bot)
+    logger.info("✅ Bot commands registered in Telegram")
 
     # Start stat restoration service
     await start_restoration_service()

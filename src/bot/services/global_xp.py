@@ -108,18 +108,22 @@ class GlobalXPService:
         xp_amount: int,
         source: str = "message",
         meta: dict[str, Any] | None = None,
+        skip_rate_limit: bool = False,
     ) -> dict[str, Any]:
         """
         Award global XP to user account.
         Returns dict with level_up info if leveled up.
+        
+        Args:
+            session: Database session
+            user_id: Database user ID
+            xp_amount: Amount of XP to award
+            source: Source of XP (e.g., "message")
+            meta: Additional metadata
+            skip_rate_limit: If True, skip rate limit check (already done externally)
         """
         if xp_amount <= 0:
             return {"level_up": False}
-        
-        # Check rate limit
-        if await self.is_rate_limited(user_id):
-            logger.info(f"User {user_id} is rate limited")
-            return {"level_up": False, "rate_limited": True}
         
         # Get user
         result = session.execute(select(User).where(User.id == user_id))
