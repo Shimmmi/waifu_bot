@@ -1,13 +1,18 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import os
 import sys
 import logging
 from pathlib import Path
+import hmac
+import hashlib
+import base64
+import json
+from urllib.parse import parse_qs, unquote
 
 # Configure logging
 logging.basicConfig(
@@ -66,6 +71,39 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def get_telegram_user_id(request: Request) -> Optional[int]:
+    """Извлечение user_id из Telegram WebApp initData"""
+    try:
+        # Получаем initData из заголовка или query параметров
+        init_data = request.headers.get("X-Telegram-Init-Data") or request.query_params.get("initData")
+        
+        if not init_data:
+            logger.warning("⚠️ No initData provided")
+            return None
+        
+        # Декодируем initData
+        data_str = unquote(init_data)
+        parsed_data = parse_qs(data_str)
+        
+        # Получаем user из parsed_data
+        user_str = parsed_data.get('user', [None])[0]
+        if not user_str:
+            logger.warning("⚠️ No user data in initData")
+            return None
+        
+        # Парсим JSON с данными пользователя
+        user_data = json.loads(user_str)
+        telegram_user_id = user_data.get('id')
+        
+        if telegram_user_id:
+            logger.info(f"✅ Extracted Telegram user ID: {telegram_user_id}")
+        
+        return telegram_user_id
+        
+    except Exception as e:
+        logger.warning(f"⚠️ Failed to extract user ID from initData: {e}")
+        return None
 
 @app.get("/api/waifu/{waifu_id}")
 async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
@@ -147,7 +185,7 @@ async def waifu_card_page(waifu_id: str):
         return {"message": f"Waifu card page for ID: {waifu_id}", "status": "running"}
 
 @app.get("/api/profile")
-async def get_profile(user_id: int = None, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Получение данных профиля пользователя (из Telegram WebApp initData)"""
     try:
         logger.info(f"📡 API REQUEST: GET /api/profile")
@@ -156,9 +194,18 @@ async def get_profile(user_id: int = None, db: Session = Depends(get_db)) -> Dic
             logger.error("❌ Database models not configured")
             raise HTTPException(status_code=500, detail="Database models not configured")
         
-        # For now, we'll use the first user (in production, get from Telegram initData)
-        # TODO: Extract user from Telegram WebApp initData
-        user = db.query(User).first()
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if telegram_user_id:
+            # Find user by Telegram user ID
+            user = db.query(User).filter(User.telegram_id == telegram_user_id).first()
+            logger.info(f"🔍 Searching for user with telegram_id={telegram_user_id}")
+        else:
+            # Fallback to first user if initData not available (for testing)
+            logger.warning("⚠️ No telegram_user_id, using first user as fallback")
+            user = db.query(User).first()
+        
         if not user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
         
@@ -204,7 +251,7 @@ async def get_profile(user_id: int = None, db: Session = Depends(get_db)) -> Dic
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
 
 @app.get("/api/waifus")
-async def get_waifus(user_id: int = None, db: Session = Depends(get_db)):
+async def get_waifus(request: Request, db: Session = Depends(get_db)):
     """Получение списка всех вайфу пользователя"""
     try:
         logger.info(f"📡 API REQUEST: GET /api/waifus")
@@ -212,9 +259,18 @@ async def get_waifus(user_id: int = None, db: Session = Depends(get_db)):
         if User is None or Waifu is None:
             raise HTTPException(status_code=500, detail="Database models not configured")
         
-        # For now, we'll use the first user (in production, get from Telegram initData)
-        # TODO: Extract user from Telegram WebApp initData
-        user = db.query(User).first()
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if telegram_user_id:
+            # Find user by Telegram user ID
+            user = db.query(User).filter(User.telegram_id == telegram_user_id).first()
+            logger.info(f"🔍 Searching for user with telegram_id={telegram_user_id}")
+        else:
+            # Fallback to first user if initData not available (for testing)
+            logger.warning("⚠️ No telegram_user_id, using first user as fallback")
+            user = db.query(User).first()
+        
         if not user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
         

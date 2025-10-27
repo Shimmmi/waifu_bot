@@ -71,8 +71,11 @@ function showView(state) {
 // Render profile
 async function renderProfile() {
     try {
-        // Load profile data
-        const response = await fetch('/api/profile');
+        // Get initData from Telegram WebApp
+        const initData = window.Telegram?.WebApp?.initData || '';
+        
+        // Load profile data with initData
+        const response = await fetch('/api/profile?' + new URLSearchParams({ initData }));
         if (!response.ok) {
             throw new Error('Failed to fetch profile');
         }
@@ -170,7 +173,10 @@ async function renderWaifuList() {
     
     try {
         // Load waifu list
-        const response = await fetch('/api/waifus');
+        // Get initData from Telegram WebApp
+        const initData = window.Telegram?.WebApp?.initData || '';
+        
+        const response = await fetch('/api/waifus?' + new URLSearchParams({ initData }));
         if (!response.ok) {
             throw new Error('Failed to fetch waifus');
         }
