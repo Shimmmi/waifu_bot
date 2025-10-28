@@ -537,14 +537,13 @@ async function summonWaifu(count) {
     try {
         const initData = window.Telegram?.WebApp?.initData || '';
         
-        const response = await fetch('/api/summon', {
+        const response = await fetch(`/api/summon?${new URLSearchParams({ initData })}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                count: count,
-                initData: initData
+                count: count
             })
         });
         
