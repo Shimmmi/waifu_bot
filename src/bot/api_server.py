@@ -143,6 +143,7 @@ async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[s
             "stats": waifu.stats,
             "dynamic": waifu.dynamic,
             "tags": waifu.tags,
+            "is_favorite": waifu.is_favorite or False,
             "created_at": waifu.created_at.isoformat() if waifu.created_at else None
         }
         

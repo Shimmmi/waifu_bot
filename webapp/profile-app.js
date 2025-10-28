@@ -199,7 +199,7 @@ function renderWaifuList(container) {
                         <div style="flex: 1;">
                             <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${waifu.name}</div>
                             <div style="font-size: 14px; color: #666; margin-bottom: 4px;">Уровень ${waifu.level} • 💪${waifu.power}</div>
-                            <div style="font-size: 12px; color: #999;">${waifu.race} • ${waifu.profession}</div>
+                            <div style="font-size: 12px; color: #999;">${waifu.race} • ${waifu.profession} • ${getFlagEmoji(waifu.nationality)}</div>
                         </div>
                         <div style="color: #999; font-size: 20px;">→</div>
                     </div>
@@ -446,6 +446,49 @@ function toggleFavorites() {
     }
 }
 
+// Toggle waifu favorite status (from detail modal)
+async function toggleWaifuFavorite(waifuId) {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch(`/api/waifu/${waifuId}/toggle-favorite?${new URLSearchParams({ initData })}`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Update button appearance
+            const btn = document.getElementById('favorite-toggle-btn');
+            if (btn) {
+                if (data.is_favorite) {
+                    btn.style.background = '#f5576c';
+                    btn.innerHTML = '❤️';
+                } else {
+                    btn.style.background = 'rgba(255,255,255,0.3)';
+                    btn.innerHTML = '🤍';
+                }
+            }
+            
+            // Update waifuList for re-rendering
+            const waifuIndex = waifuList.findIndex(w => w.id === waifuId);
+            if (waifuIndex !== -1) {
+                waifuList[waifuIndex].is_favorite = data.is_favorite;
+            }
+            
+        } else {
+            const errorData = await response.json();
+            if (window.Telegram?.WebApp?.showAlert) {
+                window.Telegram.WebApp.showAlert('❌ Ошибка: ' + (errorData.detail || 'Неизвестная ошибка'));
+            }
+        }
+    } catch (error) {
+        console.error('Error toggling favorite:', error);
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert('❌ Ошибка: ' + error.message);
+        }
+    }
+}
+
 // Open waifu detail modal for viewing stats (from "My Waifus" list)
 async function openWaifuDetail(waifuId) {
     console.log('🔗 Opening waifu detail modal for:', waifuId);
@@ -497,7 +540,18 @@ async function openWaifuDetail(waifuId) {
                 <!-- Header -->
                 <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 20px 20px 0 0; backdrop-filter: blur(10px);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <h2 style="color: white; margin: 0; font-size: 24px;">${waifu.name}</h2>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <h2 style="color: white; margin: 0; font-size: 24px;">${waifu.name}</h2>
+                            <button id="favorite-toggle-btn" onclick="toggleWaifuFavorite('${waifuId}')" style="
+                                background: ${waifu.is_favorite ? '#f5576c' : 'rgba(255,255,255,0.3)'};
+                                border: none; color: white; width: 36px; height: 36px;
+                                border-radius: 50%; font-size: 18px; cursor: pointer;
+                                display: flex; align-items: center; justify-content: center;
+                                transition: all 0.2s; padding: 0;
+                            " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                                ${waifu.is_favorite ? '❤️' : '🤍'}
+                            </button>
+                        </div>
                         <span style="background: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 12px; font-size: 14px;">Ур.${waifu.level}</span>
                     </div>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -535,7 +589,7 @@ async function openWaifuDetail(waifuId) {
                                 <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.charm || 0}</div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">💞 Привязанность</div>
+                                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">🎯 Ловкость</div>
                                 <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.dynamic.bond || 0}</div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
