@@ -167,8 +167,11 @@ if webapp_dir.exists():
     logger.info(f"✅ Static files mounted from: {webapp_dir}")
 
 @app.get("/")
-async def read_root():
+async def read_root(request: Request):
     """Главная страница WebApp"""
+    logger.info(f"🌐 Root WebApp request: {request.url}")
+    logger.info(f"📱 User Agent: {request.headers.get('user-agent', 'Unknown')}")
+    
     webapp_path = Path(__file__).parent.parent.parent / "webapp" / "index.html"
     if webapp_path.exists():
         return FileResponse(str(webapp_path))
@@ -189,6 +192,8 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
     """Получение данных профиля пользователя (из Telegram WebApp initData)"""
     try:
         logger.info(f"📡 API REQUEST: GET /api/profile")
+        logger.info(f"🌐 Request URL: {request.url}")
+        logger.info(f"📱 User Agent: {request.headers.get('user-agent', 'Unknown')}")
         
         if User is None or SessionLocal is None:
             logger.error("❌ Database models not configured")

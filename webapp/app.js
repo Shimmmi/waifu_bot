@@ -11,6 +11,14 @@ if (window.Telegram && window.Telegram.WebApp) {
 
 // Load profile data on page load
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 WebApp loaded at:', new Date().toISOString());
+    console.log('🔗 Current URL:', window.location.href);
+    console.log('📱 User Agent:', navigator.userAgent);
+    
+    // Log URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    console.log('📋 URL Parameters:', Object.fromEntries(urlParams.entries()));
+    
     await loadProfile();
 });
 

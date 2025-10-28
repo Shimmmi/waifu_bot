@@ -2,8 +2,8 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Профиль</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Waifu Bot - Профиль</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * {
@@ -11,318 +11,367 @@
             padding: 0;
             box-sizing: border-box;
         }
-
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            overflow-x: hidden;
+            min-height: 100vh;
             padding: 16px;
         }
-
-        .profile-header {
+        
+        .container {
+            max-width: 420px;
+            margin: 0 auto;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .profile-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
+            color: #333;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        .profile-top {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-            padding: 12px;
-            background: var(--tg-theme-secondary-bg-color, #f1f1f1);
-            border-radius: 12px;
+            gap: 16px;
+            margin-bottom: 16px;
         }
-
+        
         .avatar {
-            width: 50px;
-            height: 50px;
+            width: 64px;
+            height: 64px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
-            font-size: 20px;
-            font-weight: bold;
+            font-size: 28px;
             flex-shrink: 0;
-        }
-
-        .user-info h2 {
-            font-size: 16px;
-            margin-bottom: 2px;
-        }
-
-        .username {
-            color: var(--tg-theme-hint-color, #999999);
-            font-size: 12px;
-        }
-
-        .stats-section {
-            background: var(--tg-theme-secondary-bg-color, #f1f1f1);
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-
-        .stats-section h3 {
-            font-size: 14px;
-            margin-bottom: 8px;
-            color: var(--tg-theme-text-color, #000000);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-        }
-
-        .stat-card {
-            background: var(--tg-theme-bg-color, #ffffff);
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 18px;
-            font-weight: bold;
-            color: var(--tg-theme-button-color, #0088cc);
-            margin-bottom: 4px;
-        }
-
-        .stat-label {
-            font-size: 11px;
-            color: var(--tg-theme-hint-color, #999999);
-        }
-
-        .active-waifu {
-            background: var(--tg-theme-secondary-bg-color, #f1f1f1);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 16px;
-        }
-
-        .active-waifu h3 {
-            font-size: 18px;
-            margin-bottom: 16px;
-        }
-
-        .waifu-card {
-            background: var(--tg-theme-bg-color, #ffffff);
-            border-radius: 12px;
-            padding: 0;
-            overflow: hidden;
-        }
-
-        .waifu-image-container {
-            width: 100%;
-            height: 200px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .waifu-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .waifu-info {
-            padding: 16px;
-        }
-
-        .waifu-name {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            background-size: cover;
+            background-position: center;
         }
         
-        .active-icon {
-            font-size: 18px;
-        }
-
-        .waifu-level {
-            font-size: 16px;
-            color: var(--tg-theme-hint-color, #999999);
+        .profile-info h2 {
+            font-size: 20px;
             margin-bottom: 4px;
         }
-
-        .waifu-power {
-            font-size: 18px;
-            font-weight: bold;
-            color: var(--tg-theme-button-color, #0088cc);
+        
+        .profile-info p {
+            font-size: 14px;
+            color: #666;
         }
-
-        .placeholder {
+        
+        /* Currency */
+        .currency {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .currency-item {
+            flex: 1;
+            min-width: 80px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 12px;
+            padding: 8px 12px;
             text-align: center;
-            color: var(--tg-theme-hint-color, #999999);
-            padding: 40px 20px;
+            color: white;
         }
-
-        .placeholder-icon {
-            font-size: 48px;
+        
+        .currency-item emoji {
+            font-size: 16px;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .currency-value {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        /* Level Bar */
+        .level-section {
+            margin-bottom: 16px;
+        }
+        
+        .level-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 8px;
         }
-
-        .error {
-            background: #ff4444;
+        
+        .level-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
             color: white;
-            padding: 16px;
-            border-radius: 12px;
-            margin-bottom: 16px;
-            text-align: center;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
         }
-
+        
+        .xp-bar {
+            height: 12px;
+            background: #e0e0e0;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+        
+        /* Active Waifu */
+        .active-waifu {
+            margin-bottom: 20px;
+        }
+        
+        .waifu-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .waifu-card:active {
+            transform: scale(0.98);
+        }
+        
+        .waifu-image {
+            width: 100%;
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .waifu-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: #333;
+        }
+        
+        .waifu-info {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .change-waifu-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        /* Navigation Grid */
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        
+        .nav-btn {
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            color: #333;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .nav-btn emoji {
+            font-size: 32px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .nav-btn label {
+            font-size: 14px;
+            font-weight: 600;
+            display: block;
+        }
+        
+        /* Badge for notifications */
+        .badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #f5576c;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        .nav-btn-wrapper {
+            position: relative;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        /* Loading */
         .loading {
             text-align: center;
             padding: 40px;
-            color: var(--tg-theme-hint-color, #999999);
+            font-size: 18px;
+        }
+        
+        /* Back button */
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 20px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 16px;
+            width: 100%;
         }
     </style>
 </head>
 <body>
-    <div id="loading" class="loading">Загрузка...</div>
-    <div id="error" class="error" style="display: none;"></div>
-    <div id="profile" style="display: none;">
-        <div class="profile-header">
-            <div class="avatar" id="avatar">U</div>
-            <div class="user-info">
-                <h2 id="displayName">Загрузка...</h2>
-                <div class="username" id="username">@username</div>
-            </div>
-        </div>
-
-        <div class="stats-section">
-            <h3>💰 Валюты</h3>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value" id="coins">0</div>
-                    <div class="stat-label">💰 Монет</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="gems">0</div>
-                    <div class="stat-label">💎 Гемов</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="stats-section">
-            <h3>🎮 Аккаунт</h3>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value" id="accountLevel">1</div>
-                    <div class="stat-label">Уровень</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="skillPoints">0</div>
-                    <div class="stat-label">Очки</div>
-                </div>
-            </div>
-            <div class="stat-card" style="grid-column: 1 / -1; margin-top: 8px;">
-                <div class="stat-value" id="globalXp" style="font-size: 16px;">0 XP</div>
-                <div class="stat-label">Опыт</div>
-            </div>
-        </div>
-
-        <div class="active-waifu">
-            <h3>⭐ Активная вайфу</h3>
-            <div id="activeWaifu">
-                <div class="waifu-card">
-                    <div class="waifu-image-container">
-                        <img class="waifu-image" id="waifuImage" src="" alt="Waifu">
+    <div class="container">
+        <!-- Profile View -->
+        <div id="profile-view" class="view">
+            <!-- Profile Card -->
+            <div class="profile-card">
+                <div class="profile-top">
+                    <div class="avatar" id="user-avatar" onclick="openAvatarSelection()" style="cursor: pointer;">👤</div>
+                    <div class="profile-info">
+                        <h2 id="user-name">Загрузка...</h2>
+                        <p id="user-id">ID: ...</p>
                     </div>
-                    <div class="waifu-info">
-                        <div class="waifu-name" id="waifuName">
-                            <span class="active-icon">⭐</span>
-                            <span>Загрузка...</span>
-                        </div>
-                        <div class="waifu-level" id="waifuLevel">Уровень: ?</div>
-                        <div class="waifu-power" id="waifuPower">Сила: ?</div>
+                </div>
+                
+                <!-- Currency -->
+                <div class="currency">
+                    <div class="currency-item">
+                        <emoji>💰</emoji>
+                        <div class="currency-value" id="gold-value">0</div>
+                    </div>
+                    <div class="currency-item">
+                        <emoji>💎</emoji>
+                        <div class="currency-value" id="gem-value">0</div>
+                    </div>
+                    <div class="currency-item">
+                        <emoji>🔮</emoji>
+                        <div class="currency-value" id="token-value">0</div>
+                    </div>
+                </div>
+                
+                <!-- Level -->
+                <div class="level-section">
+                    <div class="level-header">
+                        <span style="font-weight: bold;">⭐ Уровень: <span id="player-level">1</span></span>
+                    </div>
+                    <div class="xp-bar">
+                        <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
+                    </div>
+                    <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                        Опыт: <span id="xp-current">0</span> / <span id="xp-next">100</span>
                     </div>
                 </div>
             </div>
-            <div id="noActiveWaifu" class="placeholder" style="display: none;">
-                <div class="placeholder-icon">👤</div>
-                <div>Нет активной вайфу</div>
+            
+            <!-- Active Waifu -->
+            <div class="profile-card active-waifu">
+                <div id="active-waifu-card" class="waifu-card">
+                    <p class="loading">Загрузка...</p>
+                </div>
+            </div>
+            
+            <!-- Navigation -->
+            <div class="nav-grid">
+                <div class="nav-btn-wrapper">
+                    <button class="nav-btn" onclick="navigateTo('waifus')">
+                        <emoji>🎴</emoji>
+                        <label>Мои вайфу</label>
+                    </button>
+                </div>
+                <div class="nav-btn-wrapper">
+                    <button class="nav-btn" onclick="navigateTo('clan')">
+                        <emoji>🏰</emoji>
+                        <label>Клан</label>
+                    </button>
+                </div>
+                <div class="nav-btn-wrapper">
+                    <button class="nav-btn" onclick="navigateTo('skills')">
+                        <emoji>🧬</emoji>
+                        <label>Прокачка</label>
+                    </button>
+                </div>
+                <div class="nav-btn-wrapper">
+                    <button class="nav-btn" onclick="navigateTo('shop')">
+                        <emoji>🏪</emoji>
+                        <label>Магазин</label>
+                    </button>
+                </div>
+                <div class="nav-btn-wrapper">
+                    <button class="nav-btn" onclick="navigateTo('quests')">
+                        <emoji>📅</emoji>
+                        <label>Задания</label>
+                    </button>
+                </div>
+                <div class="nav-btn-wrapper">
+                    <button class="nav-btn" onclick="navigateTo('settings')">
+                        <emoji>⚙️</emoji>
+                        <label>Настройки</label>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Placeholder for other views -->
+        <div id="other-views" class="hidden">
+            <button class="back-btn" onclick="navigateTo('profile')">← Назад</button>
+            <div class="profile-card">
+                <h2 id="view-title">Другая страница</h2>
+                <p id="view-content">Контент будет добавлен</p>
             </div>
         </div>
     </div>
-
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
-
-        async function loadProfile() {
-            try {
-                // Get user_id from Telegram WebApp
-                const tg = window.Telegram.WebApp;
-                const user = tg.initDataUnsafe?.user;
-                const user_id = user?.id;
-                
-                if (!user_id) {
-                    throw new Error('User ID not found');
-                }
-                
-                const response = await fetch(`/api/profile?user_id=${user_id}`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('profile').style.display = 'block';
-                
-                // User info
-                const displayName = data.display_name || 'Пользователь';
-                const username = data.username || 'username';
-                
-                document.getElementById('displayName').textContent = displayName;
-                document.getElementById('username').textContent = '@' + username;
-                document.getElementById('avatar').textContent = displayName.charAt(0).toUpperCase();
-                
-                // Stats
-                document.getElementById('coins').textContent = data.coins || 0;
-                document.getElementById('gems').textContent = data.gems || 0;
-                document.getElementById('accountLevel').textContent = data.account_level || 1;
-                document.getElementById('globalXp').textContent = (data.global_xp || 0) + ' XP';
-                document.getElementById('skillPoints').textContent = data.skill_points || 0;
-                
-                // Active waifu
-                if (data.active_waifu) {
-                    const waifu = data.active_waifu;
-                    document.getElementById('activeWaifu').style.display = 'block';
-                    document.getElementById('noActiveWaifu').style.display = 'none';
-                    
-                    // Set waifu name with active icon
-                    const waifuNameElement = document.getElementById('waifuName');
-                    waifuNameElement.innerHTML = `<span class="active-icon">❤️</span><span>${waifu.name || 'Unknown'}</span>`;
-                    
-                    document.getElementById('waifuLevel').textContent = `Уровень: ${waifu.level || 1}`;
-                    document.getElementById('waifuPower').textContent = `Сила: ${waifu.power || 0}`;
-                    
-                    if (waifu.image_url) {
-                        const img = document.getElementById('waifuImage');
-                        img.src = waifu.image_url;
-                        img.onerror = function() {
-                            this.src = 'https://via.placeholder.com/80x80?text=🎭';
-                        };
-                    }
-                } else {
-                    document.getElementById('activeWaifu').style.display = 'none';
-                    document.getElementById('noActiveWaifu').style.display = 'block';
-                }
-                
-            } catch (error) {
-                console.error('Error loading profile:', error);
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('error').textContent = 'Произошла ошибка при загрузке профиля: ' + error.message;
-            }
-        }
-
-        loadProfile();
-    </script>
+    
+    <script src="app.js"></script>
 </body>
 </html>
