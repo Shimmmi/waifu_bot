@@ -324,6 +324,22 @@
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get('waifu_id');
         }
+        
+        // Получение initData из URL параметров или из Telegram WebApp
+        function getInitData() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlInitData = urlParams.get('initData');
+            const tgInitData = tg.initData || window.Telegram?.WebApp?.initData || '';
+            
+            // Prefer URL parameter, fallback to Telegram WebApp
+            const initData = urlInitData || tgInitData;
+            
+            console.log('🔐 InitData from URL:', urlInitData ? urlInitData.substring(0, 50) + '...' : 'none');
+            console.log('🔐 InitData from TG:', tgInitData ? tgInitData.substring(0, 50) + '...' : 'none');
+            console.log('🔐 Using initData length:', initData.length);
+            
+            return initData;
+        }
 
         // Получение данных вайфу с сервера
         async function fetchWaifuData(waifuId) {
@@ -589,17 +605,30 @@
                 const setActiveBtn = document.getElementById('set-active-btn');
                 setActiveBtn.addEventListener('click', async () => {
                     try {
-                        const initData = tg.initData || '';
+                        // Get initData from URL or Telegram WebApp
+                        const initData = getInitData();
+                        
+                        if (!initData) {
+                            console.error('❌ No initData available');
+                            tg.showAlert('❌ Ошибка аутентификации. Попробуйте открыть карточку заново.');
+                            return;
+                        }
+                        
+                        console.log('📤 Sending request to set-active with initData length:', initData.length);
+                        
                         const response = await fetch(`/api/waifu/${waifuId}/set-active?${new URLSearchParams({ initData })}`, {
                             method: 'POST'
                         });
+                        
                         if (response.ok) {
                             tg.showAlert('✅ Вайфу установлена как активная!');
                         } else {
                             const errorData = await response.json();
+                            console.error('❌ Server error:', errorData);
                             tg.showAlert('❌ Ошибка: ' + (errorData.detail || 'Неизвестная ошибка'));
                         }
                     } catch (error) {
+                        console.error('❌ Error:', error);
                         tg.showAlert('❌ Ошибка: ' + error.message);
                     }
                 });

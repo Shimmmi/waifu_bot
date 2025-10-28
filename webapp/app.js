@@ -173,8 +173,17 @@ function openWaifuDetail(waifuId) {
     // Open waifu detail WebApp (same as in bot menu)
     console.log('🔗 Opening waifu detail for:', waifuId);
     
-    // Use the EXACT same URL format as in the bot
-    const webappUrl = `https://waifu-bot-webapp.onrender.com/waifu-card/${waifuId}?waifu_id=${waifuId}`;
+    // Get initData to pass it to the waifu card page
+    const initData = window.Telegram?.WebApp?.initData || '';
+    console.log('🔐 Passing initData length:', initData.length);
+    
+    // Build URL with initData parameter
+    const params = new URLSearchParams({
+        waifu_id: waifuId,
+        initData: initData
+    });
+    
+    const webappUrl = `https://waifu-bot-webapp.onrender.com/waifu-card/${waifuId}?${params}`;
     
     if (window.Telegram?.WebApp) {
         console.log('🔗 Opening URL in Telegram WebApp:', webappUrl);
