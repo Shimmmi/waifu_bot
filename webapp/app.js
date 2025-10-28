@@ -83,21 +83,15 @@ async function loadWaifuList(container) {
             return;
         }
         
-        // Render waifu list (1 column)
+        // Render waifu grid (3 columns)
         container.innerHTML = `
-            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;">
                 ${waifuList.map(waifu => `
-                    <div onclick="openWaifuDetail('${waifu.id}')" style="background: white; border-radius: 12px; padding: 16px; cursor: pointer; transition: transform 0.2s; display: flex; align-items: center; gap: 12px; ${waifu.is_active ? 'border: 3px solid #4CAF50;' : ''}">
-                        <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; flex-shrink: 0;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
-                        <div style="flex: 1;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                                <div style="font-weight: bold; font-size: 16px;">${waifu.name}</div>
-                                ${waifu.is_active ? '<span style="background: #4CAF50; color: white; padding: 2px 8px; border-radius: 8px; font-size: 10px; font-weight: bold;">АКТИВНА</span>' : ''}
-                            </div>
-                            <div style="font-size: 14px; color: #666;">Уровень ${waifu.level}</div>
-                            <div style="font-size: 14px; color: #666;">💪 Общая сила: ${waifu.power}</div>
-                        </div>
-                        <div style="font-size: 24px;">→</div>
+                    <div onclick="openWaifuDetail('${waifu.id}')" style="background: white; border-radius: 12px; padding: 12px; cursor: pointer; transition: transform 0.2s; position: relative; ${waifu.is_active ? 'border: 3px solid #4CAF50;' : ''}">
+                        ${waifu.is_active ? '<div style="position: absolute; top: 4px; right: 4px; background: #4CAF50; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px;">✓ АКТИВНА</div>' : ''}
+                        <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 8px;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                        <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${waifu.name}</div>
+                        <div style="font-size: 12px; color: #666;">Ур.${waifu.level} • 💪${waifu.power}</div>
                     </div>
                 `).join('')}
             </div>
@@ -132,7 +126,7 @@ async function loadSelectWaifu(container) {
         container.innerHTML = `
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;">
                 ${waifuList.map(waifu => `
-                    <div class="waifu-card" onclick="selectWaifu('${waifu.id}')" style="background: white; border-radius: 12px; padding: 12px; cursor: pointer; transition: transform 0.2s; ${waifu.is_active ? 'border: 3px solid #4CAF50;' : ''}">
+                    <div onclick="selectWaifu('${waifu.id}')" style="background: white; border-radius: 12px; padding: 12px; cursor: pointer; transition: transform 0.2s; position: relative; ${waifu.is_active ? 'border: 3px solid #4CAF50;' : ''}">
                         ${waifu.is_active ? '<div style="position: absolute; top: 4px; right: 4px; background: #4CAF50; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px;">✓ АКТИВНА</div>' : ''}
                         <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 8px;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
                         <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${waifu.name}</div>
@@ -152,7 +146,7 @@ async function loadSelectWaifu(container) {
 function openWaifuDetail(waifuId) {
     // Open waifu detail WebApp (same as in bot menu)
     if (window.Telegram?.WebApp?.openLink) {
-        const webappUrl = `https://waifu-bot-webapp.onrender.com/waifu-card/${waifuId}?waifu_id=${waifuId}`;
+        const webappUrl = `https://waifu-bot-webapp.onrender.com/waifu-card/${waifuId}`;
         window.Telegram.WebApp.openLink(webappUrl);
     }
 }
@@ -513,8 +507,11 @@ async function loadProfile() {
         // Update avatar (use user's selected avatar or default)
         const avatarNum = profileData.avatar || 1;
         const avatarUrl = `https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/avatars/avatar_${avatarNum}.png`;
-        document.getElementById('user-avatar').style.backgroundImage = `url(${avatarUrl})`;
-        document.getElementById('user-avatar').textContent = '';
+        const avatarElement = document.getElementById('user-avatar');
+        avatarElement.style.backgroundImage = `url(${avatarUrl})`;
+        avatarElement.style.backgroundSize = 'cover';
+        avatarElement.style.backgroundPosition = 'center';
+        avatarElement.textContent = '';
         
         // Update currency
         document.getElementById('gold-value').textContent = profileData.gold || 0;
