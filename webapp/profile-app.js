@@ -2,6 +2,8 @@
 let profileData = null;
 let waifuList = [];
 let currentView = 'profile';
+let waifuSortBy = 'name'; // Default sort: name, rarity, level, power, race, profession, nationality
+let showOnlyFavorites = false; // Filter toggle
 
 // Initialize WebApp
 if (window.Telegram && window.Telegram.WebApp) {
@@ -121,16 +123,78 @@ async function loadWaifuList(container) {
             return;
         }
 
-        // Render waifu list (1 column, N rows)
-        container.innerHTML = `
-            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
-                ${waifuList.map(waifu => `
+        renderWaifuList(container);
+
+    } catch (error) {
+        console.error('Error loading waifu list:', error);
+        container.innerHTML = '<p style="color: red; padding: 20px;">Ошибка загрузки</p>';
+    }
+}
+
+// Render waifu list with current sort and filter settings
+function renderWaifuList(container) {
+    // Filter waifus
+    let filteredWaifus = showOnlyFavorites 
+        ? waifuList.filter(w => w.is_favorite) 
+        : [...waifuList];
+
+    // Sort waifus
+    filteredWaifus.sort((a, b) => {
+        switch (waifuSortBy) {
+            case 'name':
+                return a.name.localeCompare(b.name, 'ru');
+            case 'rarity':
+                const rarityOrder = { 'Common': 1, 'Uncommon': 2, 'Rare': 3, 'Epic': 4, 'Legendary': 5 };
+                return (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0);
+            case 'level':
+                return b.level - a.level;
+            case 'power':
+                return b.power - a.power;
+            case 'race':
+                return a.race.localeCompare(b.race, 'ru');
+            case 'profession':
+                return a.profession.localeCompare(b.profession, 'ru');
+            case 'nationality':
+                return a.nationality.localeCompare(b.nationality, 'ru');
+            default:
+                return 0;
+        }
+    });
+
+    // Render toolbar + list
+    container.innerHTML = `
+        <!-- Toolbar -->
+        <div style="display: flex; gap: 8px; margin-bottom: 16px; padding: 0 4px;">
+            <button onclick="openSortModal()" style="
+                flex: 1; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                color: white; border: none; padding: 12px; border-radius: 12px; 
+                font-size: 14px; font-weight: bold; cursor: pointer; display: flex; 
+                align-items: center; justify-content: center; gap: 6px;
+            ">
+                🔄 Сортировка
+            </button>
+            <button onclick="toggleFavorites()" style="
+                flex: 1; background: ${showOnlyFavorites ? '#4CAF50' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}; 
+                color: white; border: none; padding: 12px; border-radius: 12px; 
+                font-size: 14px; font-weight: bold; cursor: pointer; display: flex; 
+                align-items: center; justify-content: center; gap: 6px;
+            ">
+                ${showOnlyFavorites ? '✅ Только избранные' : '❤️ Избранное'}
+            </button>
+        </div>
+        
+        <!-- Waifu List -->
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            ${filteredWaifus.length === 0 
+                ? '<p style="padding: 20px; color: #666; text-align: center;">Нет вайфу для отображения</p>'
+                : filteredWaifus.map(waifu => `
                     <div onclick="openWaifuDetail('${waifu.id}')" style="
                         background: white; border-radius: 12px; padding: 16px; cursor: pointer; 
                         transition: transform 0.2s; position: relative; display: flex; align-items: center;
                         ${waifu.is_active ? 'border: 3px solid #4CAF50;' : 'border: 1px solid #e0e0e0;'}
                     " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                         ${waifu.is_active ? '<div style="position: absolute; top: 8px; right: 8px; background: #4CAF50; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px;">✓ АКТИВНА</div>' : ''}
+                        ${waifu.is_favorite ? '<div style="position: absolute; top: 8px; left: 8px; background: #f5576c; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px;">❤️ ИЗБРАННОЕ</div>' : ''}
                         <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 16px;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2760%27%20height=%2760%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
                         <div style="flex: 1;">
                             <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${waifu.name}</div>
@@ -139,14 +203,10 @@ async function loadWaifuList(container) {
                         </div>
                         <div style="color: #999; font-size: 20px;">→</div>
                     </div>
-                `).join('')}
-            </div>
-        `;
-
-    } catch (error) {
-        console.error('Error loading waifu list:', error);
-        container.innerHTML = '<p style="color: red; padding: 20px;">Ошибка загрузки</p>';
-    }
+                `).join('')
+            }
+        </div>
+    `;
 }
 
 // Load select waifu page (3-column grid for active waifu selection)
@@ -297,6 +357,92 @@ async function selectActiveWaifuFromModal(waifuId) {
         if (window.Telegram?.WebApp?.showAlert) {
             window.Telegram.WebApp.showAlert('❌ Ошибка: ' + error.message);
         }
+    }
+}
+
+// Open sort modal
+function openSortModal() {
+    const sortOptions = [
+        { value: 'name', label: '📝 По имени', icon: '📝' },
+        { value: 'rarity', label: '💎 По редкости', icon: '💎' },
+        { value: 'level', label: '⬆️ По уровню', icon: '⬆️' },
+        { value: 'power', label: '💪 По силе', icon: '💪' },
+        { value: 'race', label: '🧬 По расе', icon: '🧬' },
+        { value: 'profession', label: '⚒️ По профессии', icon: '⚒️' },
+        { value: 'nationality', label: '🌍 По национальности', icon: '🌍' }
+    ];
+    
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.8); display: flex; align-items: center;
+        justify-content: center; z-index: 10000; padding: 20px;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 20px; max-width: 400px; width: 100%; padding: 24px;">
+            <h2 style="margin: 0 0 16px 0; font-size: 20px; text-align: center;">🔄 Сортировка</h2>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                ${sortOptions.map(opt => `
+                    <button onclick="setSortBy('${opt.value}')" style="
+                        background: ${waifuSortBy === opt.value ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0'};
+                        color: ${waifuSortBy === opt.value ? 'white' : '#333'};
+                        border: none; padding: 14px; border-radius: 12px; font-size: 14px;
+                        font-weight: ${waifuSortBy === opt.value ? 'bold' : 'normal'};
+                        cursor: pointer; text-align: left; transition: all 0.2s;
+                    " onmouseover="if('${waifuSortBy}' !== '${opt.value}') this.style.background='#e0e0e0'"
+                       onmouseout="if('${waifuSortBy}' !== '${opt.value}') this.style.background='#f0f0f0'">
+                        ${opt.label}
+                    </button>
+                `).join('')}
+            </div>
+            <button onclick="closeSortModal()" style="
+                background: #6c757d; color: white; border: none; padding: 12px;
+                border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer;
+                width: 100%; margin-top: 16px;
+            ">
+                Закрыть
+            </button>
+        </div>
+    `;
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    document.body.appendChild(modal);
+}
+
+// Close sort modal
+function closeSortModal() {
+    const modal = document.querySelector('div[style*="position: fixed"]');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Set sort by
+function setSortBy(sortBy) {
+    waifuSortBy = sortBy;
+    closeSortModal();
+    
+    // Re-render waifu list with new sort
+    const viewContent = document.getElementById('view-content');
+    if (viewContent && currentView === 'waifus') {
+        renderWaifuList(viewContent);
+    }
+}
+
+// Toggle favorites filter
+function toggleFavorites() {
+    showOnlyFavorites = !showOnlyFavorites;
+    
+    // Re-render waifu list with new filter
+    const viewContent = document.getElementById('view-content');
+    if (viewContent && currentView === 'waifus') {
+        renderWaifuList(viewContent);
     }
 }
 

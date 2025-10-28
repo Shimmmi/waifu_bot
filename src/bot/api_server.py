@@ -292,10 +292,15 @@ async def get_waifus(request: Request, db: Session = Depends(get_db)):
                 "name": waifu.name,
                 "level": waifu.level,
                 "power": power,
+                "rarity": waifu.rarity,
+                "race": waifu.race,
+                "profession": waifu.profession,
+                "nationality": waifu.nationality,
                 "image_url": waifu.image_url,
                 "stats": waifu.stats,
                 "dynamic": waifu.dynamic,
-                "is_active": waifu.is_active or False
+                "is_active": waifu.is_active or False,
+                "is_favorite": waifu.is_favorite or False
             })
         
         logger.info(f"✅ Fetched {len(waifu_list)} waifus")
