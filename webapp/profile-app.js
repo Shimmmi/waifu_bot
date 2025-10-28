@@ -321,12 +321,12 @@ async function openWaifuDetail(waifuId) {
         // Get flag emoji
         const flagEmoji = getFlagEmoji(waifu.nationality);
         
-        // Calculate total power
-        const power = (waifu.stats.strength || 0) + 
+        // Calculate total power (DB fields: power, charm, luck, affection, intellect, speed)
+        const power = (waifu.stats.power || 0) + 
+                     (waifu.stats.charm || 0) + 
                      (waifu.stats.luck || 0) + 
-                     (waifu.stats.intelligence || 0) + 
-                     (waifu.stats.charisma || 0) + 
-                     (waifu.stats.bond || 0) + 
+                     (waifu.stats.affection || 0) + 
+                     (waifu.stats.intellect || 0) + 
                      (waifu.stats.speed || 0);
         
         // Create modal
@@ -374,7 +374,7 @@ async function openWaifuDetail(waifuId) {
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;">
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">💪 Сила</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.strength || 0}</div>
+                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.power || 0}</div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">🍀 Удача</div>
@@ -382,15 +382,15 @@ async function openWaifuDetail(waifuId) {
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">🧠 Интеллект</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.intelligence || 0}</div>
+                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.intellect || 0}</div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">✨ Обаяние</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.charisma || 0}</div>
+                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.charm || 0}</div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">💞 Привязанность</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.bond || 0}</div>
+                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.dynamic.bond || 0}</div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">⚡ Скорость</div>
@@ -426,17 +426,7 @@ async function openWaifuDetail(waifuId) {
                         </div>
                     </div>
                     
-                    <!-- Action Buttons -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
-                        <button id="modal-set-active-btn" style="background: ${waifu.is_active ? '#28a745' : '#6c757d'}; color: white; border: none; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.2s;">
-                            ${waifu.is_active ? '✅ Активна' : '⭐ Сделать активной'}
-                        </button>
-                        <button id="modal-toggle-favorite-btn" style="background: ${waifu.is_favorite ? '#28a745' : '#dc3545'}; color: white; border: none; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.2s;">
-                            ${waifu.is_favorite ? '💚 В избранном' : '❤️ В избранное'}
-                        </button>
-                    </div>
-                    
-                    <button id="modal-close-btn" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 12px; width: 100%; transition: all 0.2s;">
+                    <button id="modal-close-btn" style="background: rgba(255,255,255,0.2); color: white; border: none; padding: 14px; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 16px; width: 100%; transition: all 0.2s;">
                         ← Назад
                     </button>
                 </div>
@@ -447,106 +437,16 @@ async function openWaifuDetail(waifuId) {
         
         // Add event listeners
         const closeBtn = modal.querySelector('#modal-close-btn');
-        const setActiveBtn = modal.querySelector('#modal-set-active-btn');
-        const toggleFavoriteBtn = modal.querySelector('#modal-toggle-favorite-btn');
         
         // Close modal
         closeBtn.addEventListener('click', () => {
             modal.remove();
-            // Reload current view
-            if (currentView === 'profile') {
-                loadProfile();
-            } else if (currentView === 'waifus') {
-                const viewContent = document.getElementById('view-content');
-                loadWaifuList(viewContent);
-            } else if (currentView === 'select-waifu') {
-                const viewContent = document.getElementById('view-content');
-                loadSelectWaifu(viewContent);
-            }
-        });
-        
-        // Set active
-        setActiveBtn.addEventListener('click', async () => {
-            try {
-                const initData = window.Telegram?.WebApp?.initData || '';
-                const response = await fetch(`/api/waifu/${waifuId}/set-active?${new URLSearchParams({ initData })}`, {
-                    method: 'POST'
-                });
-                
-                if (response.ok) {
-                    setActiveBtn.style.background = '#28a745';
-                    setActiveBtn.innerHTML = '✅ Активна';
-                    
-                    if (window.Telegram?.WebApp?.showAlert) {
-                        window.Telegram.WebApp.showAlert('✅ Вайфу установлена как активная!');
-                    }
-                    
-                    // Close modal and reload
-                    setTimeout(() => {
-                        modal.remove();
-                        if (currentView === 'profile') {
-                            loadProfile();
-                        } else if (currentView === 'waifus') {
-                            const viewContent = document.getElementById('view-content');
-                            loadWaifuList(viewContent);
-                        } else if (currentView === 'select-waifu') {
-                            const viewContent = document.getElementById('view-content');
-                            loadSelectWaifu(viewContent);
-                        }
-                    }, 500);
-                } else {
-                    const errorData = await response.json();
-                    if (window.Telegram?.WebApp?.showAlert) {
-                        window.Telegram.WebApp.showAlert('❌ Ошибка: ' + (errorData.detail || 'Неизвестная ошибка'));
-                    }
-                }
-            } catch (error) {
-                console.error('Error setting active:', error);
-                if (window.Telegram?.WebApp?.showAlert) {
-                    window.Telegram.WebApp.showAlert('❌ Ошибка: ' + error.message);
-                }
-            }
-        });
-        
-        // Toggle favorite
-        toggleFavoriteBtn.addEventListener('click', async () => {
-            try {
-                const initData = window.Telegram?.WebApp?.initData || '';
-                const response = await fetch(`/api/waifu/${waifuId}/toggle-favorite?${new URLSearchParams({ initData })}`, {
-                    method: 'POST'
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.is_favorite) {
-                        toggleFavoriteBtn.style.background = '#28a745';
-                        toggleFavoriteBtn.innerHTML = '💚 В избранном';
-                    } else {
-                        toggleFavoriteBtn.style.background = '#dc3545';
-                        toggleFavoriteBtn.innerHTML = '❤️ В избранное';
-                    }
-                    
-                    if (window.Telegram?.WebApp?.showAlert) {
-                        window.Telegram.WebApp.showAlert('✅ ' + data.message);
-                    }
-                } else {
-                    const errorData = await response.json();
-                    if (window.Telegram?.WebApp?.showAlert) {
-                        window.Telegram.WebApp.showAlert('❌ Ошибка: ' + (errorData.detail || 'Неизвестная ошибка'));
-                    }
-                }
-            } catch (error) {
-                console.error('Error toggling favorite:', error);
-                if (window.Telegram?.WebApp?.showAlert) {
-                    window.Telegram.WebApp.showAlert('❌ Ошибка: ' + error.message);
-                }
-            }
         });
         
         // Close on background click
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
-                closeBtn.click();
+                modal.remove();
             }
         });
         
