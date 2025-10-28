@@ -291,7 +291,8 @@ async function selectWaifu(waifuId) {
         
         console.log('✅ In select-waifu view, proceeding with selection');
         
-        const response = await fetch(`/api/waifu/${waifuId}/set-active`, {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch(`/api/waifu/${waifuId}/set-active?${new URLSearchParams({ initData })}`, {
             method: 'POST'
         });
 

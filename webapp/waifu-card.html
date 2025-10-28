@@ -589,13 +589,15 @@
                 const setActiveBtn = document.getElementById('set-active-btn');
                 setActiveBtn.addEventListener('click', async () => {
                     try {
-                        const response = await fetch(`/api/waifu/${waifuId}/set-active`, {
+                        const initData = tg.initData || '';
+                        const response = await fetch(`/api/waifu/${waifuId}/set-active?${new URLSearchParams({ initData })}`, {
                             method: 'POST'
                         });
                         if (response.ok) {
                             tg.showAlert('✅ Вайфу установлена как активная!');
                         } else {
-                            tg.showAlert('❌ Ошибка при установке активной вайфу');
+                            const errorData = await response.json();
+                            tg.showAlert('❌ Ошибка: ' + (errorData.detail || 'Неизвестная ошибка'));
                         }
                     } catch (error) {
                         tg.showAlert('❌ Ошибка: ' + error.message);

@@ -308,29 +308,48 @@ async def get_waifus(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
 
 @app.post("/api/waifu/{waifu_id}/set-active")
-async def set_active_waifu(waifu_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def set_active_waifu(waifu_id: str, request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Установить вайфу как активную"""
     try:
         logger.info(f"📡 API REQUEST: POST /api/waifu/{waifu_id}/set-active")
         
-        if Waifu is None:
+        if Waifu is None or User is None:
             raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if not telegram_user_id:
+            logger.warning("⚠️ No initData provided for set-active")
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        logger.info(f"✅ Extracted Telegram user ID: {telegram_user_id}")
+        
+        # Get user
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
         
         # Get waifu
         waifu = db.query(Waifu).filter(Waifu.id == waifu_id).first()
         if not waifu:
             raise HTTPException(status_code=404, detail="Вайфу не найдена")
         
+        # Check if waifu belongs to user
+        if waifu.owner_id != user.id:
+            logger.warning(f"⚠️ User {user.id} tried to set waifu {waifu_id} as active, but it belongs to user {waifu.owner_id}")
+            raise HTTPException(status_code=403, detail="Эта вайфу вам не принадлежит")
+        
         # Set all user's waifus to inactive
         db.query(Waifu).filter(
-            Waifu.owner_id == waifu.owner_id
+            Waifu.owner_id == user.id
         ).update({"is_active": False})
         
         # Set this waifu to active
         waifu.is_active = True
         db.commit()
         
-        logger.info(f"✅ Waifu {waifu_id} set as active")
+        logger.info(f"✅ Waifu {waifu_id} set as active for user {user.id}")
         return {"success": True, "message": "Вайфу установлена как активная"}
         
     except HTTPException:
