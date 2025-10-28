@@ -74,6 +74,7 @@ function navigateTo(view) {
 
 // Load waifu list (My Waifus - 1xN list with WebApp links)
 async function loadWaifuList(container) {
+    console.log('🎴 Loading My Waifus page');
     container.innerHTML = '<p class="loading">Загрузка...</p>';
 
     try {
@@ -85,6 +86,7 @@ async function loadWaifuList(container) {
         }
 
         waifuList = await response.json();
+        console.log('🎴 Fetched waifus for My Waifus:', waifuList.length);
 
         if (waifuList.length === 0) {
             container.innerHTML = '<p style="padding: 20px; color: #666;">У вас пока нет вайфу</p>';
@@ -121,27 +123,29 @@ async function loadWaifuList(container) {
 
 // Load select waifu page (3-column grid for active waifu selection)
 async function loadSelectWaifu(container) {
+    console.log('🎯 Loading select waifu page');
     container.innerHTML = '<p class="loading">Загрузка...</p>';
-    
+
     try {
         const initData = window.Telegram?.WebApp?.initData || '';
         const response = await fetch('/api/waifus?' + new URLSearchParams({ initData }));
-        
+
         if (!response.ok) {
             throw new Error('Failed to fetch waifus');
         }
-        
-        waifuList = await response.json();
-        
-        if (waifuList.length === 0) {
+
+        const selectWaifuList = await response.json();
+        console.log('🎯 Fetched waifus for selection:', selectWaifuList.length);
+
+        if (selectWaifuList.length === 0) {
             container.innerHTML = '<p style="padding: 20px; color: #666;">У вас пока нет вайфу</p>';
             return;
         }
-        
+
         // Render waifu grid (3 columns for selection)
         container.innerHTML = `
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;">
-                ${waifuList.map(waifu => `
+                ${selectWaifuList.map(waifu => `
                     <div onclick="selectWaifu('${waifu.id}')" style="background: white; border-radius: 12px; padding: 12px; cursor: pointer; transition: transform 0.2s; position: relative; ${waifu.is_active ? 'border: 3px solid #4CAF50;' : ''}">
                         ${waifu.is_active ? '<div style="position: absolute; top: 4px; right: 4px; background: #4CAF50; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px;">✓ АКТИВНА</div>' : ''}
                         <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 8px;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
@@ -151,7 +155,7 @@ async function loadSelectWaifu(container) {
                 `).join('')}
             </div>
         `;
-        
+
     } catch (error) {
         console.error('Error loading select waifu:', error);
         container.innerHTML = '<p style="color: red; padding: 20px;">Ошибка загрузки</p>';
@@ -162,7 +166,7 @@ async function loadSelectWaifu(container) {
 function openWaifuDetail(waifuId) {
     // Open waifu detail WebApp (same as in bot menu)
     if (window.Telegram?.WebApp?.openLink) {
-        const webappUrl = `https://waifu-bot-webapp.onrender.com/waifu-card/${waifuId}`;
+        const webappUrl = `https://shimmirpgbot.ru/waifu-card/${waifuId}`;
         window.Telegram.WebApp.openLink(webappUrl);
     }
 }
@@ -222,7 +226,8 @@ async function openAvatarSelection() {
 // Select avatar
 async function selectAvatar(avatarId) {
     try {
-        const response = await fetch(`/api/avatar/select?avatar_id=${avatarId}`, {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch(`/api/avatar/select?avatar_id=${avatarId}&${new URLSearchParams({ initData })}`, {
             method: 'POST'
         });
         
