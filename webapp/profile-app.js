@@ -190,7 +190,120 @@ async function loadSelectWaifu(container) {
     }
 }
 
-// Open waifu detail as modal (like avatar selection)
+// Open quick select active waifu modal (like avatar selection) - from main profile page
+async function openSelectActiveWaifuModal() {
+    console.log('🔗 Opening select active waifu modal');
+    
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/waifus?' + new URLSearchParams({ initData }));
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch waifus');
+        }
+
+        const waifuList = await response.json();
+        
+        if (waifuList.length === 0) {
+            if (window.Telegram?.WebApp?.showAlert) {
+                window.Telegram.WebApp.showAlert('У вас пока нет вайфу');
+            }
+            return;
+        }
+        
+        // Create modal
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            padding: 20px;
+        `;
+        
+        modal.innerHTML = `
+            <div style="background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 24px;">
+                <h2 style="margin: 0 0 20px 0; font-size: 20px; text-align: center;">🎯 Выбрать активную вайфу</h2>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                    ${waifuList.map(waifu => `
+                        <div onclick="selectActiveWaifuFromModal('${waifu.id}')" style="cursor: pointer; position: relative; border: ${waifu.is_active ? '3px solid #4CAF50' : '2px solid #e0e0e0'}; border-radius: 12px; padding: 8px; transition: transform 0.2s;">
+                            ${waifu.is_active ? '<div style="position: absolute; top: 4px; right: 4px; background: #4CAF50; color: white; padding: 2px 4px; border-radius: 6px; font-size: 10px; z-index: 1;">✓</div>' : ''}
+                            <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 6px;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                            <div style="font-size: 11px; font-weight: bold; text-align: center; margin-bottom: 2px;">${waifu.name}</div>
+                            <div style="font-size: 9px; color: #666; text-align: center;">Ур.${waifu.level} • 💪${waifu.power}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <button id="close-select-modal" style="margin-top: 16px; width: 100%; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 12px; font-size: 14px; cursor: pointer;">
+                    Отмена
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Close button
+        modal.querySelector('#close-select-modal').addEventListener('click', () => {
+            modal.remove();
+        });
+        
+        // Close on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error opening select waifu modal:', error);
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert('❌ Ошибка загрузки списка вайфу');
+        }
+    }
+}
+
+// Select waifu from modal and close it
+async function selectActiveWaifuFromModal(waifuId) {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch(`/api/waifu/${waifuId}/set-active?${new URLSearchParams({ initData })}`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            // Close modal
+            const modal = document.querySelector('div[style*="position: fixed"]');
+            if (modal) {
+                modal.remove();
+            }
+            
+            // Reload profile immediately
+            await loadProfile();
+            
+            if (window.Telegram?.WebApp?.showAlert) {
+                window.Telegram.WebApp.showAlert('✅ Вайфу установлена как активная!');
+            }
+        } else {
+            const errorData = await response.json();
+            if (window.Telegram?.WebApp?.showAlert) {
+                window.Telegram.WebApp.showAlert('❌ Ошибка: ' + (errorData.detail || 'Неизвестная ошибка'));
+            }
+        }
+    } catch (error) {
+        console.error('Error selecting waifu:', error);
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert('❌ Ошибка: ' + error.message);
+        }
+    }
+}
+
+// Open waifu detail modal for viewing stats (from "My Waifus" list)
 async function openWaifuDetail(waifuId) {
     console.log('🔗 Opening waifu detail modal for:', waifuId);
     
@@ -212,12 +325,12 @@ async function openWaifuDetail(waifuId) {
         const flagEmoji = getFlagEmoji(waifu.nationality);
         
         // Calculate total power
-        const power = (waifu.stats?.strength || 0) + 
-                     (waifu.stats?.luck || 0) + 
-                     (waifu.stats?.intelligence || 0) + 
-                     (waifu.stats?.charisma || 0) + 
-                     (waifu.stats?.bond || 0) + 
-                     (waifu.stats?.speed || 0);
+        const power = (waifu.stats.strength || 0) + 
+                     (waifu.stats.luck || 0) + 
+                     (waifu.stats.intelligence || 0) + 
+                     (waifu.stats.charisma || 0) + 
+                     (waifu.stats.bond || 0) + 
+                     (waifu.stats.speed || 0);
         
         // Create modal
         const modal = document.createElement('div');
@@ -264,27 +377,27 @@ async function openWaifuDetail(waifuId) {
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;">
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">💪 Сила</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats?.strength || 0}</div>
+                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.strength || 0}</div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">🍀 Удача</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats?.luck || 0}</div>
+                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.luck || 0}</div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">🧠 Интеллект</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats?.intelligence || 0}</div>
+                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.intelligence || 0}</div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">✨ Обаяние</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats?.charisma || 0}</div>
+                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.charisma || 0}</div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">💞 Привязанность</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats?.bond || 0}</div>
+                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.bond || 0}</div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">⚡ Скорость</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats?.speed || 0}</div>
+                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.speed || 0}</div>
                             </div>
                         </div>
                         
@@ -292,15 +405,15 @@ async function openWaifuDetail(waifuId) {
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;">
                             <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; text-align: center;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 11px;">😊 Настроение</div>
-                                <div style="color: white; font-size: 14px; font-weight: bold;">${waifu.dynamic?.mood || 0}</div>
+                                <div style="color: white; font-size: 14px; font-weight: bold;">${waifu.dynamic.mood || 0}</div>
                             </div>
                             <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; text-align: center;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 11px;">❤️ Лояльность</div>
-                                <div style="color: white; font-size: 14px; font-weight: bold;">${waifu.dynamic?.loyalty || 0}</div>
+                                <div style="color: white; font-size: 14px; font-weight: bold;">${waifu.dynamic.loyalty || 0}</div>
                             </div>
                             <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; text-align: center;">
                                 <div style="color: rgba(255,255,255,0.7); font-size: 11px;">⚡ Энергия</div>
-                                <div style="color: white; font-size: 14px; font-weight: bold;">${waifu.dynamic?.energy || 0}</div>
+                                <div style="color: white; font-size: 14px; font-weight: bold;">${waifu.dynamic.energy || 0}</div>
                             </div>
                         </div>
                         
@@ -964,7 +1077,7 @@ async function loadActiveWaifu() {
     if (!profileData.active_waifu) {
         activeWaifuCard.innerHTML = `
             <p style="padding: 20px; color: #666;">Нет активной вайфу</p>
-            <button class="change-waifu-btn" onclick="navigateTo('select-waifu')">Выбрать вайфу</button>
+            <button class="change-waifu-btn" onclick="openSelectActiveWaifuModal()">Выбрать вайфу</button>
         `;
         return;
     }
@@ -973,14 +1086,13 @@ async function loadActiveWaifu() {
     const power = calculatePower(waifu);
     
     activeWaifuCard.innerHTML = `
-        <img src="${waifu.image_url}" alt="${waifu.name}" class="waifu-image" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2714%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
-        <div class="waifu-name">${waifu.name}</div>
-        <div class="waifu-info">Уровень ${waifu.level} • 💪${power}</div>
-        <button class="change-waifu-btn" onclick="navigateTo('select-waifu')">Сменить вайфу</button>
+        <div onclick="openSelectActiveWaifuModal()" style="cursor: pointer;">
+            <img src="${waifu.image_url}" alt="${waifu.name}" class="waifu-image" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2714%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+            <div class="waifu-name">${waifu.name}</div>
+            <div class="waifu-info">Уровень ${waifu.level} • 💪${power}</div>
+            <button class="change-waifu-btn" onclick="event.stopPropagation(); openSelectActiveWaifuModal()">Сменить вайфу</button>
+        </div>
     `;
-    
-    // Make the card clickable to navigate to waifus
-    activeWaifuCard.onclick = () => navigateTo('waifus');
 }
 
 // Calculate power
