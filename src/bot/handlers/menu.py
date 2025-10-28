@@ -174,14 +174,14 @@ async def handle_daily_callback(callback: CallbackQuery) -> None:
             )
         else:
             # Выдаем бонус
-            user.coins += 50
+            user.coins += 100
             user.daily_streak += 1
             user.last_daily = now
             session.commit()
 
             text = (
                 f"🎁 <b>Ежедневный бонус получен!</b>\n\n"
-                f"💰 +50 монет\n"
+                f"💰 +100 монет\n"
                 f"🔥 Серия дней: {user.daily_streak}\n"
                 f"💵 Баланс: {user.coins} монет"
             )
