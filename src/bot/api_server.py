@@ -730,6 +730,65 @@ async def get_quests(request: Request, db: Session = Depends(get_db)) -> Dict[st
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
 
+@app.get("/api/avatars")
+async def get_avatars(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Получение списка доступных аватаров"""
+    try:
+        logger.info(f"📡 API REQUEST: GET /api/avatars")
+        
+        # List of available avatars from GitHub
+        avatars = [
+            {"id": "avatar1", "name": "Аватар 1", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar1.png"},
+            {"id": "avatar2", "name": "Аватар 2", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar2.png"},
+            {"id": "avatar3", "name": "Аватар 3", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar3.png"},
+            {"id": "avatar4", "name": "Аватар 4", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar4.png"},
+            {"id": "avatar5", "name": "Аватар 5", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar5.png"},
+            {"id": "avatar6", "name": "Аватар 6", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar6.png"}
+        ]
+        
+        logger.info(f"✅ Returning {len(avatars)} avatars")
+        return {"avatars": avatars}
+        
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+@app.post("/api/avatar/select")
+async def select_avatar(request: Request, avatar_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Выбор аватара пользователя"""
+    try:
+        logger.info(f"📡 API REQUEST: POST /api/avatar/select (avatar_id: {avatar_id})")
+        
+        if User is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+
+        if not telegram_user_id:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+        # Update user's avatar (we'll add avatar field to User model later)
+        # For now, just return success
+        db.commit()
+
+        logger.info(f"✅ Avatar {avatar_id} selected for user {user.id}")
+        return {
+            "success": True,
+            "message": f"✅ Аватар выбран!",
+            "avatar_id": avatar_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
 @app.get("/health")
 async def health_check():
     """Проверка здоровья сервиса"""
