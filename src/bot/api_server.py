@@ -411,6 +411,92 @@ async def toggle_favorite(waifu_id: str, request: Request, db: Session = Depends
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
 
+@app.post("/api/summon")
+async def summon_waifus(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Призыв вайфу (1 или 10)"""
+    try:
+        logger.info(f"📡 API REQUEST: POST /api/summon")
+        
+        if Waifu is None or User is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if not telegram_user_id:
+            logger.warning("⚠️ No initData provided for summon")
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        logger.info(f"✅ Extracted Telegram user ID: {telegram_user_id}")
+        
+        # Get request body
+        body = await request.json()
+        count = body.get("count", 1)
+        
+        if count not in [1, 10]:
+            raise HTTPException(status_code=400, detail="Можно призвать только 1 или 10 вайфу")
+        
+        cost = 100 if count == 1 else 1000
+        
+        # Get user
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Check if user has enough coins
+        if user.coins < cost:
+            raise HTTPException(status_code=400, detail=f"Недостаточно монет! Нужно {cost} монет.")
+        
+        # Import waifu generator
+        from bot.services.waifu_generator import generate_waifu, calculate_waifu_power
+        from sqlalchemy import func
+        
+        # Get max card number
+        max_card = db.query(func.max(Waifu.card_number)).scalar() or 0
+        
+        # Generate waifus
+        summoned_waifus = []
+        for i in range(count):
+            waifu_data = generate_waifu(max_card + 1 + i, user.id)
+            waifu = Waifu(**waifu_data)
+            db.add(waifu)
+            
+            # Calculate power for response
+            power = calculate_waifu_power(waifu_data)
+            
+            summoned_waifus.append({
+                "id": waifu.id,
+                "card_number": waifu.card_number,
+                "name": waifu.name,
+                "rarity": waifu.rarity,
+                "race": waifu.race,
+                "profession": waifu.profession,
+                "nationality": waifu.nationality,
+                "power": power,
+                "level": waifu.level,
+                "image_url": waifu.image_url
+            })
+        
+        # Deduct coins
+        user.coins -= cost
+        
+        # Commit transaction
+        db.commit()
+        
+        logger.info(f"✅ Summoned {count} waifu(s) for user {user.id}, cost: {cost} coins")
+        return {
+            "success": True,
+            "summoned": summoned_waifus,
+            "remaining_coins": user.coins
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
 @app.get("/api/shop")
 async def get_shop_items(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Получение списка товаров магазина"""
