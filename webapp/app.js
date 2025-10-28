@@ -207,19 +207,21 @@ function renderWaifuList(container) {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; padding: 0 4px;">
             <button onclick="summonWaifu(1)" style="
                 background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
-                color: white; border: none; padding: 14px; border-radius: 12px; 
-                font-size: 14px; font-weight: bold; cursor: pointer; display: flex; 
-                align-items: center; justify-content: center; gap: 6px;
+                color: white; border: none; padding: 12px 8px; border-radius: 12px; 
+                font-size: 13px; font-weight: bold; cursor: pointer; display: flex; 
+                flex-direction: column; align-items: center; justify-content: center; gap: 4px;
             ">
-                ✨ Призыв (100💰)
+                <div style="font-size: 14px;">✨ Призыв</div>
+                <div style="font-size: 12px; opacity: 0.9;">(100💰)</div>
             </button>
             <button onclick="summonWaifu(10)" style="
                 background: linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 90%, #2BFF88 100%); 
-                color: white; border: none; padding: 14px; border-radius: 12px; 
-                font-size: 14px; font-weight: bold; cursor: pointer; display: flex; 
-                align-items: center; justify-content: center; gap: 6px;
+                color: white; border: none; padding: 12px 8px; border-radius: 12px; 
+                font-size: 13px; font-weight: bold; cursor: pointer; display: flex; 
+                flex-direction: column; align-items: center; justify-content: center; gap: 4px;
             ">
-                ✨ Призыв x10 (1000💰)
+                <div style="font-size: 14px;">✨ Призыв x10</div>
+                <div style="font-size: 12px; opacity: 0.9;">(1000💰)</div>
             </button>
         </div>
         
@@ -315,6 +317,13 @@ async function openSelectActiveWaifuModal() {
             return;
         }
         
+        // Sort by power (descending)
+        waifuList.sort((a, b) => {
+            const powerA = calculatePower(a);
+            const powerB = calculatePower(b);
+            return powerB - powerA;
+        });
+        
         // Create modal
         const modal = document.createElement('div');
         modal.style.cssText = `
@@ -334,16 +343,19 @@ async function openSelectActiveWaifuModal() {
         modal.innerHTML = `
             <div style="background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 24px;">
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
-                    ${waifuList.map(waifu => `
+                    ${waifuList.map(waifu => {
+                        const power = calculatePower(waifu);
+                        return `
                         <div onclick="selectActiveWaifuFromModal('${waifu.id}')" style="cursor: pointer; position: relative; border: ${waifu.is_active ? '3px solid #4CAF50' : '2px solid #e0e0e0'}; border-radius: 12px; padding: 8px; transition: transform 0.2s; display: flex; flex-direction: column;">
                             ${waifu.is_active ? '<div style="position: absolute; top: 4px; right: 4px; background: #4CAF50; color: white; padding: 2px 4px; border-radius: 6px; font-size: 10px; z-index: 1;">✓</div>' : ''}
                             <div style="width: 100%; height: 100px; overflow: hidden; border-radius: 8px; margin-bottom: 6px; flex-shrink: 0;">
                                 <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
                             </div>
                             <div style="font-size: 11px; font-weight: bold; text-align: center; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${waifu.name}</div>
-                            <div style="font-size: 9px; color: #666; text-align: center;">Ур.${waifu.level} • 💪${waifu.power}</div>
+                            <div style="font-size: 9px; color: #666; text-align: center;">Ур.${waifu.level} • 💪${power}</div>
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
                 <button id="close-select-modal" style="margin-top: 16px; width: 100%; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 12px; font-size: 14px; cursor: pointer;">
                     Отмена
