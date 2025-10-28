@@ -589,7 +589,7 @@ function showSummonedWaifusModal(waifus, remainingCoins) {
     modal.style.cssText = `
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
         background: rgba(0,0,0,0.9); display: flex; align-items: center;
-        justify-content: center; z-index: 10000; padding: 20px;
+        justify-content: center; z-index: 10000; padding: 20px; overflow-y: auto;
     `;
     
     // Get rarity color helper
@@ -604,8 +604,73 @@ function showSummonedWaifusModal(waifus, remainingCoins) {
         return colors[rarity] || '#d0d0d0';
     };
     
+    // Rarity priority for sorting (higher = rarer)
+    const rarityPriority = {
+        'Legendary': 5,
+        'Epic': 4,
+        'Rare': 3,
+        'Uncommon': 2,
+        'Common': 1
+    };
+    
+    // Sort by rarity (desc), then by power (desc)
+    const sortedWaifus = [...waifus].sort((a, b) => {
+        const rarityDiff = rarityPriority[b.rarity] - rarityPriority[a.rarity];
+        if (rarityDiff !== 0) return rarityDiff;
+        return b.power - a.power;
+    });
+    
+    // Check if summoning 1 or 10
+    const isSingle = waifus.length === 1;
+    
+    let contentHTML = '';
+    
+    if (isSingle) {
+        // Single summon: just show the waifu large
+        const waifu = sortedWaifus[0];
+        contentHTML = `
+            <div style="text-align: center;">
+                <img src="${waifu.image_url}" alt="${waifu.name}" 
+                    style="width: 100%; max-width: 300px; height: auto; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 16px; border: 4px solid ${getRarityColorForSummon(waifu.rarity)}; box-shadow: 0 0 20px ${getRarityColorForSummon(waifu.rarity)}66; margin-bottom: 16px;"
+                    onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27300%27%20height=%27300%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2748%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                <h3 style="margin: 0; font-size: 24px; color: ${getRarityColorForSummon(waifu.rarity)}; font-weight: bold;">
+                    ${waifu.name}
+                </h3>
+            </div>
+        `;
+    } else {
+        // 10 summons: best one large, rest in 3x3 grid
+        const bestWaifu = sortedWaifus[0];
+        const restWaifus = sortedWaifus.slice(1);
+        
+        contentHTML = `
+            <div style="text-align: center; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 2px solid #eee;">
+                <div style="font-size: 20px; margin-bottom: 12px; color: #666; font-weight: bold;">Лучший призыв:</div>
+                <img src="${bestWaifu.image_url}" alt="${bestWaifu.name}" 
+                    style="width: 100%; max-width: 250px; height: auto; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 16px; border: 4px solid ${getRarityColorForSummon(bestWaifu.rarity)}; box-shadow: 0 0 30px ${getRarityColorForSummon(bestWaifu.rarity)}99; margin-bottom: 12px;"
+                    onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27250%27%20height=%27250%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2748%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                <h3 style="margin: 0; font-size: 22px; color: ${getRarityColorForSummon(bestWaifu.rarity)}; font-weight: bold;">
+                    ${bestWaifu.name}
+                </h3>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                ${restWaifus.map(waifu => `
+                    <div style="text-align: center;">
+                        <img src="${waifu.image_url}" alt="${waifu.name}" 
+                            style="width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 8px; border: 3px solid ${getRarityColorForSummon(waifu.rarity)}; box-shadow: 0 0 10px ${getRarityColorForSummon(waifu.rarity)}66; margin-bottom: 8px;"
+                            onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2724%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                        <div style="font-size: 12px; font-weight: bold; color: ${getRarityColorForSummon(waifu.rarity)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${waifu.name}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
     modal.innerHTML = `
-        <div style="background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 24px;">
+        <div style="background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; margin: auto;">
             <div style="text-align: center; margin-bottom: 20px;">
                 <div style="font-size: 48px; margin-bottom: 12px;">✨</div>
                 <h2 style="margin: 0 0 8px 0; font-size: 24px; color: #333;">Призыв завершен!</h2>
@@ -613,53 +678,12 @@ function showSummonedWaifusModal(waifus, remainingCoins) {
                 <p style="margin: 8px 0 0 0; color: #FF9800; font-size: 16px; font-weight: bold;">Осталось монет: ${remainingCoins} 💰</p>
             </div>
             
-            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
-                ${waifus.map((waifu, index) => `
-                    <div style="
-                        background: linear-gradient(to right, ${getRarityColorForSummon(waifu.rarity)}22, white);
-                        border-left: 4px solid ${getRarityColorForSummon(waifu.rarity)};
-                        border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 12px;
-                    ">
-                        <div style="
-                            background: ${getRarityColorForSummon(waifu.rarity)}; 
-                            color: white; width: 32px; height: 32px; border-radius: 50%; 
-                            display: flex; align-items: center; justify-content: center; 
-                            font-weight: bold; font-size: 14px; flex-shrink: 0;
-                        ">
-                            ${index + 1}
-                        </div>
-                        <img src="${waifu.image_url}" alt="${waifu.name}" 
-                            style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; border: 2px solid ${getRarityColorForSummon(waifu.rarity)}; flex-shrink: 0;"
-                            onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2750%27%20height=%2750%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
-                        <div style="flex: 1; min-width: 0;">
-                            <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px; color: ${getRarityColorForSummon(waifu.rarity)};">
-                                ${waifu.name}
-                            </div>
-                            <div style="font-size: 12px; color: #666; display: flex; flex-wrap: wrap; gap: 8px;">
-                                <span>💪${waifu.power}</span>
-                                <span>•</span>
-                                <span>${waifu.race}</span>
-                                <span>•</span>
-                                <span>${waifu.profession}</span>
-                                <span>•</span>
-                                <span>${getFlagEmoji(waifu.nationality)}</span>
-                            </div>
-                        </div>
-                        <div style="
-                            background: ${getRarityColorForSummon(waifu.rarity)}; 
-                            color: white; padding: 4px 8px; border-radius: 8px; 
-                            font-size: 10px; font-weight: bold; white-space: nowrap; flex-shrink: 0;
-                        ">
-                            ${waifu.rarity}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
+            ${contentHTML}
             
             <button onclick="closeSummonModal()" style="
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                 color: white; border: none; padding: 14px; border-radius: 12px; 
-                font-size: 16px; font-weight: bold; cursor: pointer; width: 100%;
+                font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 24px;
             ">
                 Отлично! 🎉
             </button>
