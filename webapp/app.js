@@ -1073,8 +1073,10 @@ async function loadActiveWaifu() {
     
     if (!profileData.active_waifu) {
         activeWaifuCard.innerHTML = `
-            <p style="padding: 20px; color: #666;">Нет активной вайфу</p>
-            <button class="change-waifu-btn" onclick="openSelectActiveWaifuModal()">Выбрать вайфу</button>
+            <div onclick="openSelectActiveWaifuModal()" style="cursor: pointer; padding: 20px; text-align: center;">
+                <p style="color: #666; margin-bottom: 12px;">Нет активной вайфу</p>
+                <p style="color: #999; font-size: 14px;">Нажмите для выбора</p>
+            </div>
         `;
         return;
     }
@@ -1087,7 +1089,6 @@ async function loadActiveWaifu() {
             <img src="${waifu.image_url}" alt="${waifu.name}" class="waifu-image" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2714%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
             <div class="waifu-name">${waifu.name}</div>
             <div class="waifu-info">Уровень ${waifu.level} • 💪${power}</div>
-            <button class="change-waifu-btn" onclick="event.stopPropagation(); openSelectActiveWaifuModal()">Сменить вайфу</button>
         </div>
     `;
 }
