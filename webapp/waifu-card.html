@@ -543,7 +543,7 @@
                                 ❤️ Избранное
                             </button>
                         </div>
-                        <button id="close-btn" class="btn btn-secondary">Закрыть</button>
+                        <button id="back-btn" class="btn btn-secondary">← Назад</button>
                     </div>
                 </div>
             `;
@@ -574,9 +574,15 @@
                 const waifu = await fetchWaifuData(waifuId);
                 renderWaifuCard(waifu, waifuId);
                 
-                // Настройка кнопки закрытия
-                document.getElementById('close-btn').addEventListener('click', () => {
-                    tg.close();
+                // Настройка кнопки "Назад"
+                document.getElementById('back-btn').addEventListener('click', () => {
+                    // Возврат на предыдущую страницу
+                    if (window.history.length > 1) {
+                        window.history.back();
+                    } else {
+                        // Если истории нет, закрываем WebApp
+                        tg.close();
+                    }
                 });
                 
                 // Настройка кнопки "Сделать активной"
