@@ -552,11 +552,11 @@
                     <!-- Кнопки -->
                     <div class="actions">
                         <div class="btn-row">
-                            <button id="set-active-btn" class="btn" style="background: #28a745; color: white;">
-                                ⭐ Активна
+                            <button id="set-active-btn" class="btn" style="background: ${waifu.is_active ? '#28a745' : '#6c757d'}; color: white;">
+                                ${waifu.is_active ? '✅ Активна' : '⭐ Сделать активной'}
                             </button>
-                            <button id="toggle-favorite-btn" class="btn" style="background: #dc3545; color: white;">
-                                ❤️ Избранное
+                            <button id="toggle-favorite-btn" class="btn" style="background: ${waifu.is_favorite ? '#28a745' : '#dc3545'}; color: white;">
+                                ${waifu.is_favorite ? '💚 В избранном' : '❤️ В избранное'}
                             </button>
                         </div>
                         <button id="back-btn" class="btn btn-secondary">← Назад</button>
@@ -621,7 +621,15 @@
                         });
                         
                         if (response.ok) {
+                            // Update button state
+                            setActiveBtn.style.background = '#28a745';
+                            setActiveBtn.innerHTML = '✅ Активна';
+                            
                             tg.showAlert('✅ Вайфу установлена как активная!');
+                            
+                            // Reload the waifu data to reflect changes
+                            const updatedWaifu = await fetchWaifuData(waifuId);
+                            renderWaifuCard(updatedWaifu, waifuId);
                         } else {
                             const errorData = await response.json();
                             console.error('❌ Server error:', errorData);
@@ -637,24 +645,36 @@
                 const toggleFavoriteBtn = document.getElementById('toggle-favorite-btn');
                 toggleFavoriteBtn.addEventListener('click', async () => {
                     try {
-                        const response = await fetch(`/api/waifu/${waifuId}/toggle-favorite`, {
+                        // Get initData from URL or Telegram WebApp
+                        const initData = getInitData();
+                        
+                        if (!initData) {
+                            console.error('❌ No initData available');
+                            tg.showAlert('❌ Ошибка аутентификации. Попробуйте открыть карточку заново.');
+                            return;
+                        }
+                        
+                        const response = await fetch(`/api/waifu/${waifuId}/toggle-favorite?${new URLSearchParams({ initData })}`, {
                             method: 'POST'
                         });
+                        
                         if (response.ok) {
                             const data = await response.json();
                             // Update button text based on favorite status
                             if (data.is_favorite) {
-                                toggleFavoriteBtn.textContent = '❤️ В избранном';
+                                toggleFavoriteBtn.innerHTML = '💚 В избранном';
                                 toggleFavoriteBtn.style.background = '#28a745';
                             } else {
-                                toggleFavoriteBtn.textContent = '❤️ Избранное';
+                                toggleFavoriteBtn.innerHTML = '❤️ В избранное';
                                 toggleFavoriteBtn.style.background = '#dc3545';
                             }
                             tg.showAlert('✅ ' + data.message);
                         } else {
-                            tg.showAlert('❌ Ошибка при изменении статуса');
+                            const errorData = await response.json();
+                            tg.showAlert('❌ Ошибка: ' + (errorData.detail || 'Неизвестная ошибка'));
                         }
                     } catch (error) {
+                        console.error('❌ Error:', error);
                         tg.showAlert('❌ Ошибка: ' + error.message);
                     }
                 });

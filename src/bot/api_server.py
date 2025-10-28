@@ -359,25 +359,44 @@ async def set_active_waifu(waifu_id: str, request: Request, db: Session = Depend
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
 
 @app.post("/api/waifu/{waifu_id}/toggle-favorite")
-async def toggle_favorite(waifu_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def toggle_favorite(waifu_id: str, request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Переключить статус избранного для вайфу"""
     try:
         logger.info(f"📡 API REQUEST: POST /api/waifu/{waifu_id}/toggle-favorite")
         
-        if Waifu is None:
+        if Waifu is None or User is None:
             raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if not telegram_user_id:
+            logger.warning("⚠️ No initData provided for toggle-favorite")
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        logger.info(f"✅ Extracted Telegram user ID: {telegram_user_id}")
+        
+        # Get user
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
         
         # Get waifu
         waifu = db.query(Waifu).filter(Waifu.id == waifu_id).first()
         if not waifu:
             raise HTTPException(status_code=404, detail="Вайфу не найдена")
         
+        # Check if waifu belongs to user
+        if waifu.owner_id != user.id:
+            logger.warning(f"⚠️ User {user.id} tried to toggle favorite for waifu {waifu_id}, but it belongs to user {waifu.owner_id}")
+            raise HTTPException(status_code=403, detail="Эта вайфу вам не принадлежит")
+        
         # Toggle favorite status
         waifu.is_favorite = not waifu.is_favorite
         db.commit()
         
         status = "добавлена в избранное" if waifu.is_favorite else "удалена из избранного"
-        logger.info(f"✅ Waifu {waifu_id} {status}")
+        logger.info(f"✅ Waifu {waifu_id} {status} for user {user.id}")
         return {"success": True, "message": f"Вайфу {status}", "is_favorite": waifu.is_favorite}
         
     except HTTPException:

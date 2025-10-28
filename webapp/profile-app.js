@@ -313,11 +313,11 @@ async function selectWaifu(waifuId) {
             window.Telegram.WebApp.showAlert('✅ Вайфу установлена как активная!');
         }
 
+        // Return to profile and reload it
+        navigateTo('profile');
+        
         // Reload profile to update active waifu
         await loadProfile();
-
-        // Return to profile
-        navigateTo('profile');
 
     } catch (error) {
         console.error('Error setting active waifu:', error);
