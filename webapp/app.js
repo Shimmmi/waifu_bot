@@ -29,6 +29,7 @@ function navigateTo(view) {
         
                                const views = {
               'waifus': { title: '🎴 Мои вайфу', content: 'loadWaifuList()' },
+              'select-waifu': { title: '🎯 Выбрать активную вайфу', content: 'loadSelectWaifu()' },
               'shop': { title: '🏪 Магазин', content: 'loadShopItems()' },
               'clan': { title: '🏰 Клан', content: 'loadClanInfo()' },
               'quests': { title: '📅 Ежедневные задания', content: 'loadQuests()' },
@@ -42,6 +43,8 @@ function navigateTo(view) {
               // Special handling for different views
               if (view === 'waifus') {
                   loadWaifuList(viewContent);
+              } else if (view === 'select-waifu') {
+                  loadSelectWaifu(viewContent);
               } else if (view === 'shop') {
                   loadShopItems(viewContent);
               } else if (view === 'skills') {
@@ -106,12 +109,58 @@ async function loadWaifuList(container) {
     }
 }
 
+// Load select waifu page (3-column grid for active waifu selection)
+async function loadSelectWaifu(container) {
+    container.innerHTML = '<p class="loading">Загрузка...</p>';
+    
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/waifus?' + new URLSearchParams({ initData }));
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch waifus');
+        }
+        
+        waifuList = await response.json();
+        
+        if (waifuList.length === 0) {
+            container.innerHTML = '<p style="padding: 20px; color: #666;">У вас пока нет вайфу</p>';
+            return;
+        }
+        
+        // Render waifu grid (3 columns for selection)
+        container.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px;">
+                ${waifuList.map(waifu => `
+                    <div class="waifu-card" onclick="selectWaifu('${waifu.id}')" style="background: white; border-radius: 12px; padding: 12px; cursor: pointer; transition: transform 0.2s; ${waifu.is_active ? 'border: 3px solid #4CAF50;' : ''}">
+                        ${waifu.is_active ? '<div style="position: absolute; top: 4px; right: 4px; background: #4CAF50; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px;">✓ АКТИВНА</div>' : ''}
+                        <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 8px;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                        <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px;">${waifu.name}</div>
+                        <div style="font-size: 12px; color: #666;">Ур.${waifu.level} • 💪${waifu.power}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Error loading select waifu:', error);
+        container.innerHTML = '<p style="color: red; padding: 20px;">Ошибка загрузки</p>';
+    }
+}
+
 // Open waifu detail
 function openWaifuDetail(waifuId) {
-    // Open waifu detail WebApp
+    // Open waifu detail WebApp (same as in bot menu)
     if (window.Telegram?.WebApp?.openLink) {
-        const webappUrl = `${window.location.origin}/waifu-card/${waifuId}`;
+        const webappUrl = `https://waifu-bot-webapp.onrender.com/waifu-card/${waifuId}?waifu_id=${waifuId}`;
         window.Telegram.WebApp.openLink(webappUrl);
+    }
+}
+
+// Open avatar selection
+function openAvatarSelection() {
+    if (window.Telegram?.WebApp?.showAlert) {
+        window.Telegram.WebApp.showAlert('Выбор аватара будет добавлен в следующем обновлении!');
     }
 }
 
@@ -461,8 +510,8 @@ async function loadProfile() {
         document.getElementById('user-name').textContent = '@' + (profileData.username || 'Unknown');
         document.getElementById('user-id').textContent = `ID: ${profileData.user_id || '...'}`;
         
-        // Update avatar (generate random number for now, will use user avatar field later)
-        const avatarNum = Math.floor(Math.random() * 20) + 1;
+        // Update avatar (use user's selected avatar or default)
+        const avatarNum = profileData.avatar || 1;
         const avatarUrl = `https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/avatars/avatar_${avatarNum}.png`;
         document.getElementById('user-avatar').style.backgroundImage = `url(${avatarUrl})`;
         document.getElementById('user-avatar').textContent = '';
@@ -516,7 +565,7 @@ async function loadActiveWaifu() {
     if (!profileData.active_waifu) {
         activeWaifuCard.innerHTML = `
             <p style="padding: 20px; color: #666;">Нет активной вайфу</p>
-            <button class="change-waifu-btn" onclick="navigateTo('waifus')">Выбрать вайфу</button>
+            <button class="change-waifu-btn" onclick="navigateTo('select-waifu')">Выбрать вайфу</button>
         `;
         return;
     }
@@ -528,7 +577,7 @@ async function loadActiveWaifu() {
         <img src="${waifu.image_url}" alt="${waifu.name}" class="waifu-image" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2714%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
         <div class="waifu-name">${waifu.name}</div>
         <div class="waifu-info">Уровень ${waifu.level} • 💪${power}</div>
-        <button class="change-waifu-btn" onclick="navigateTo('waifus')">Сменить вайфу</button>
+        <button class="change-waifu-btn" onclick="navigateTo('select-waifu')">Сменить вайфу</button>
     `;
     
     // Make the card clickable to navigate to waifus
