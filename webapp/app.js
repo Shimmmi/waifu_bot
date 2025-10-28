@@ -131,6 +131,18 @@ async function loadWaifuList(container) {
     }
 }
 
+// Get rarity color for border/background
+function getRarityColor(rarity) {
+    const colors = {
+        'Common': { border: '#d0d0d0', background: '#fafafa', glow: 'rgba(208, 208, 208, 0.3)' },
+        'Uncommon': { border: '#4CAF50', background: '#f1f8f4', glow: 'rgba(76, 175, 80, 0.3)' },
+        'Rare': { border: '#2196F3', background: '#e3f2fd', glow: 'rgba(33, 150, 243, 0.3)' },
+        'Epic': { border: '#9C27B0', background: '#f3e5f5', glow: 'rgba(156, 39, 176, 0.3)' },
+        'Legendary': { border: '#FF9800', background: '#fff3e0', glow: 'rgba(255, 152, 0, 0.5)' }
+    };
+    return colors[rarity] || colors['Common'];
+}
+
 // Render waifu list with current sort and filter settings
 function renderWaifuList(container) {
     // Filter waifus
@@ -164,22 +176,30 @@ function renderWaifuList(container) {
     // Render toolbar + list
     container.innerHTML = `
         <!-- Toolbar -->
-        <div style="display: flex; gap: 8px; margin-bottom: 16px; padding: 0 4px;">
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; padding: 0 4px;">
             <button onclick="openSortModal()" style="
-                flex: 1; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                 color: white; border: none; padding: 12px; border-radius: 12px; 
-                font-size: 14px; font-weight: bold; cursor: pointer; display: flex; 
-                align-items: center; justify-content: center; gap: 6px;
+                font-size: 13px; font-weight: bold; cursor: pointer; display: flex; 
+                align-items: center; justify-content: center; gap: 4px;
             ">
                 🔄 Сортировка
             </button>
             <button onclick="toggleFavorites()" style="
-                flex: 1; background: ${showOnlyFavorites ? '#4CAF50' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}; 
+                background: ${showOnlyFavorites ? '#4CAF50' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}; 
                 color: white; border: none; padding: 12px; border-radius: 12px; 
-                font-size: 14px; font-weight: bold; cursor: pointer; display: flex; 
-                align-items: center; justify-content: center; gap: 6px;
+                font-size: 13px; font-weight: bold; cursor: pointer; display: flex; 
+                align-items: center; justify-content: center; gap: 4px;
             ">
-                ${showOnlyFavorites ? '✅ Только избранные' : '❤️ Избранное'}
+                ${showOnlyFavorites ? '✅ Избранные' : '❤️ Избранное'}
+            </button>
+            <button onclick="openUpgradeModal()" style="
+                background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); 
+                color: white; border: none; padding: 12px; border-radius: 12px; 
+                font-size: 13px; font-weight: bold; cursor: pointer; display: flex; 
+                align-items: center; justify-content: center; gap: 4px;
+            ">
+                ⚡ Улучшение
             </button>
         </div>
         
@@ -187,15 +207,19 @@ function renderWaifuList(container) {
         <div style="display: flex; flex-direction: column; gap: 12px;">
             ${filteredWaifus.length === 0 
                 ? '<p style="padding: 20px; color: #666; text-align: center;">Нет вайфу для отображения</p>'
-                : filteredWaifus.map(waifu => `
+                : filteredWaifus.map(waifu => {
+                    const rarityColors = getRarityColor(waifu.rarity);
+                    return `
                     <div onclick="openWaifuDetail('${waifu.id}')" style="
-                        background: white; border-radius: 12px; padding: 16px; cursor: pointer; 
-                        transition: transform 0.2s; position: relative; display: flex; align-items: center;
-                        ${waifu.is_active ? 'border: 3px solid #4CAF50;' : 'border: 1px solid #e0e0e0;'}
-                    " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                        background: ${rarityColors.background}; 
+                        border-radius: 12px; padding: 16px; cursor: pointer; 
+                        transition: all 0.2s; position: relative; display: flex; align-items: center;
+                        border: 3px solid ${waifu.is_active ? '#4CAF50' : rarityColors.border};
+                        box-shadow: 0 2px 8px ${rarityColors.glow};
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px ${rarityColors.glow}'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px ${rarityColors.glow}'">
                         ${waifu.is_active ? '<div style="position: absolute; top: 8px; right: 8px; background: #4CAF50; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px;">✓ АКТИВНА</div>' : ''}
                         ${waifu.is_favorite ? '<div style="position: absolute; top: 8px; left: 8px; background: #f5576c; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px;">❤️ ИЗБРАННОЕ</div>' : ''}
-                        <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 16px;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2760%27%20height=%2760%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                        <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 16px; border: 2px solid ${rarityColors.border};" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2760%27%20height=%2760%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
                         <div style="flex: 1;">
                             <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${waifu.name}</div>
                             <div style="font-size: 14px; color: #666; margin-bottom: 4px;">Уровень ${waifu.level} • 💪${waifu.power}</div>
@@ -203,7 +227,7 @@ function renderWaifuList(container) {
                         </div>
                         <div style="color: #999; font-size: 20px;">→</div>
                     </div>
-                `).join('')
+                `;}).join('')
             }
         </div>
     `;
@@ -381,7 +405,7 @@ function openSortModal() {
     
     modal.innerHTML = `
         <div style="background: white; border-radius: 20px; max-width: 400px; width: 100%; padding: 24px;">
-            <h2 style="margin: 0 0 16px 0; font-size: 20px; text-align: center;">🔄 Сортировка</h2>
+            <h2 style="margin: 0 0 16px 0; font-size: 20px; text-align: center;">Сортировка</h2>
             <div style="display: flex; flex-direction: column; gap: 8px;">
                 ${sortOptions.map(opt => `
                     <button onclick="setSortBy('${opt.value}')" style="
@@ -443,6 +467,50 @@ function toggleFavorites() {
     const viewContent = document.getElementById('view-content');
     if (viewContent && currentView === 'waifus') {
         renderWaifuList(viewContent);
+    }
+}
+
+// Open upgrade modal (placeholder)
+function openUpgradeModal() {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.8); display: flex; align-items: center;
+        justify-content: center; z-index: 10000; padding: 20px;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 20px; max-width: 400px; width: 100%; padding: 24px;">
+            <h2 style="margin: 0 0 16px 0; font-size: 20px; text-align: center;">⚡ Улучшение вайфу</h2>
+            <div style="text-align: center; padding: 40px 20px; color: #666;">
+                <div style="font-size: 48px; margin-bottom: 16px;">🚧</div>
+                <p style="margin: 0; font-size: 16px;">Функция находится в разработке</p>
+                <p style="margin: 8px 0 0 0; font-size: 14px; color: #999;">Скоро здесь появится система улучшения вайфу!</p>
+            </div>
+            <button onclick="closeUpgradeModal()" style="
+                background: #6c757d; color: white; border: none; padding: 12px;
+                border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer;
+                width: 100%; margin-top: 16px;
+            ">
+                Закрыть
+            </button>
+        </div>
+    `;
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    document.body.appendChild(modal);
+}
+
+// Close upgrade modal
+function closeUpgradeModal() {
+    const modal = document.querySelector('div[style*="position: fixed"]');
+    if (modal) {
+        modal.remove();
     }
 }
 
@@ -540,8 +608,8 @@ async function openWaifuDetail(waifuId) {
                 <!-- Header -->
                 <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 20px 20px 0 0; backdrop-filter: blur(10px);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h2 style="color: white; margin: 0; font-size: 24px; flex: 1;">${waifu.name}</h2>
                         <div style="display: flex; align-items: center; gap: 12px;">
-                            <h2 style="color: white; margin: 0; font-size: 24px;">${waifu.name}</h2>
                             <button id="favorite-toggle-btn" onclick="toggleWaifuFavorite('${waifuId}')" style="
                                 background: ${waifu.is_favorite ? '#f5576c' : 'rgba(255,255,255,0.3)'};
                                 border: none; color: white; width: 36px; height: 36px;
@@ -551,8 +619,8 @@ async function openWaifuDetail(waifuId) {
                             " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
                                 ${waifu.is_favorite ? '❤️' : '🤍'}
                             </button>
+                            <span style="background: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 12px; font-size: 14px;">Ур.${waifu.level}</span>
                         </div>
-                        <span style="background: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 12px; font-size: 14px;">Ур.${waifu.level}</span>
                     </div>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <span style="background: rgba(255,255,255,0.2); color: white; padding: 4px 10px; border-radius: 8px; font-size: 12px;">${waifu.race}</span>
@@ -573,44 +641,35 @@ async function openWaifuDetail(waifuId) {
                         <!-- Main Stats -->
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;">
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">💪 Сила</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.power || 0}</div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">💪 Сила • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.power || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">🍀 Удача</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.luck || 0}</div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">🍀 Удача • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.luck || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">🧠 Интеллект</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.intellect || 0}</div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">🧠 Интеллект • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.intellect || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">✨ Обаяние</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.charm || 0}</div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">✨ Обаяние • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.charm || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">🎯 Ловкость</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.dynamic.bond || 0}</div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">🎯 Ловкость • <span style="font-weight: bold; font-size: 16px;">${waifu.dynamic.bond || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">⚡ Скорость</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.speed || 0}</div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">⚡ Скорость • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.speed || 0}</span></div>
                             </div>
                         </div>
                         
                         <!-- Dynamic Stats -->
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;">
-                            <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; text-align: center;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 11px;">😊 Настроение</div>
-                                <div style="color: white; font-size: 14px; font-weight: bold;">${waifu.dynamic.mood || 0}</div>
+                            <div style="background: rgba(255,255,255,0.05); padding: 10px 8px; border-radius: 8px; text-align: center;">
+                                <div style="color: rgba(255,255,255,0.9); font-size: 12px;">😊 Настроение • <span style="font-weight: bold;">${waifu.dynamic.mood || 0}</span></div>
                             </div>
-                            <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; text-align: center;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 11px;">❤️ Лояльность</div>
-                                <div style="color: white; font-size: 14px; font-weight: bold;">${waifu.dynamic.loyalty || 0}</div>
+                            <div style="background: rgba(255,255,255,0.05); padding: 10px 8px; border-radius: 8px; text-align: center;">
+                                <div style="color: rgba(255,255,255,0.9); font-size: 12px;">❤️ Лояльность • <span style="font-weight: bold;">${waifu.dynamic.loyalty || 0}</span></div>
                             </div>
-                            <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; text-align: center;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 11px;">⚡ Энергия</div>
-                                <div style="color: white; font-size: 14px; font-weight: bold;">${waifu.dynamic.energy || 0}</div>
+                            <div style="background: rgba(255,255,255,0.05); padding: 10px 8px; border-radius: 8px; text-align: center;">
+                                <div style="color: rgba(255,255,255,0.9); font-size: 12px;">⚡ Энергия • <span style="font-weight: bold;">${waifu.dynamic.energy || 0}</span></div>
                             </div>
                         </div>
                         
@@ -1196,27 +1255,18 @@ async function loadActiveWaifu() {
 // Calculate power
 function calculatePower(waifu) {
     const stats = waifu.stats || {};
-    const dynamic = waifu.dynamic || {};
     
-    let power = 0;
-    power += stats.power || 0;
-    power += stats.intellect || 0;
-    power += stats.charm || 0;
-    power += stats.charisma || 0;
-    power += stats.magic || 0;
-    power += stats.speed || 0;
+    // Calculate total power from all base stats (same as in waifu detail modal)
+    // DB fields: power, charm, luck, affection, intellect, speed
+    let totalPower = 0;
+    totalPower += stats.power || 0;
+    totalPower += stats.charm || 0;
+    totalPower += stats.luck || 0;
+    totalPower += stats.affection || 0;
+    totalPower += stats.intellect || 0;
+    totalPower += stats.speed || 0;
     
-    // Add bonuses from level
-    const levelBonus = Math.floor((waifu.level - 1) / 5);
-    power += levelBonus * 5;
-    
-    // Add bonuses from mood and loyalty
-    const mood = dynamic.mood || 50;
-    const loyalty = dynamic.loyalty || 50;
-    const dynamicBonus = Math.floor((mood + loyalty) / 50);
-    power += dynamicBonus;
-    
-    return power;
+    return totalPower;
 }
 
 // Close WebApp
