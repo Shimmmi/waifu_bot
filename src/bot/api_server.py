@@ -738,12 +738,15 @@ async def get_avatars(request: Request, db: Session = Depends(get_db)) -> Dict[s
         
         # List of available avatars from GitHub
         avatars = [
-            {"id": "avatar1", "name": "Аватар 1", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar1.png"},
-            {"id": "avatar2", "name": "Аватар 2", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar2.png"},
-            {"id": "avatar3", "name": "Аватар 3", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar3.png"},
-            {"id": "avatar4", "name": "Аватар 4", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar4.png"},
-            {"id": "avatar5", "name": "Аватар 5", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar5.png"},
-            {"id": "avatar6", "name": "Аватар 6", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar6.png"}
+            {"id": "avatar1", "name": "Аватар 1", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar1.jpg"},
+            {"id": "avatar2", "name": "Аватар 2", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar2.jpg"},
+            {"id": "avatar3", "name": "Аватар 3", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar3.jpg"},
+            {"id": "avatar4", "name": "Аватар 4", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar4.jpg"},
+            {"id": "avatar5", "name": "Аватар 5", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar5.jpg"},
+            {"id": "avatar6", "name": "Аватар 6", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar6.jpg"},
+            {"id": "avatar7", "name": "Аватар 7", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar7.jpg"},
+            {"id": "avatar8", "name": "Аватар 8", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar8.jpg"},
+            {"id": "avatar9", "name": "Аватар 9", "url": "https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/avatars/avatar9.jpg"}
         ]
         
         logger.info(f"✅ Returning {len(avatars)} avatars")

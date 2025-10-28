@@ -165,9 +165,19 @@ async function loadSelectWaifu(container) {
 // Open waifu detail
 function openWaifuDetail(waifuId) {
     // Open waifu detail WebApp (same as in bot menu)
-    if (window.Telegram?.WebApp?.openLink) {
-        const webappUrl = `https://shimmirpgbot.ru/waifu-card/${waifuId}`;
-        window.Telegram.WebApp.openLink(webappUrl);
+    console.log('🔗 Opening waifu detail for:', waifuId);
+    
+    // Use the EXACT same URL format as in the bot
+    const webappUrl = `https://waifu-bot-webapp.onrender.com/waifu-card/${waifuId}?waifu_id=${waifuId}`;
+    
+    if (window.Telegram?.WebApp) {
+        console.log('🔗 Opening URL in Telegram WebApp:', webappUrl);
+        // Don't use openLink - it opens in external browser
+        // Instead, let Telegram handle it as a WebApp
+        window.location.href = webappUrl;
+    } else {
+        console.log('⚠️ Telegram WebApp not available, using openLink');
+        window.open(webappUrl, '_blank');
     }
 }
 
