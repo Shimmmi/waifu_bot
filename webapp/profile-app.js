@@ -24,51 +24,57 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Navigation function
 function navigateTo(view) {
+    console.log(`🧭 Navigating to: ${view} (from: ${currentView})`);
+    
     if (view === 'profile') {
         document.getElementById('profile-view').classList.remove('hidden');
         document.getElementById('other-views').classList.add('hidden');
         currentView = 'profile';
     } else {
+        // Set currentView BEFORE loading content
+        currentView = view;
+        
         document.getElementById('profile-view').classList.add('hidden');
         document.getElementById('other-views').classList.remove('hidden');
         
         const viewTitle = document.getElementById('view-title');
         const viewContent = document.getElementById('view-content');
         
-                               const views = {
-              'waifus': { title: '🎴 Мои вайфу', content: 'loadWaifuList()' },
-              'select-waifu': { title: '🎯 Выбрать активную вайфу', content: 'loadSelectWaifu()' },
-              'shop': { title: '🏪 Магазин', content: 'loadShopItems()' },
-              'clan': { title: '🏰 Клан', content: 'loadClanInfo()' },
-              'quests': { title: '📅 Ежедневные задания', content: 'loadQuests()' },
-              'skills': { title: '🧬 Прокачка навыков', content: 'loadSkillsTree()' },
-              'settings': { title: '⚙️ Настройки профиля', content: 'loadSettings()' }
-          };
-          
-          if (views[view]) {
-              viewTitle.textContent = views[view].title;
-              
-              // Special handling for different views
-              if (view === 'waifus') {
-                  loadWaifuList(viewContent);
-              } else if (view === 'select-waifu') {
-                  loadSelectWaifu(viewContent);
-              } else if (view === 'shop') {
-                  loadShopItems(viewContent);
-              } else if (view === 'skills') {
-                  loadSkillsTree(viewContent);
-              } else if (view === 'quests') {
-                  loadQuests(viewContent);
-              } else if (view === 'clan') {
-                  loadClanInfo(viewContent);
-              } else if (view === 'settings') {
-                  loadSettings(viewContent);
-              } else {
-                  viewContent.textContent = views[view].content;
-              }
-          }
+        const views = {
+            'waifus': { title: '🎴 Мои вайфу', content: 'loadWaifuList()' },
+            'select-waifu': { title: '🎯 Выбрать активную вайфу', content: 'loadSelectWaifu()' },
+            'shop': { title: '🏪 Магазин', content: 'loadShopItems()' },
+            'clan': { title: '🏰 Клан', content: 'loadClanInfo()' },
+            'quests': { title: '📅 Ежедневные задания', content: 'loadQuests()' },
+            'skills': { title: '🧬 Прокачка навыков', content: 'loadSkillsTree()' },
+            'settings': { title: '⚙️ Настройки профиля', content: 'loadSettings()' }
+        };
         
-        currentView = view;
+        if (views[view]) {
+            viewTitle.textContent = views[view].title;
+            
+            // Clear content first to prevent stale data
+            viewContent.innerHTML = '<p class="loading">Загрузка...</p>';
+            
+            // Special handling for different views
+            if (view === 'waifus') {
+                loadWaifuList(viewContent);
+            } else if (view === 'select-waifu') {
+                loadSelectWaifu(viewContent);
+            } else if (view === 'shop') {
+                loadShopItems(viewContent);
+            } else if (view === 'skills') {
+                loadSkillsTree(viewContent);
+            } else if (view === 'quests') {
+                loadQuests(viewContent);
+            } else if (view === 'clan') {
+                loadClanInfo(viewContent);
+            } else if (view === 'settings') {
+                loadSettings(viewContent);
+            } else {
+                viewContent.textContent = views[view].content;
+            }
+        }
     }
 }
 
@@ -274,12 +280,16 @@ function closeAvatarModal() {
 
 // Select waifu to make active
 async function selectWaifu(waifuId) {
+    console.log(`🎯 selectWaifu called for ${waifuId}, currentView: ${currentView}`);
+    
     try {
         // Check if we're in the correct view (select-waifu)
         if (currentView !== 'select-waifu') {
-            console.log('Not in select-waifu view, ignoring click');
+            console.log('❌ Not in select-waifu view, ignoring click');
             return;
         }
+        
+        console.log('✅ In select-waifu view, proceeding with selection');
         
         const response = await fetch(`/api/waifu/${waifuId}/set-active`, {
             method: 'POST'
