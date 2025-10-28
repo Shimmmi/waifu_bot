@@ -537,15 +537,6 @@ async function summonWaifu(count) {
     try {
         const initData = window.Telegram?.WebApp?.initData || '';
         
-        // Show loading
-        if (window.Telegram?.WebApp?.showPopup) {
-            window.Telegram.WebApp.showPopup({
-                title: '✨ Призыв',
-                message: `Призываем ${count} вайфу...`,
-                buttons: []
-            });
-        }
-        
         const response = await fetch('/api/summon', {
             method: 'POST',
             headers: {
