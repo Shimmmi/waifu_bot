@@ -65,7 +65,7 @@ function navigateTo(view) {
         const viewContent = document.getElementById('view-content');
         
         const views = {
-            'waifus': { title: '🎴 Мои вайфу', content: 'loadWaifuList()' },
+            'waifus': { title: '', content: 'loadWaifuList()' },
             'select-waifu': { title: '🎯 Выбрать активную вайфу', content: 'loadSelectWaifu()' },
             'shop': { title: '🏪 Магазин', content: 'loadShopItems()' },
             'clan': { title: '🏰 Клан', content: 'loadClanInfo()' },
@@ -405,7 +405,6 @@ function openSortModal() {
     
     modal.innerHTML = `
         <div style="background: white; border-radius: 20px; max-width: 400px; width: 100%; padding: 24px;">
-            <h2 style="margin: 0 0 16px 0; font-size: 20px; text-align: center;">Сортировка</h2>
             <div style="display: flex; flex-direction: column; gap: 8px;">
                 ${sortOptions.map(opt => `
                     <button onclick="setSortBy('${opt.value}')" style="
@@ -481,7 +480,6 @@ function openUpgradeModal() {
     
     modal.innerHTML = `
         <div style="background: white; border-radius: 20px; max-width: 400px; width: 100%; padding: 24px;">
-            <h2 style="margin: 0 0 16px 0; font-size: 20px; text-align: center;">⚡ Улучшение вайфу</h2>
             <div style="text-align: center; padding: 40px 20px; color: #666;">
                 <div style="font-size: 48px; margin-bottom: 16px;">🚧</div>
                 <p style="margin: 0; font-size: 16px;">Функция находится в разработке</p>
@@ -578,13 +576,8 @@ async function openWaifuDetail(waifuId) {
         // Get flag emoji
         const flagEmoji = getFlagEmoji(waifu.nationality);
         
-        // Calculate total power (DB fields: power, charm, luck, affection, intellect, speed)
-        const power = (waifu.stats.power || 0) + 
-                     (waifu.stats.charm || 0) + 
-                     (waifu.stats.luck || 0) + 
-                     (waifu.stats.affection || 0) + 
-                     (waifu.stats.intellect || 0) + 
-                     (waifu.stats.speed || 0);
+        // Calculate total power using the same formula as backend
+        const power = calculatePower(waifu);
         
         // Create modal
         const modal = document.createElement('div');
@@ -1252,21 +1245,32 @@ async function loadActiveWaifu() {
     `;
 }
 
-// Calculate power
+// Calculate power (must match backend: src/bot/services/waifu_generator.py::calculate_waifu_power)
 function calculatePower(waifu) {
     const stats = waifu.stats || {};
+    const dynamic = waifu.dynamic || {};
     
-    // Calculate total power from all base stats (same as in waifu detail modal)
-    // DB fields: power, charm, luck, affection, intellect, speed
-    let totalPower = 0;
-    totalPower += stats.power || 0;
-    totalPower += stats.charm || 0;
-    totalPower += stats.luck || 0;
-    totalPower += stats.affection || 0;
-    totalPower += stats.intellect || 0;
-    totalPower += stats.speed || 0;
+    // Base power from all stats
+    let basePower = 0;
+    basePower += stats.power || 0;
+    basePower += stats.charm || 0;
+    basePower += stats.luck || 0;
+    basePower += stats.affection || 0;
+    basePower += stats.intellect || 0;
+    basePower += stats.speed || 0;
     
-    return totalPower;
+    // Bonuses from dynamic characteristics
+    const mood = dynamic.mood || 50;
+    const loyalty = dynamic.loyalty || 50;
+    const moodBonus = mood * 0.1;
+    const loyaltyBonus = loyalty * 0.05;
+    
+    // Level bonus
+    const level = waifu.level || 1;
+    const levelBonus = level * 2;
+    
+    const totalPower = basePower + moodBonus + loyaltyBonus + levelBonus;
+    return Math.floor(totalPower);
 }
 
 // Close WebApp
