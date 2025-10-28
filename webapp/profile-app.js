@@ -229,13 +229,14 @@ async function openSelectActiveWaifuModal() {
         
         modal.innerHTML = `
             <div style="background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 24px;">
-                <h2 style="margin: 0 0 20px 0; font-size: 20px; text-align: center;">🎯 Выбрать активную вайфу</h2>
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
                     ${waifuList.map(waifu => `
-                        <div onclick="selectActiveWaifuFromModal('${waifu.id}')" style="cursor: pointer; position: relative; border: ${waifu.is_active ? '3px solid #4CAF50' : '2px solid #e0e0e0'}; border-radius: 12px; padding: 8px; transition: transform 0.2s;">
+                        <div onclick="selectActiveWaifuFromModal('${waifu.id}')" style="cursor: pointer; position: relative; border: ${waifu.is_active ? '3px solid #4CAF50' : '2px solid #e0e0e0'}; border-radius: 12px; padding: 8px; transition: transform 0.2s; display: flex; flex-direction: column;">
                             ${waifu.is_active ? '<div style="position: absolute; top: 4px; right: 4px; background: #4CAF50; color: white; padding: 2px 4px; border-radius: 6px; font-size: 10px; z-index: 1;">✓</div>' : ''}
-                            <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 6px;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
-                            <div style="font-size: 11px; font-weight: bold; text-align: center; margin-bottom: 2px;">${waifu.name}</div>
+                            <div style="width: 100%; height: 100px; overflow: hidden; border-radius: 8px; margin-bottom: 6px; flex-shrink: 0;">
+                                <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                            </div>
+                            <div style="font-size: 11px; font-weight: bold; text-align: center; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${waifu.name}</div>
                             <div style="font-size: 9px; color: #666; text-align: center;">Ур.${waifu.level} • 💪${waifu.power}</div>
                         </div>
                     `).join('')}
@@ -285,10 +286,6 @@ async function selectActiveWaifuFromModal(waifuId) {
             
             // Reload profile immediately
             await loadProfile();
-            
-            if (window.Telegram?.WebApp?.showAlert) {
-                window.Telegram.WebApp.showAlert('✅ Вайфу установлена как активная!');
-            }
         } else {
             const errorData = await response.json();
             if (window.Telegram?.WebApp?.showAlert) {
