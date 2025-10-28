@@ -627,6 +627,9 @@
                             
                             tg.showAlert('✅ Вайфу установлена как активная!');
                             
+                            // Mark that data has changed so profile reloads on return
+                            localStorage.setItem('waifu_data_changed', 'true');
+                            
                             // Reload the waifu data to reflect changes
                             const updatedWaifu = await fetchWaifuData(waifuId);
                             renderWaifuCard(updatedWaifu, waifuId);
@@ -668,6 +671,10 @@
                                 toggleFavoriteBtn.innerHTML = '❤️ В избранное';
                                 toggleFavoriteBtn.style.background = '#dc3545';
                             }
+                            
+                            // Mark that data has changed so profile reloads on return
+                            localStorage.setItem('waifu_data_changed', 'true');
+                            
                             tg.showAlert('✅ ' + data.message);
                         } else {
                             const errorData = await response.json();

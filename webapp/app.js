@@ -22,6 +22,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadProfile();
 });
 
+// Reload profile when page becomes visible again (e.g., returning from waifu-card)
+window.addEventListener('focus', async () => {
+    const dataChanged = localStorage.getItem('waifu_data_changed');
+    
+    if (dataChanged === 'true') {
+        console.log('🔄 Data changed, reloading...');
+        localStorage.removeItem('waifu_data_changed');
+        
+        if (currentView === 'profile') {
+            await loadProfile();
+        } else if (currentView === 'waifus' || currentView === 'select-waifu') {
+            // Reload waifu list
+            const viewContent = document.getElementById('view-content');
+            if (currentView === 'waifus') {
+                await loadWaifuList(viewContent);
+            } else if (currentView === 'select-waifu') {
+                await loadSelectWaifu(viewContent);
+            }
+        }
+    }
+});
+
 // Navigation function
 function navigateTo(view) {
     console.log(`🧭 Navigating to: ${view} (from: ${currentView})`);
