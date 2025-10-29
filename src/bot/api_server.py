@@ -1202,7 +1202,7 @@ async def perform_upgrade(request: Request, db: Session = Depends(get_db)) -> Di
 def calculate_sacrifice_xp(waifu) -> int:
     """Calculate XP value when sacrificing a waifu"""
     # Base XP from level
-    base_xp = waifu.level * 10
+    base_xp = waifu.level * 50
     
     # Rarity multiplier
     rarity_multipliers = {
