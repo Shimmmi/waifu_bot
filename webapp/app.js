@@ -242,8 +242,10 @@ function renderWaifuList(container) {
                         border: 3px solid ${waifu.is_active ? '#4CAF50' : rarityColors.border};
                         box-shadow: 0 2px 8px ${rarityColors.glow};
                     " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px ${rarityColors.glow}'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px ${rarityColors.glow}'">
-                        ${waifu.is_active ? '<div style="position: absolute; top: 8px; right: 8px; background: #4CAF50; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px;">✓ АКТИВНА</div>' : ''}
-                        ${waifu.is_favorite ? '<div style="position: absolute; top: 8px; left: 8px; background: #f5576c; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px;">❤️ ИЗБРАННОЕ</div>' : ''}
+                        <div style="position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; align-items: center;">
+                            ${waifu.is_active ? '<div style="background: #4CAF50; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px;">✓ АКТИВНА</div>' : ''}
+                            ${waifu.is_favorite ? '<div style="background: #f5576c; color: white; padding: 4px 6px; border-radius: 50%; font-size: 12px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">❤️</div>' : ''}
+                        </div>
                         <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 16px; border: 2px solid ${rarityColors.border};" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2760%27%20height=%2760%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
                         <div style="flex: 1;">
                             <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${waifu.name}</div>
