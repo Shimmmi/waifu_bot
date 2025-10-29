@@ -719,17 +719,47 @@ async function openUpgradeModal(targetWaifuId) {
     try {
         const initData = window.Telegram?.WebApp?.initData || '';
         
-        // Get target waifu info
-        const targetResponse = await fetch('/api/upgrade/waifus?' + new URLSearchParams({ initData }));
-        if (!targetResponse.ok) throw new Error('Failed to fetch target waifu');
+        // Convert to string for comparison
+        targetWaifuId = String(targetWaifuId);
         
-        const targetData = await targetResponse.json();
-        const targetWaifu = targetData.waifus.find(w => w.id === targetWaifuId);
-        if (!targetWaifu) throw new Error('Target waifu not found');
+        // First, try to get waifu info from current waifus list
+        let targetWaifu = null;
+        
+        // Try to get from all waifus (not just upgradeable)
+        const allWaifusResponse = await fetch('/api/waifus?' + new URLSearchParams({ initData }));
+        if (allWaifusResponse.ok) {
+            const allWaifus = await allWaifusResponse.json();
+            targetWaifu = allWaifus.find(w => String(w.id) === targetWaifuId);
+        }
+        
+        if (!targetWaifu) {
+            console.error('Target waifu not found with ID:', targetWaifuId);
+            throw new Error('Вайфу не найдена');
+        }
+        
+        // Check if waifu can be upgraded
+        const maxLevels = {
+            'Common': 30,
+            'Uncommon': 35,
+            'Rare': 40,
+            'Epic': 45,
+            'Legendary': 50
+        };
+        
+        const maxLevel = maxLevels[targetWaifu.rarity] || 30;
+        if (targetWaifu.level >= maxLevel) {
+            if (window.Telegram?.WebApp?.showAlert) {
+                window.Telegram.WebApp.showAlert(`Эта вайфу уже достигла максимального уровня (${maxLevel})`);
+            }
+            return;
+        }
         
         // Get sacrifice candidates
         const candidatesResponse = await fetch(`/api/upgrade/sacrifice-candidates?target_waifu_id=${targetWaifuId}&${new URLSearchParams({ initData })}`);
-        if (!candidatesResponse.ok) throw new Error('Failed to fetch sacrifice candidates');
+        if (!candidatesResponse.ok) {
+            const errorData = await candidatesResponse.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to fetch sacrifice candidates');
+        }
         
         const candidatesData = await candidatesResponse.json();
         const candidates = candidatesData.candidates || [];
@@ -763,7 +793,7 @@ async function openUpgradeModal(targetWaifuId) {
                         style="width: 80px; height: 80px; object-fit: cover; border-radius: 16px; border: 4px solid ${rarityColor}; box-shadow: 0 0 20px ${rarityColor}66; margin-bottom: 12px;"
                         onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2780%27%20height=%2780%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2724%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
                     <h3 style="margin: 0; font-size: 18px; color: ${rarityColor}; font-weight: bold;">${targetWaifu.name}</h3>
-                    <div style="font-size: 14px; color: #666; margin-top: 4px;">Уровень ${targetWaifu.level}/${targetWaifu.max_level} • 💪${targetWaifu.power}</div>
+                    <div style="font-size: 14px; color: #666; margin-top: 4px;">Уровень ${targetWaifu.level}/${maxLevel} • 💪${targetWaifu.power}</div>
                 </div>
                 
                 <!-- Selection Summary -->
