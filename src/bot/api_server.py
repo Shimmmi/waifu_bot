@@ -1051,12 +1051,6 @@ async def get_sacrifice_candidates(request: Request, target_waifu_id: str, db: S
         if Waifu is None or User is None:
             raise HTTPException(status_code=500, detail="Database models not configured")
         
-        # Convert target_waifu_id to int
-        try:
-            target_waifu_id_int = int(target_waifu_id)
-        except (ValueError, TypeError):
-            raise HTTPException(status_code=400, detail=f"Invalid waifu ID: {target_waifu_id}")
-        
         # Extract Telegram user ID from initData
         telegram_user_id = get_telegram_user_id(request)
         
@@ -1071,10 +1065,10 @@ async def get_sacrifice_candidates(request: Request, target_waifu_id: str, db: S
         if not user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
         
-        # Get all waifus except the target one
+        # Get all waifus except the target one (ID is string in database)
         waifus = db.query(Waifu).filter(
             Waifu.owner_id == user.id,
-            Waifu.id != target_waifu_id_int
+            Waifu.id != target_waifu_id
         ).all()
         
         candidates = []

@@ -729,11 +729,13 @@ async function openUpgradeModal(targetWaifuId) {
         const allWaifusResponse = await fetch('/api/waifus?' + new URLSearchParams({ initData }));
         if (allWaifusResponse.ok) {
             const allWaifus = await allWaifusResponse.json();
-            targetWaifu = allWaifus.find(w => String(w.id) === targetWaifuId);
+            console.log('All waifus:', allWaifus.length, 'Looking for:', targetWaifuId);
+            console.log('Sample IDs:', allWaifus.slice(0, 3).map(w => ({ id: w.id, type: typeof w.id })));
+            targetWaifu = allWaifus.find(w => String(w.id) === String(targetWaifuId));
         }
         
         if (!targetWaifu) {
-            console.error('Target waifu not found with ID:', targetWaifuId);
+            console.error('Target waifu not found with ID:', targetWaifuId, 'Type:', typeof targetWaifuId);
             throw new Error('Вайфу не найдена');
         }
         
