@@ -737,6 +737,11 @@ async function openUpgradeModal(targetWaifuId) {
             throw new Error('Вайфу не найдена');
         }
         
+        // Calculate power for display
+        if (!targetWaifu.power) {
+            targetWaifu.power = calculatePower(targetWaifu);
+        }
+        
         // Check if waifu can be upgraded
         const maxLevels = {
             'Common': 30,
@@ -853,7 +858,11 @@ async function openUpgradeModal(targetWaifuId) {
     } catch (error) {
         console.error('Error opening upgrade modal:', error);
         if (window.Telegram?.WebApp?.showAlert) {
-            window.Telegram.WebApp.showAlert('❌ Ошибка: ' + error.message);
+            const errorMessage = typeof error === 'string' ? error : 
+                                error?.message || 
+                                JSON.stringify(error) || 
+                                'Неизвестная ошибка';
+            window.Telegram.WebApp.showAlert('❌ Ошибка: ' + errorMessage);
         }
     }
 }

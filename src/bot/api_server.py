@@ -1043,13 +1043,19 @@ async def get_upgrade_waifus(request: Request, db: Session = Depends(get_db)) ->
 
 
 @app.get("/api/upgrade/sacrifice-candidates")
-async def get_sacrifice_candidates(request: Request, target_waifu_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_sacrifice_candidates(request: Request, target_waifu_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Получение списка вайфу для жертвования (исключая целевую вайфу)"""
     try:
         logger.info(f"📡 API REQUEST: GET /api/upgrade/sacrifice-candidates?target_waifu_id={target_waifu_id}")
         
         if Waifu is None or User is None:
             raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Convert target_waifu_id to int
+        try:
+            target_waifu_id_int = int(target_waifu_id)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail=f"Invalid waifu ID: {target_waifu_id}")
         
         # Extract Telegram user ID from initData
         telegram_user_id = get_telegram_user_id(request)
@@ -1068,7 +1074,7 @@ async def get_sacrifice_candidates(request: Request, target_waifu_id: int, db: S
         # Get all waifus except the target one
         waifus = db.query(Waifu).filter(
             Waifu.owner_id == user.id,
-            Waifu.id != target_waifu_id
+            Waifu.id != target_waifu_id_int
         ).all()
         
         candidates = []
