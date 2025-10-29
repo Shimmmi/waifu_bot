@@ -70,7 +70,7 @@ function navigateTo(view) {
             'shop': { title: '🏪 Магазин', content: 'loadShopItems()' },
             'clan': { title: '🏰 Клан', content: 'loadClanInfo()' },
             'quests': { title: '📅 Ежедневные задания', content: 'loadQuests()' },
-            'skills': { title: '🧬 Прокачка навыков', content: 'loadSkillsTree()' },
+            'skills': { title: '🧬 Прокачка навыков', content: 'loadSkills()' },
             'settings': { title: '⚙️ Настройки профиля', content: 'loadSettings()' },
             'upgrade': { title: '⚡ Прокачка вайфу', content: 'loadUpgradePage()' }
         };
@@ -89,7 +89,7 @@ function navigateTo(view) {
             } else if (view === 'shop') {
                 loadShopItems(viewContent);
             } else if (view === 'skills') {
-                loadSkillsTree(viewContent);
+                loadSkills(viewContent);
             } else if (view === 'quests') {
                 loadQuests(viewContent);
             } else if (view === 'clan') {
@@ -2003,5 +2003,249 @@ function calculatePower(waifu) {
 function closeWebApp() {
     if (window.Telegram?.WebApp?.close) {
         window.Telegram.WebApp.close();
+    }
+}
+
+// ==================== SKILLS SYSTEM ====================
+
+let skillsData = null;
+let skillsTree = null;
+
+// Load skills page
+async function loadSkills(container) {
+    console.log('🧬 Loading skills page');
+    container.innerHTML = '<p class="loading">Загрузка навыков...</p>';
+    
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/skills/tree?' + new URLSearchParams({ initData }));
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch skills');
+        }
+        
+        const data = await response.json();
+        skillsData = data;
+        skillsTree = data.skills_tree;
+        
+        renderSkillsPage(container, data);
+        
+    } catch (error) {
+        console.error('Error loading skills:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <p style="color: #f5576c; margin-bottom: 16px;">Ошибка загрузки навыков</p>
+                <button onclick="loadSkills(document.getElementById('other-views'))" style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white; border: none; padding: 12px 24px; border-radius: 8px;
+                    font-size: 14px; cursor: pointer;
+                ">Повторить</button>
+            </div>
+        `;
+    }
+}
+
+// Render skills page
+function renderSkillsPage(container, data) {
+    const { skills_tree, category_progress } = data;
+    
+    container.innerHTML = `
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    color: white; padding: 20px; border-radius: 16px; margin-bottom: 20px; text-align: center;">
+            <h2 style="margin: 0 0 8px 0; font-size: 24px;">🧬 Прокачка</h2>
+            <div style="font-size: 14px; opacity: 0.9;">
+                Очки навыков: <span style="font-weight: bold;">${skillsData.skill_points || 0}</span>
+            </div>
+        </div>
+        
+        <!-- Category Tabs -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px;">
+            <button onclick="showSkillCategory('account')" id="tab-account" style="
+                background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+                color: white; border: none; padding: 12px; border-radius: 12px;
+                font-size: 14px; font-weight: bold; cursor: pointer;
+                box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+            ">
+                📊 Аккаунт<br><small>${category_progress.account || 0} очков</small>
+            </button>
+            <button onclick="showSkillCategory('passive')" id="tab-passive" style="
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                color: white; border: none; padding: 12px; border-radius: 12px;
+                font-size: 14px; font-weight: bold; cursor: pointer;
+                box-shadow: 0 4px 12px rgba(240, 147, 251, 0.3);
+            ">
+                🎭 Пассивные<br><small>${category_progress.passive || 0} очков</small>
+            </button>
+            <button onclick="showSkillCategory('training')" id="tab-training" style="
+                background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+                color: white; border: none; padding: 12px; border-radius: 12px;
+                font-size: 14px; font-weight: bold; cursor: pointer;
+                box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+            ">
+                🏋️ Тренировки<br><small>${category_progress.training || 0} очков</small>
+            </button>
+        </div>
+        
+        <!-- Skills Content -->
+        <div id="skills-content">
+            ${renderSkillCategory('account', skills_tree.account)}
+        </div>
+    `;
+    
+    // Set active tab
+    document.getElementById('tab-account').style.opacity = '1';
+    document.getElementById('tab-passive').style.opacity = '0.7';
+    document.getElementById('tab-training').style.opacity = '0.7';
+}
+
+// Show skill category
+function showSkillCategory(category) {
+    // Update tab styles
+    document.querySelectorAll('[id^="tab-"]').forEach(tab => {
+        tab.style.opacity = '0.7';
+    });
+    document.getElementById(`tab-${category}`).style.opacity = '1';
+    
+    // Update content
+    const content = document.getElementById('skills-content');
+    content.innerHTML = renderSkillCategory(category, skillsTree[category]);
+}
+
+// Render skill category
+function renderSkillCategory(category, skills) {
+    if (!skills || skills.length === 0) {
+        return '<p style="text-align: center; color: #666; padding: 20px;">Навыки не найдены</p>';
+    }
+    
+    return `
+        <div style="display: grid; gap: 12px;">
+            ${skills.map(skill => renderSkillCard(skill)).join('')}
+        </div>
+    `;
+}
+
+// Render skill card
+function renderSkillCard(skill) {
+    const isMaxLevel = skill.current_level >= skill.max_level;
+    const canUpgrade = skill.can_upgrade && skill.is_unlocked;
+    const isLocked = !skill.is_unlocked;
+    
+    let cardStyle = `
+        background: white; border-radius: 16px; padding: 16px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.2s;
+        border: 2px solid ${isLocked ? '#ddd' : canUpgrade ? '#4CAF50' : '#ccc'};
+    `;
+    
+    if (isLocked) {
+        cardStyle += 'opacity: 0.6;';
+    }
+    
+    return `
+        <div style="${cardStyle}" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                <div style="font-size: 24px; margin-right: 12px;">${skill.icon}</div>
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 4px 0; font-size: 16px; color: #333;">${skill.name}</h3>
+                    <div style="font-size: 12px; color: #666;">${skill.description}</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 14px; font-weight: bold; color: #333;">
+                        ${skill.current_level}/${skill.max_level}
+                    </div>
+                    ${isLocked ? '<div style="font-size: 10px; color: #999;">Заблокирован</div>' : ''}
+                </div>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div style="background: #f0f0f0; border-radius: 8px; height: 6px; margin-bottom: 12px;">
+                <div style="
+                    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+                    height: 100%; border-radius: 8px; width: ${(skill.current_level / skill.max_level) * 100}%;
+                    transition: width 0.3s;
+                "></div>
+            </div>
+            
+            <!-- Effects -->
+            ${skill.current_level > 0 ? `
+                <div style="background: #f8f9fa; border-radius: 8px; padding: 8px; margin-bottom: 12px;">
+                    <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Текущие эффекты:</div>
+                    ${Object.entries(skill.effects[skill.current_level] || {}).map(([key, value]) => 
+                        `<div style="font-size: 11px; color: #333;">${key}: +${(value * 100).toFixed(0)}%</div>`
+                    ).join('')}
+                </div>
+            ` : ''}
+            
+            <!-- Upgrade Button -->
+            ${canUpgrade ? `
+                <button onclick="upgradeSkill('${skill.skill_id}')" style="
+                    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+                    color: white; border: none; padding: 10px 16px; border-radius: 8px;
+                    font-size: 14px; font-weight: bold; cursor: pointer; width: 100%;
+                    transition: all 0.2s;
+                " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                    ⚡ Улучшить (${skill.next_level_cost} очков)
+                </button>
+            ` : isMaxLevel ? `
+                <div style="
+                    background: #e8f5e8; color: #4CAF50; padding: 10px 16px; border-radius: 8px;
+                    text-align: center; font-size: 14px; font-weight: bold;
+                ">
+                    ✅ Максимальный уровень
+                </div>
+            ` : isLocked ? `
+                <div style="
+                    background: #f5f5f5; color: #999; padding: 10px 16px; border-radius: 8px;
+                    text-align: center; font-size: 14px;
+                ">
+                    🔒 Требуется ${skill.unlock_requirement} очков в категории
+                </div>
+            ` : `
+                <div style="
+                    background: #f5f5f5; color: #999; padding: 10px 16px; border-radius: 8px;
+                    text-align: center; font-size: 14px;
+                ">
+                    Недостаточно очков навыков
+                </div>
+            `}
+        </div>
+    `;
+}
+
+// Upgrade skill
+async function upgradeSkill(skillId) {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/skills/upgrade', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                skill_id: skillId,
+                initData: initData
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to upgrade skill');
+        }
+        
+        const result = await response.json();
+        
+        // Show success message
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert(`✅ Навык улучшен до уровня ${result.new_level}!`);
+        }
+        
+        // Reload skills page
+        loadSkills(document.getElementById('other-views'));
+        
+    } catch (error) {
+        console.error('Error upgrading skill:', error);
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert('❌ Ошибка: ' + error.message);
+        }
     }
 }

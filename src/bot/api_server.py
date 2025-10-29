@@ -62,6 +62,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Import and register skills router
+try:
+    from bot.api_skills import router as skills_router
+    app.include_router(skills_router)
+except ImportError:
+    logger.warning("Skills API not available - skills_router not imported")
+
 # Функция для получения сессии базы данных
 def get_db():
     if SessionLocal is None:

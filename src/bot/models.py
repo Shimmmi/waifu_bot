@@ -49,6 +49,7 @@ class User(Base):
 
     # Relationships
     waifus: Mapped[list["WaifuInstance"]] = relationship("WaifuInstance", back_populates="owner")
+    user_skills: Mapped["UserSkills"] = relationship("UserSkills", back_populates="user", uselist=False)
 
 
 class WaifuTemplate(Base):
