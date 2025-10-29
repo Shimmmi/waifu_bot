@@ -797,15 +797,14 @@ async function openUpgradeModal(targetWaifuId) {
                 <div style="text-align: center; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid #eee;">
                     <div style="font-size: 20px; margin-bottom: 12px; color: #666; font-weight: bold;">Улучшение вайфу:</div>
                     <img src="${targetWaifu.image_url}" alt="${targetWaifu.name}" 
-                        style="width: 80px; height: 80px; object-fit: cover; border-radius: 16px; border: 4px solid ${rarityColor}; box-shadow: 0 0 20px ${rarityColor}66; margin-bottom: 12px;"
-                        onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2780%27%20height=%2780%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2724%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                        style="width: 120px; height: 120px; object-fit: cover; border-radius: 20px; border: 4px solid ${rarityColor}; box-shadow: 0 0 20px ${rarityColor}66; margin-bottom: 12px;"
+                        onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27120%27%20height=%27120%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2736%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
                     <h3 style="margin: 0; font-size: 18px; color: ${rarityColor}; font-weight: bold;">${targetWaifu.name}</h3>
                     <div style="font-size: 14px; color: #666; margin-top: 4px;">Уровень ${targetWaifu.level}/${maxLevel} • 💪${targetWaifu.power}</div>
                 </div>
                 
                 <!-- Selection Summary -->
                 <div id="selection-summary" style="background: #f8f9fa; border-radius: 12px; padding: 16px; margin-bottom: 20px; text-align: center;">
-                    <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">Выберите вайфу для жертвования</div>
                     <div id="selected-info" style="font-size: 14px; color: #666;">Выберите вайфу для получения опыта</div>
                 </div>
                 
@@ -940,18 +939,8 @@ async function confirmUpgrade(targetWaifuId) {
         
         const result = await response.json();
         
-        // Show success message
-        if (window.Telegram?.WebApp?.showAlert) {
-            window.Telegram.WebApp.showAlert(
-                `⚡ Улучшение завершено!\n\n` +
-                `📈 Уровень: ${result.old_level} → ${result.new_level}\n` +
-                `💫 Получено: +${result.xp_added} XP\n` +
-                `🔥 Пожертвовано: ${result.sacrificed_count} вайфу`
-            );
-        }
-        
-        // Close modal
-        closeUpgradeModal();
+        // Replace upgrade modal with results modal
+        showUpgradeResultsModal(result, targetWaifuId);
         
         // Reload upgrade page
         const viewContent = document.getElementById('view-content');
@@ -978,6 +967,62 @@ function closeUpgradeModal() {
     if (modal) {
         modal.remove();
     }
+}
+
+// Show upgrade results modal
+function showUpgradeResultsModal(result, targetWaifuId) {
+    // Close current modal
+    closeUpgradeModal();
+    
+    // Create results modal
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.9); display: flex; align-items: center;
+        justify-content: center; z-index: 10000; padding: 20px;
+    `;
+    
+    const levelGained = result.new_level - result.old_level;
+    const levelText = levelGained > 0 ? `+${levelGained}` : '0';
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 20px; max-width: 400px; width: 100%; padding: 24px; text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 16px;">⚡</div>
+            <h3 style="margin: 0 0 16px 0; color: #333; font-size: 20px;">Улучшение завершено!</h3>
+            
+            <div style="background: #f8f9fa; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: #666;">📈 Уровень:</span>
+                    <span style="font-weight: bold; color: #28a745;">${result.old_level} → ${result.new_level}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span style="color: #666;">💫 Получено XP:</span>
+                    <span style="font-weight: bold; color: #17a2b8;">+${result.xp_added}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="color: #666;">🔥 Пожертвовано:</span>
+                    <span style="font-weight: bold; color: #dc3545;">${result.sacrificed_count} вайфу</span>
+                </div>
+            </div>
+            
+            <button onclick="closeUpgradeModal()" style="
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
+                color: white; border: none; padding: 14px; border-radius: 12px; 
+                font-size: 16px; font-weight: bold; cursor: pointer; width: 100%;
+            ">
+                ✅ Готово
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close on background click
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
 }
 
 // Close summon modal
