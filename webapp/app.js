@@ -717,10 +717,12 @@ function showSummonedWaifusModal(waifus, remainingCoins) {
 // Open upgrade modal
 async function openUpgradeModal(targetWaifuId) {
     try {
+        console.log('🔧 openUpgradeModal called with:', targetWaifuId, 'Type:', typeof targetWaifuId);
         const initData = window.Telegram?.WebApp?.initData || '';
         
         // Convert to string for comparison
         targetWaifuId = String(targetWaifuId);
+        console.log('🔧 Converted to string:', targetWaifuId);
         
         // First, try to get waifu info from current waifus list
         let targetWaifu = null;
@@ -737,10 +739,15 @@ async function openUpgradeModal(targetWaifuId) {
         // If not found in all waifus, try to fetch directly by ID
         if (!targetWaifu) {
             console.log('Waifu not found in all waifus, trying direct fetch...');
+            console.log('Target waifu ID:', targetWaifuId, 'Type:', typeof targetWaifuId);
             const directResponse = await fetch(`/api/waifu/${targetWaifuId}`);
+            console.log('Direct fetch response status:', directResponse.status);
             if (directResponse.ok) {
                 targetWaifu = await directResponse.json();
-                console.log('Found waifu via direct fetch:', targetWaifu.name);
+                console.log('Found waifu via direct fetch:', targetWaifu.name, 'ID:', targetWaifu.id);
+            } else {
+                const errorText = await directResponse.text();
+                console.error('Direct fetch failed:', errorText);
             }
         }
         
@@ -841,12 +848,14 @@ async function openUpgradeModal(targetWaifuId) {
                         <div class="candidate-card" data-waifu-id="${waifu.id}" data-xp-value="${waifu.xp_value}" style="
                             background: white; border: 2px solid ${candidateRarityColor}; border-radius: 12px; 
                             padding: 8px; cursor: pointer; transition: all 0.2s; text-align: center;
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                         " onclick="toggleCandidate(this)">
                             <img src="${waifu.image_url}" alt="${waifu.name}" 
                                 style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 6px; border: 2px solid ${candidateRarityColor};"
                                 onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
-                            <div style="font-size: 11px; font-weight: bold; color: ${candidateRarityColor}; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${waifu.name}</div>
-                            <div style="font-size: 10px; color: #666;">+${waifu.xp_value} XP</div>
+                            <div style="font-size: 11px; font-weight: bold; color: #333; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${waifu.name}</div>
+                            <div style="font-size: 10px; color: #666; margin-bottom: 2px;">Ур.${waifu.level}</div>
+                            <div style="font-size: 10px; color: #28a745; font-weight: bold;">+${waifu.xp_value} XP</div>
                         </div>
                         `;
                     }).join('')}
@@ -1707,7 +1716,7 @@ async function loadUpgradePage(container) {
                             background: white; border-radius: 12px; padding: 12px; 
                             border: 2px solid ${rarityColor}; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                             cursor: pointer; transition: transform 0.2s;
-                        " onclick="openUpgradeModal('${waifu.id}')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                        " onclick="console.log('🔧 Upgrade clicked for waifu:', '${waifu.id}', 'Type:', typeof '${waifu.id}'); openUpgradeModal('${waifu.id}')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                                 <img src="${waifu.image_url}" alt="${waifu.name}" 
                                     style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; border: 2px solid ${rarityColor};"
