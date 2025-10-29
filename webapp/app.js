@@ -179,7 +179,7 @@ function renderWaifuList(container) {
     // Render toolbar + list
     container.innerHTML = `
         <!-- Toolbar Row 1 -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; padding: 0 4px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; padding: 0 4px;">
             <button onclick="openSortModal()" style="
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                 color: white; border: none; padding: 12px; border-radius: 12px; 
@@ -195,14 +195,6 @@ function renderWaifuList(container) {
                 align-items: center; justify-content: center; gap: 4px;
             ">
                 ${showOnlyFavorites ? '✅ Избранные' : '❤️ Избранное'}
-            </button>
-            <button onclick="openUpgradeModal()" style="
-                background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); 
-                color: white; border: none; padding: 12px; border-radius: 12px; 
-                font-size: 13px; font-weight: bold; cursor: pointer; display: flex; 
-                align-items: center; justify-content: center; gap: 4px;
-            ">
-                ⚡ Улучшение
             </button>
         </div>
         
@@ -1118,6 +1110,9 @@ async function openWaifuDetail(waifuId) {
         // Calculate total power using the same formula as backend
         const power = calculatePower(waifu);
         
+        // Get rarity colors for modal background
+        const rarityColors = getRarityColor(waifu.rarity);
+        
         // Create modal
         const modal = document.createElement('div');
         modal.style.cssText = `
@@ -1136,7 +1131,7 @@ async function openWaifuDetail(waifuId) {
         `;
         
         modal.innerHTML = `
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div style="background: linear-gradient(135deg, ${rarityColors.border} 0%, ${rarityColors.border}88 100%); border-radius: 20px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px ${rarityColors.glow};">
                 <!-- Header -->
                 <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 20px 20px 0 0; backdrop-filter: blur(10px);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
