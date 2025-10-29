@@ -65,13 +65,14 @@ function navigateTo(view) {
         const viewContent = document.getElementById('view-content');
         
         const views = {
-            'waifus': { title: '🎴 Мои вайфу', content: 'loadWaifuList()' },
+            'waifus': { title: '', content: 'loadWaifuList()' },
             'select-waifu': { title: '🎯 Выбрать активную вайфу', content: 'loadSelectWaifu()' },
             'shop': { title: '🏪 Магазин', content: 'loadShopItems()' },
             'clan': { title: '🏰 Клан', content: 'loadClanInfo()' },
             'quests': { title: '📅 Ежедневные задания', content: 'loadQuests()' },
             'skills': { title: '🧬 Прокачка навыков', content: 'loadSkillsTree()' },
-            'settings': { title: '⚙️ Настройки профиля', content: 'loadSettings()' }
+            'settings': { title: '⚙️ Настройки профиля', content: 'loadSettings()' },
+            'upgrade': { title: '⚡ Прокачка вайфу', content: 'loadUpgradePage()' }
         };
         
         if (views[view]) {
@@ -95,6 +96,8 @@ function navigateTo(view) {
                 loadClanInfo(viewContent);
             } else if (view === 'settings') {
                 loadSettings(viewContent);
+            } else if (view === 'upgrade') {
+                loadUpgradePage(viewContent);
             } else {
                 viewContent.textContent = views[view].content;
             }
@@ -131,6 +134,18 @@ async function loadWaifuList(container) {
     }
 }
 
+// Get rarity color for border/background
+function getRarityColor(rarity) {
+    const colors = {
+        'Common': { border: '#d0d0d0', background: '#fafafa', glow: 'rgba(208, 208, 208, 0.3)' },
+        'Uncommon': { border: '#4CAF50', background: '#f1f8f4', glow: 'rgba(76, 175, 80, 0.3)' },
+        'Rare': { border: '#2196F3', background: '#e3f2fd', glow: 'rgba(33, 150, 243, 0.3)' },
+        'Epic': { border: '#9C27B0', background: '#f3e5f5', glow: 'rgba(156, 39, 176, 0.3)' },
+        'Legendary': { border: '#FF9800', background: '#fff3e0', glow: 'rgba(255, 152, 0, 0.5)' }
+    };
+    return colors[rarity] || colors['Common'];
+}
+
 // Render waifu list with current sort and filter settings
 function renderWaifuList(container) {
     // Filter waifus
@@ -163,23 +178,53 @@ function renderWaifuList(container) {
 
     // Render toolbar + list
     container.innerHTML = `
-        <!-- Toolbar -->
-        <div style="display: flex; gap: 8px; margin-bottom: 16px; padding: 0 4px;">
+        <!-- Toolbar Row 1 -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; padding: 0 4px;">
             <button onclick="openSortModal()" style="
-                flex: 1; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                 color: white; border: none; padding: 12px; border-radius: 12px; 
-                font-size: 14px; font-weight: bold; cursor: pointer; display: flex; 
-                align-items: center; justify-content: center; gap: 6px;
+                font-size: 13px; font-weight: bold; cursor: pointer; display: flex; 
+                align-items: center; justify-content: center; gap: 4px;
             ">
                 🔄 Сортировка
             </button>
             <button onclick="toggleFavorites()" style="
-                flex: 1; background: ${showOnlyFavorites ? '#4CAF50' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}; 
+                background: ${showOnlyFavorites ? '#4CAF50' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}; 
                 color: white; border: none; padding: 12px; border-radius: 12px; 
-                font-size: 14px; font-weight: bold; cursor: pointer; display: flex; 
-                align-items: center; justify-content: center; gap: 6px;
+                font-size: 13px; font-weight: bold; cursor: pointer; display: flex; 
+                align-items: center; justify-content: center; gap: 4px;
             ">
-                ${showOnlyFavorites ? '✅ Только избранные' : '❤️ Избранное'}
+                ${showOnlyFavorites ? '✅ Избранные' : '❤️ Избранное'}
+            </button>
+            <button onclick="openUpgradeModal()" style="
+                background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); 
+                color: white; border: none; padding: 12px; border-radius: 12px; 
+                font-size: 13px; font-weight: bold; cursor: pointer; display: flex; 
+                align-items: center; justify-content: center; gap: 4px;
+            ">
+                ⚡ Улучшение
+            </button>
+        </div>
+        
+        <!-- Toolbar Row 2: Summon buttons -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; padding: 0 4px;">
+            <button onclick="summonWaifu(1)" style="
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
+                color: white; border: none; padding: 12px 8px; border-radius: 12px; 
+                font-size: 13px; font-weight: bold; cursor: pointer; display: flex; 
+                flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+            ">
+                <div style="font-size: 14px;">✨ Призыв</div>
+                <div style="font-size: 12px; opacity: 0.9;">(100💰)</div>
+            </button>
+            <button onclick="summonWaifu(10)" style="
+                background: linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 90%, #2BFF88 100%); 
+                color: white; border: none; padding: 12px 8px; border-radius: 12px; 
+                font-size: 13px; font-weight: bold; cursor: pointer; display: flex; 
+                flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+            ">
+                <div style="font-size: 14px;">✨ Призыв x10</div>
+                <div style="font-size: 12px; opacity: 0.9;">(1000💰)</div>
             </button>
         </div>
         
@@ -187,15 +232,19 @@ function renderWaifuList(container) {
         <div style="display: flex; flex-direction: column; gap: 12px;">
             ${filteredWaifus.length === 0 
                 ? '<p style="padding: 20px; color: #666; text-align: center;">Нет вайфу для отображения</p>'
-                : filteredWaifus.map(waifu => `
+                : filteredWaifus.map(waifu => {
+                    const rarityColors = getRarityColor(waifu.rarity);
+                    return `
                     <div onclick="openWaifuDetail('${waifu.id}')" style="
-                        background: white; border-radius: 12px; padding: 16px; cursor: pointer; 
-                        transition: transform 0.2s; position: relative; display: flex; align-items: center;
-                        ${waifu.is_active ? 'border: 3px solid #4CAF50;' : 'border: 1px solid #e0e0e0;'}
-                    " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                        background: ${rarityColors.background}; 
+                        border-radius: 12px; padding: 16px; cursor: pointer; 
+                        transition: all 0.2s; position: relative; display: flex; align-items: center;
+                        border: 3px solid ${waifu.is_active ? '#4CAF50' : rarityColors.border};
+                        box-shadow: 0 2px 8px ${rarityColors.glow};
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px ${rarityColors.glow}'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px ${rarityColors.glow}'">
                         ${waifu.is_active ? '<div style="position: absolute; top: 8px; right: 8px; background: #4CAF50; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px;">✓ АКТИВНА</div>' : ''}
                         ${waifu.is_favorite ? '<div style="position: absolute; top: 8px; left: 8px; background: #f5576c; color: white; padding: 4px 8px; border-radius: 12px; font-size: 10px;">❤️ ИЗБРАННОЕ</div>' : ''}
-                        <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 16px;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2760%27%20height=%2760%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                        <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; margin-right: 16px; border: 2px solid ${rarityColors.border};" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2760%27%20height=%2760%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
                         <div style="flex: 1;">
                             <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${waifu.name}</div>
                             <div style="font-size: 14px; color: #666; margin-bottom: 4px;">Уровень ${waifu.level} • 💪${waifu.power}</div>
@@ -203,7 +252,7 @@ function renderWaifuList(container) {
                         </div>
                         <div style="color: #999; font-size: 20px;">→</div>
                     </div>
-                `).join('')
+                `;}).join('')
             }
         </div>
     `;
@@ -271,6 +320,13 @@ async function openSelectActiveWaifuModal() {
             return;
         }
         
+        // Sort by power (descending)
+        waifuList.sort((a, b) => {
+            const powerA = calculatePower(a);
+            const powerB = calculatePower(b);
+            return powerB - powerA;
+        });
+        
         // Create modal
         const modal = document.createElement('div');
         modal.style.cssText = `
@@ -290,16 +346,19 @@ async function openSelectActiveWaifuModal() {
         modal.innerHTML = `
             <div style="background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 24px;">
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
-                    ${waifuList.map(waifu => `
+                    ${waifuList.map(waifu => {
+                        const power = calculatePower(waifu);
+                        return `
                         <div onclick="selectActiveWaifuFromModal('${waifu.id}')" style="cursor: pointer; position: relative; border: ${waifu.is_active ? '3px solid #4CAF50' : '2px solid #e0e0e0'}; border-radius: 12px; padding: 8px; transition: transform 0.2s; display: flex; flex-direction: column;">
                             ${waifu.is_active ? '<div style="position: absolute; top: 4px; right: 4px; background: #4CAF50; color: white; padding: 2px 4px; border-radius: 6px; font-size: 10px; z-index: 1;">✓</div>' : ''}
                             <div style="width: 100%; height: 100px; overflow: hidden; border-radius: 8px; margin-bottom: 6px; flex-shrink: 0;">
                                 <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
                             </div>
                             <div style="font-size: 11px; font-weight: bold; text-align: center; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${waifu.name}</div>
-                            <div style="font-size: 9px; color: #666; text-align: center;">Ур.${waifu.level} • 💪${waifu.power}</div>
+                            <div style="font-size: 9px; color: #666; text-align: center;">Ур.${waifu.level} • 💪${power}</div>
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
                 <button id="close-select-modal" style="margin-top: 16px; width: 100%; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 12px; font-size: 14px; cursor: pointer;">
                     Отмена
@@ -381,7 +440,6 @@ function openSortModal() {
     
     modal.innerHTML = `
         <div style="background: white; border-radius: 20px; max-width: 400px; width: 100%; padding: 24px;">
-            <h2 style="margin: 0 0 16px 0; font-size: 20px; text-align: center;">🔄 Сортировка</h2>
             <div style="display: flex; flex-direction: column; gap: 8px;">
                 ${sortOptions.map(opt => `
                     <button onclick="setSortBy('${opt.value}')" style="
@@ -443,6 +501,449 @@ function toggleFavorites() {
     const viewContent = document.getElementById('view-content');
     if (viewContent && currentView === 'waifus') {
         renderWaifuList(viewContent);
+    }
+}
+
+// Open upgrade modal (placeholder)
+function openUpgradeModal() {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.8); display: flex; align-items: center;
+        justify-content: center; z-index: 10000; padding: 20px;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 20px; max-width: 400px; width: 100%; padding: 24px;">
+            <div style="text-align: center; padding: 40px 20px; color: #666;">
+                <div style="font-size: 48px; margin-bottom: 16px;">🚧</div>
+                <p style="margin: 0; font-size: 16px;">Функция находится в разработке</p>
+                <p style="margin: 8px 0 0 0; font-size: 14px; color: #999;">Скоро здесь появится система улучшения вайфу!</p>
+            </div>
+            <button onclick="closeUpgradeModal()" style="
+                background: #6c757d; color: white; border: none; padding: 12px;
+                border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer;
+                width: 100%; margin-top: 16px;
+            ">
+                Закрыть
+            </button>
+        </div>
+    `;
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    document.body.appendChild(modal);
+}
+
+// Close upgrade modal
+function closeUpgradeModal() {
+    const modal = document.querySelector('div[style*="position: fixed"]');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Summon waifu(s)
+async function summonWaifu(count) {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        
+        const response = await fetch(`/api/summon?${new URLSearchParams({ initData })}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                count: count
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            if (window.Telegram?.WebApp?.showAlert) {
+                window.Telegram.WebApp.showAlert('❌ Ошибка: ' + (errorData.detail || 'Неизвестная ошибка'));
+            }
+            return;
+        }
+        
+        const data = await response.json();
+        
+        // Show summoned waifus in modal
+        showSummonedWaifusModal(data.summoned, data.remaining_coins);
+        
+        // Reload waifu list
+        const viewContent = document.getElementById('view-content');
+        if (viewContent && currentView === 'waifus') {
+            await loadWaifuList(viewContent);
+        }
+        
+        // Reload profile to update coins
+        if (profileData) {
+            profileData.gold = data.remaining_coins;
+            const coinsElement = document.querySelector('.currency-item:nth-child(1) .currency-value');
+            if (coinsElement) {
+                coinsElement.textContent = data.remaining_coins;
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error summoning waifu:', error);
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert('❌ Ошибка: ' + error.message);
+        }
+    }
+}
+
+// Show summoned waifus modal
+function showSummonedWaifusModal(waifus, remainingCoins) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.9); display: flex; align-items: center;
+        justify-content: center; z-index: 10000; padding: 20px; overflow-y: auto;
+    `;
+    
+    // Get rarity color helper
+    const getRarityColorForSummon = (rarity) => {
+        const colors = {
+            'Common': '#d0d0d0',
+            'Uncommon': '#4CAF50',
+            'Rare': '#2196F3',
+            'Epic': '#9C27B0',
+            'Legendary': '#FF9800'
+        };
+        return colors[rarity] || '#d0d0d0';
+    };
+    
+    // Rarity priority for sorting (higher = rarer)
+    const rarityPriority = {
+        'Legendary': 5,
+        'Epic': 4,
+        'Rare': 3,
+        'Uncommon': 2,
+        'Common': 1
+    };
+    
+    // Sort by rarity (desc), then by power (desc)
+    const sortedWaifus = [...waifus].sort((a, b) => {
+        const rarityDiff = rarityPriority[b.rarity] - rarityPriority[a.rarity];
+        if (rarityDiff !== 0) return rarityDiff;
+        return b.power - a.power;
+    });
+    
+    // Check if summoning 1 or 10
+    const isSingle = waifus.length === 1;
+    
+    let contentHTML = '';
+    
+    if (isSingle) {
+        // Single summon: just show the waifu large
+        const waifu = sortedWaifus[0];
+        contentHTML = `
+            <div style="text-align: center;">
+                <img src="${waifu.image_url}" alt="${waifu.name}" 
+                    style="width: 100%; max-width: 300px; height: auto; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 16px; border: 4px solid ${getRarityColorForSummon(waifu.rarity)}; box-shadow: 0 0 20px ${getRarityColorForSummon(waifu.rarity)}66; margin-bottom: 16px;"
+                    onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27300%27%20height=%27300%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2748%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                <h3 style="margin: 0; font-size: 24px; color: ${getRarityColorForSummon(waifu.rarity)}; font-weight: bold;">
+                    ${waifu.name}
+                </h3>
+            </div>
+        `;
+    } else {
+        // 10 summons: best one large, rest in 3x3 grid
+        const bestWaifu = sortedWaifus[0];
+        const restWaifus = sortedWaifus.slice(1);
+        
+        contentHTML = `
+            <div style="text-align: center; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 2px solid #eee;">
+                <div style="font-size: 20px; margin-bottom: 12px; color: #666; font-weight: bold;">Лучший призыв:</div>
+                <img src="${bestWaifu.image_url}" alt="${bestWaifu.name}" 
+                    style="width: 100%; max-width: 250px; height: auto; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 16px; border: 4px solid ${getRarityColorForSummon(bestWaifu.rarity)}; box-shadow: 0 0 30px ${getRarityColorForSummon(bestWaifu.rarity)}99; margin-bottom: 12px;"
+                    onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27250%27%20height=%27250%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2748%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                <h3 style="margin: 0; font-size: 22px; color: ${getRarityColorForSummon(bestWaifu.rarity)}; font-weight: bold;">
+                    ${bestWaifu.name}
+                </h3>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                ${restWaifus.map(waifu => `
+                    <div style="text-align: center;">
+                        <img src="${waifu.image_url}" alt="${waifu.name}" 
+                            style="width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 8px; border: 3px solid ${getRarityColorForSummon(waifu.rarity)}; box-shadow: 0 0 10px ${getRarityColorForSummon(waifu.rarity)}66; margin-bottom: 8px;"
+                            onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2724%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                        <div style="font-size: 12px; font-weight: bold; color: ${getRarityColorForSummon(waifu.rarity)}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${waifu.name}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; margin: auto;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 48px; margin-bottom: 12px;">✨</div>
+                <h2 style="margin: 0 0 8px 0; font-size: 24px; color: #333;">Призыв завершен!</h2>
+                <p style="margin: 0; color: #666; font-size: 14px;">Призвано вайфу: ${waifus.length}</p>
+                <p style="margin: 8px 0 0 0; color: #FF9800; font-size: 16px; font-weight: bold;">Осталось монет: ${remainingCoins} 💰</p>
+            </div>
+            
+            ${contentHTML}
+            
+            <button onclick="closeSummonModal()" style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                color: white; border: none; padding: 14px; border-radius: 12px; 
+                font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 24px;
+            ">
+                Отлично! 🎉
+            </button>
+        </div>
+    `;
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    document.body.appendChild(modal);
+}
+
+// Open upgrade modal
+async function openUpgradeModal(targetWaifuId) {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        
+        // Get target waifu info
+        const targetResponse = await fetch('/api/upgrade/waifus?' + new URLSearchParams({ initData }));
+        if (!targetResponse.ok) throw new Error('Failed to fetch target waifu');
+        
+        const targetData = await targetResponse.json();
+        const targetWaifu = targetData.waifus.find(w => w.id === targetWaifuId);
+        if (!targetWaifu) throw new Error('Target waifu not found');
+        
+        // Get sacrifice candidates
+        const candidatesResponse = await fetch(`/api/upgrade/sacrifice-candidates?target_waifu_id=${targetWaifuId}&${new URLSearchParams({ initData })}`);
+        if (!candidatesResponse.ok) throw new Error('Failed to fetch sacrifice candidates');
+        
+        const candidatesData = await candidatesResponse.json();
+        const candidates = candidatesData.candidates || [];
+        
+        if (candidates.length === 0) {
+            if (window.Telegram?.WebApp?.showAlert) {
+                window.Telegram.WebApp.showAlert('Нет вайфу для жертвования');
+            }
+            return;
+        }
+        
+        // Sort candidates by XP value (descending)
+        candidates.sort((a, b) => b.xp_value - a.xp_value);
+        
+        // Create modal
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9); display: flex; align-items: center;
+            justify-content: center; z-index: 10000; padding: 20px; overflow-y: auto;
+        `;
+        
+        const rarityColor = getRarityColor(targetWaifu.rarity);
+        
+        modal.innerHTML = `
+            <div style="background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px;">
+                <!-- Target Waifu Info -->
+                <div style="text-align: center; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid #eee;">
+                    <div style="font-size: 20px; margin-bottom: 12px; color: #666; font-weight: bold;">Улучшение вайфу:</div>
+                    <img src="${targetWaifu.image_url}" alt="${targetWaifu.name}" 
+                        style="width: 80px; height: 80px; object-fit: cover; border-radius: 16px; border: 4px solid ${rarityColor}; box-shadow: 0 0 20px ${rarityColor}66; margin-bottom: 12px;"
+                        onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2780%27%20height=%2780%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2724%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                    <h3 style="margin: 0; font-size: 18px; color: ${rarityColor}; font-weight: bold;">${targetWaifu.name}</h3>
+                    <div style="font-size: 14px; color: #666; margin-top: 4px;">Уровень ${targetWaifu.level}/${targetWaifu.max_level} • 💪${targetWaifu.power}</div>
+                </div>
+                
+                <!-- Selection Summary -->
+                <div id="selection-summary" style="background: #f8f9fa; border-radius: 12px; padding: 16px; margin-bottom: 20px; text-align: center;">
+                    <div style="font-size: 16px; font-weight: bold; margin-bottom: 8px;">Выберите вайфу для жертвования</div>
+                    <div id="selected-info" style="font-size: 14px; color: #666;">Выберите вайфу для получения опыта</div>
+                </div>
+                
+                <!-- Candidates Grid -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; max-height: 300px; overflow-y: auto;">
+                    ${candidates.map(waifu => {
+                        const candidateRarityColor = getRarityColor(waifu.rarity);
+                        return `
+                        <div class="candidate-card" data-waifu-id="${waifu.id}" data-xp-value="${waifu.xp_value}" style="
+                            background: white; border: 2px solid ${candidateRarityColor}; border-radius: 12px; 
+                            padding: 8px; cursor: pointer; transition: all 0.2s; text-align: center;
+                        " onclick="toggleCandidate(this)">
+                            <img src="${waifu.image_url}" alt="${waifu.name}" 
+                                style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 6px;"
+                                onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                            <div style="font-size: 11px; font-weight: bold; color: ${candidateRarityColor}; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${waifu.name}</div>
+                            <div style="font-size: 10px; color: #666;">+${waifu.xp_value} XP</div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+                
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 12px;">
+                    <button id="confirm-upgrade" onclick="confirmUpgrade('${targetWaifuId}')" style="
+                        background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); 
+                        color: white; border: none; padding: 14px; border-radius: 12px; 
+                        font-size: 16px; font-weight: bold; cursor: pointer; flex: 1;
+                        opacity: 0.5; pointer-events: none;
+                    " disabled>
+                        ⚡ Улучшить
+                    </button>
+                    <button onclick="closeUpgradeModal()" style="
+                        background: #6c757d; color: white; border: none; padding: 14px; 
+                        border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; flex: 1;
+                    ">
+                        Отмена
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Close on background click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error opening upgrade modal:', error);
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert('❌ Ошибка: ' + error.message);
+        }
+    }
+}
+
+// Toggle candidate selection
+function toggleCandidate(element) {
+    const isSelected = element.classList.contains('selected');
+    
+    if (isSelected) {
+        element.classList.remove('selected');
+        element.style.background = 'white';
+        element.style.transform = 'scale(1)';
+    } else {
+        element.classList.add('selected');
+        element.style.background = 'linear-gradient(135deg, #FFD70022, #FFA50022)';
+        element.style.transform = 'scale(1.05)';
+    }
+    
+    updateSelectionSummary();
+}
+
+// Update selection summary
+function updateSelectionSummary() {
+    const selectedCards = document.querySelectorAll('.candidate-card.selected');
+    const totalXP = Array.from(selectedCards).reduce((sum, card) => sum + parseInt(card.dataset.xpValue), 0);
+    const count = selectedCards.length;
+    
+    const summaryDiv = document.getElementById('selected-info');
+    const confirmBtn = document.getElementById('confirm-upgrade');
+    
+    if (count === 0) {
+        summaryDiv.textContent = 'Выберите вайфу для получения опыта';
+        confirmBtn.style.opacity = '0.5';
+        confirmBtn.style.pointerEvents = 'none';
+        confirmBtn.disabled = true;
+    } else {
+        summaryDiv.innerHTML = `Выбрано: ${count} вайфу • <strong>+${totalXP} XP</strong>`;
+        confirmBtn.style.opacity = '1';
+        confirmBtn.style.pointerEvents = 'auto';
+        confirmBtn.disabled = false;
+    }
+}
+
+// Confirm upgrade
+async function confirmUpgrade(targetWaifuId) {
+    try {
+        const selectedCards = document.querySelectorAll('.candidate-card.selected');
+        const sacrificeIds = Array.from(selectedCards).map(card => card.dataset.waifuId);
+        
+        if (sacrificeIds.length === 0) {
+            if (window.Telegram?.WebApp?.showAlert) {
+                window.Telegram.WebApp.showAlert('Выберите вайфу для жертвования');
+            }
+            return;
+        }
+        
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/upgrade/perform?' + new URLSearchParams({ initData }), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                target_waifu_id: targetWaifuId,
+                sacrifice_waifu_ids: sacrificeIds
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to perform upgrade');
+        }
+        
+        const result = await response.json();
+        
+        // Show success message
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert(
+                `⚡ Улучшение завершено!\n\n` +
+                `📈 Уровень: ${result.old_level} → ${result.new_level}\n` +
+                `💫 Получено: +${result.xp_added} XP\n` +
+                `🔥 Пожертвовано: ${result.sacrificed_count} вайфу`
+            );
+        }
+        
+        // Close modal
+        closeUpgradeModal();
+        
+        // Reload upgrade page
+        const viewContent = document.getElementById('view-content');
+        if (viewContent && currentView === 'upgrade') {
+            await loadUpgradePage(viewContent);
+        }
+        
+        // Reload profile to update active waifu if needed
+        if (profileData) {
+            await loadProfile();
+        }
+        
+    } catch (error) {
+        console.error('Error confirming upgrade:', error);
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert('❌ Ошибка: ' + error.message);
+        }
+    }
+}
+
+// Close upgrade modal
+function closeUpgradeModal() {
+    const modal = document.querySelector('div[style*="position: fixed"]');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Close summon modal
+function closeSummonModal() {
+    const modal = document.querySelector('div[style*="position: fixed"]');
+    if (modal) {
+        modal.remove();
     }
 }
 
@@ -510,13 +1011,8 @@ async function openWaifuDetail(waifuId) {
         // Get flag emoji
         const flagEmoji = getFlagEmoji(waifu.nationality);
         
-        // Calculate total power (DB fields: power, charm, luck, affection, intellect, speed)
-        const power = (waifu.stats.power || 0) + 
-                     (waifu.stats.charm || 0) + 
-                     (waifu.stats.luck || 0) + 
-                     (waifu.stats.affection || 0) + 
-                     (waifu.stats.intellect || 0) + 
-                     (waifu.stats.speed || 0);
+        // Calculate total power using the same formula as backend
+        const power = calculatePower(waifu);
         
         // Create modal
         const modal = document.createElement('div');
@@ -540,8 +1036,16 @@ async function openWaifuDetail(waifuId) {
                 <!-- Header -->
                 <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 20px 20px 0 0; backdrop-filter: blur(10px);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h2 style="color: white; margin: 0; font-size: 24px; flex: 1;">${waifu.name}</h2>
                         <div style="display: flex; align-items: center; gap: 12px;">
-                            <h2 style="color: white; margin: 0; font-size: 24px;">${waifu.name}</h2>
+                            <button onclick="openUpgradeModal('${waifuId}')" style="
+                                background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+                                border: none; color: white; padding: 8px 12px; border-radius: 8px;
+                                font-size: 12px; font-weight: bold; cursor: pointer;
+                                transition: all 0.2s; display: flex; align-items: center; gap: 4px;
+                            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                ⚡ Улучшить
+                            </button>
                             <button id="favorite-toggle-btn" onclick="toggleWaifuFavorite('${waifuId}')" style="
                                 background: ${waifu.is_favorite ? '#f5576c' : 'rgba(255,255,255,0.3)'};
                                 border: none; color: white; width: 36px; height: 36px;
@@ -551,8 +1055,8 @@ async function openWaifuDetail(waifuId) {
                             " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
                                 ${waifu.is_favorite ? '❤️' : '🤍'}
                             </button>
+                            <span style="background: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 12px; font-size: 14px;">Ур.${waifu.level}</span>
                         </div>
-                        <span style="background: rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 12px; font-size: 14px;">Ур.${waifu.level}</span>
                     </div>
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                         <span style="background: rgba(255,255,255,0.2); color: white; padding: 4px 10px; border-radius: 8px; font-size: 12px;">${waifu.race}</span>
@@ -573,44 +1077,35 @@ async function openWaifuDetail(waifuId) {
                         <!-- Main Stats -->
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;">
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">💪 Сила</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.power || 0}</div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">💪 Сила • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.power || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">🍀 Удача</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.luck || 0}</div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">🍀 Удача • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.luck || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">🧠 Интеллект</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.intellect || 0}</div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">🧠 Интеллект • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.intellect || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">✨ Обаяние</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.charm || 0}</div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">✨ Обаяние • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.charm || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">🎯 Ловкость</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.dynamic.bond || 0}</div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">🎯 Ловкость • <span style="font-weight: bold; font-size: 16px;">${waifu.dynamic.bond || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 12px; margin-bottom: 4px;">⚡ Скорость</div>
-                                <div style="color: white; font-size: 18px; font-weight: bold;">${waifu.stats.speed || 0}</div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">⚡ Скорость • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.speed || 0}</span></div>
                             </div>
                         </div>
                         
                         <!-- Dynamic Stats -->
                         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;">
-                            <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; text-align: center;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 11px;">😊 Настроение</div>
-                                <div style="color: white; font-size: 14px; font-weight: bold;">${waifu.dynamic.mood || 0}</div>
+                            <div style="background: rgba(255,255,255,0.05); padding: 10px 8px; border-radius: 8px; text-align: center;">
+                                <div style="color: rgba(255,255,255,0.9); font-size: 12px;">😊 Настроение • <span style="font-weight: bold;">${waifu.dynamic.mood || 0}</span></div>
                             </div>
-                            <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; text-align: center;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 11px;">❤️ Лояльность</div>
-                                <div style="color: white; font-size: 14px; font-weight: bold;">${waifu.dynamic.loyalty || 0}</div>
+                            <div style="background: rgba(255,255,255,0.05); padding: 10px 8px; border-radius: 8px; text-align: center;">
+                                <div style="color: rgba(255,255,255,0.9); font-size: 12px;">❤️ Лояльность • <span style="font-weight: bold;">${waifu.dynamic.loyalty || 0}</span></div>
                             </div>
-                            <div style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px; text-align: center;">
-                                <div style="color: rgba(255,255,255,0.7); font-size: 11px;">⚡ Энергия</div>
-                                <div style="color: white; font-size: 14px; font-weight: bold;">${waifu.dynamic.energy || 0}</div>
+                            <div style="background: rgba(255,255,255,0.05); padding: 10px 8px; border-radius: 8px; text-align: center;">
+                                <div style="color: rgba(255,255,255,0.9); font-size: 12px;">⚡ Энергия • <span style="font-weight: bold;">${waifu.dynamic.energy || 0}</span></div>
                             </div>
                         </div>
                         
@@ -1075,6 +1570,118 @@ async function loadClanInfo(container) {
     `;
 }
 
+// Load upgrade page
+async function loadUpgradePage(container) {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/upgrade/waifus?' + new URLSearchParams({ initData }));
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch upgradeable waifus');
+        }
+        
+        const data = await response.json();
+        const waifus = data.waifus || [];
+        
+        if (waifus.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 20px; text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">⚡</div>
+                    <h3 style="margin: 0 0 8px 0; color: #333;">Нет вайфу для прокачки</h3>
+                    <p style="margin: 0; color: #666;">Все вайфу достигли максимального уровня</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Sort by power (descending)
+        waifus.sort((a, b) => b.power - a.power);
+        
+        container.innerHTML = `
+            <div style="padding: 16px;">
+                <div style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                    <h3 style="margin: 0 0 8px 0; color: #333; font-size: 18px;">⚡ Прокачка вайфу</h3>
+                    <p style="margin: 0; color: #666; font-size: 14px;">Выберите вайфу для улучшения. Жертвуйте других вайфу для получения опыта.</p>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                    ${waifus.map(waifu => {
+                        const rarityColor = getRarityColor(waifu.rarity);
+                        const xpProgress = calculateXPProgress(waifu.xp, waifu.level);
+                        
+                        return `
+                        <div style="
+                            background: white; border-radius: 12px; padding: 12px; 
+                            border: 2px solid ${rarityColor}; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                            cursor: pointer; transition: transform 0.2s;
+                        " onclick="openUpgradeModal('${waifu.id}')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <img src="${waifu.image_url}" alt="${waifu.name}" 
+                                    style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; border: 2px solid ${rarityColor};"
+                                    onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2740%27%20height=%2740%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                                <div style="flex: 1; min-width: 0;">
+                                    <div style="font-weight: bold; font-size: 14px; margin-bottom: 2px; color: ${rarityColor}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${waifu.name}</div>
+                                    <div style="font-size: 12px; color: #666;">Ур.${waifu.level}/${waifu.max_level} • 💪${waifu.power}</div>
+                                </div>
+                            </div>
+                            
+                            <!-- XP Progress Bar -->
+                            <div style="margin-bottom: 8px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 10px; color: #666; margin-bottom: 4px;">
+                                    <span>XP: ${waifu.xp}</span>
+                                    <span>${xpProgress.current}/${xpProgress.next}</span>
+                                </div>
+                                <div style="background: #e0e0e0; border-radius: 4px; height: 6px; overflow: hidden;">
+                                    <div style="background: linear-gradient(90deg, ${rarityColor}, ${rarityColor}88); height: 100%; width: ${xpProgress.percent}%; transition: width 0.3s;"></div>
+                                </div>
+                            </div>
+                            
+                            <div style="text-align: center;">
+                                <button style="
+                                    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); 
+                                    color: white; border: none; padding: 6px 12px; border-radius: 8px; 
+                                    font-size: 12px; font-weight: bold; cursor: pointer; width: 100%;
+                                ">
+                                    ⚡ Улучшить
+                                </button>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Error loading upgrade page:', error);
+        container.innerHTML = '<p style="color: red; padding: 20px;">Ошибка загрузки страницы прокачки</p>';
+    }
+}
+
+// Calculate XP progress for display
+function calculateXPProgress(currentXP, currentLevel) {
+    // Calculate XP needed for current level
+    let xpNeededForCurrent = 0;
+    for (let i = 1; i < currentLevel; i++) {
+        xpNeededForCurrent += Math.floor(100 * Math.pow(i, 1.1));
+    }
+    
+    // Calculate XP needed for next level
+    const xpForNextLevel = Math.floor(100 * Math.pow(currentLevel, 1.1));
+    
+    // XP in current level
+    const xpInLevel = currentXP - xpNeededForCurrent;
+    const xpNeeded = xpForNextLevel;
+    
+    const percent = Math.min(100, (xpInLevel / xpNeeded) * 100);
+    
+    return {
+        current: Math.floor(xpInLevel),
+        next: Math.floor(xpNeeded),
+        percent: percent
+    };
+}
+
 // Load settings
 async function loadSettings(container) {
     container.innerHTML = `
@@ -1159,10 +1766,82 @@ async function loadProfile() {
         // Load active waifu
         await loadActiveWaifu();
         
+        // Load daily bonus status
+        await loadDailyBonusStatus();
+        
     } catch (error) {
         console.error('Error loading profile:', error);
         if (window.Telegram?.WebApp?.showAlert) {
             window.Telegram.WebApp.showAlert('Ошибка загрузки профиля');
+        }
+    }
+}
+
+// Load daily bonus status
+async function loadDailyBonusStatus() {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/daily-bonus-status?' + new URLSearchParams({ initData }));
+        
+        if (!response.ok) {
+            console.error('Failed to fetch daily bonus status');
+            return;
+        }
+        
+        const bonusData = await response.json();
+        const dailyBonusButton = document.getElementById('daily-bonus-button');
+        
+        if (!dailyBonusButton) {
+            console.error('Daily bonus button not found');
+            return;
+        }
+        
+        if (bonusData.can_claim) {
+            // Show button - can claim
+            dailyBonusButton.style.display = 'flex';
+            dailyBonusButton.innerHTML = `
+                <div style="font-size: 24px; margin-bottom: 4px;">🎁</div>
+                <div style="font-size: 12px; font-weight: bold;">Ежедневный бонус</div>
+                <div style="font-size: 10px; opacity: 0.8;">+100💰</div>
+            `;
+            dailyBonusButton.onclick = claimDailyBonus;
+        } else {
+            // Hide button - on cooldown
+            dailyBonusButton.style.display = 'none';
+        }
+        
+    } catch (error) {
+        console.error('Error loading daily bonus status:', error);
+    }
+}
+
+// Claim daily bonus
+async function claimDailyBonus() {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/daily-bonus?' + new URLSearchParams({ initData }), {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Failed to claim daily bonus');
+        }
+        
+        const result = await response.json();
+        
+        // Show success message
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert(`🎁 Ежедневный бонус получен!\n\n💰 +100 монет\n🔥 Серия: ${result.streak} дней\n💵 Баланс: ${result.new_balance} монет`);
+        }
+        
+        // Reload profile to update coins
+        await loadProfile();
+        
+    } catch (error) {
+        console.error('Error claiming daily bonus:', error);
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert('❌ Ошибка: ' + error.message);
         }
     }
 }
@@ -1193,30 +1872,32 @@ async function loadActiveWaifu() {
     `;
 }
 
-// Calculate power
+// Calculate power (must match backend: src/bot/services/waifu_generator.py::calculate_waifu_power)
 function calculatePower(waifu) {
     const stats = waifu.stats || {};
     const dynamic = waifu.dynamic || {};
     
-    let power = 0;
-    power += stats.power || 0;
-    power += stats.intellect || 0;
-    power += stats.charm || 0;
-    power += stats.charisma || 0;
-    power += stats.magic || 0;
-    power += stats.speed || 0;
+    // Base power from all stats
+    let basePower = 0;
+    basePower += stats.power || 0;
+    basePower += stats.charm || 0;
+    basePower += stats.luck || 0;
+    basePower += stats.affection || 0;
+    basePower += stats.intellect || 0;
+    basePower += stats.speed || 0;
     
-    // Add bonuses from level
-    const levelBonus = Math.floor((waifu.level - 1) / 5);
-    power += levelBonus * 5;
-    
-    // Add bonuses from mood and loyalty
+    // Bonuses from dynamic characteristics
     const mood = dynamic.mood || 50;
     const loyalty = dynamic.loyalty || 50;
-    const dynamicBonus = Math.floor((mood + loyalty) / 50);
-    power += dynamicBonus;
+    const moodBonus = mood * 0.1;
+    const loyaltyBonus = loyalty * 0.05;
     
-    return power;
+    // Level bonus
+    const level = waifu.level || 1;
+    const levelBonus = level * 2;
+    
+    const totalPower = basePower + moodBonus + loyaltyBonus + levelBonus;
+    return Math.floor(totalPower);
 }
 
 // Close WebApp

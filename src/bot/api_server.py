@@ -860,6 +860,382 @@ async def get_quests(request: Request, db: Session = Depends(get_db)) -> Dict[st
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
 
+@app.get("/api/daily-bonus-status")
+async def get_daily_bonus_status(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Проверка доступности ежедневного бонуса"""
+    try:
+        logger.info(f"📡 API REQUEST: GET /api/daily-bonus-status")
+        
+        if User is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if not telegram_user_id:
+            logger.warning("⚠️ No initData provided for daily bonus status")
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        logger.info(f"✅ Extracted Telegram user ID: {telegram_user_id}")
+        
+        # Get user
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Check daily bonus availability
+        from datetime import datetime, timedelta
+        now = datetime.utcnow()
+        last_daily = user.last_daily.replace(tzinfo=None) if user.last_daily else datetime(1970, 1, 1)
+        
+        can_claim = now - last_daily >= timedelta(hours=24)
+        
+        if can_claim:
+            time_remaining = 0
+        else:
+            time_remaining = int((timedelta(hours=24) - (now - last_daily)).total_seconds())
+        
+        logger.info(f"✅ Daily bonus status: can_claim={can_claim}, time_remaining={time_remaining}")
+        
+        return {
+            "can_claim": can_claim,
+            "time_remaining": time_remaining,
+            "streak": user.daily_streak
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+
+@app.post("/api/daily-bonus")
+async def claim_daily_bonus(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Получение ежедневного бонуса"""
+    try:
+        logger.info(f"📡 API REQUEST: POST /api/daily-bonus")
+        
+        if User is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if not telegram_user_id:
+            logger.warning("⚠️ No initData provided for daily bonus")
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        logger.info(f"✅ Extracted Telegram user ID: {telegram_user_id}")
+        
+        # Get user
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Check daily bonus availability
+        from datetime import datetime, timedelta
+        now = datetime.utcnow()
+        last_daily = user.last_daily.replace(tzinfo=None) if user.last_daily else datetime(1970, 1, 1)
+        
+        if now - last_daily < timedelta(hours=24):
+            time_left = timedelta(hours=24) - (now - last_daily)
+            hours = int(time_left.total_seconds() // 3600)
+            minutes = int((time_left.total_seconds() % 3600) // 60)
+            raise HTTPException(status_code=400, detail=f"Бонус недоступен. Осталось: {hours}ч {minutes}м")
+        
+        # Give bonus
+        user.coins += 100
+        user.daily_streak += 1
+        user.last_daily = now
+        db.commit()
+        
+        logger.info(f"✅ Daily bonus claimed for user {user.id}, new balance: {user.coins}")
+        
+        return {
+            "success": True,
+            "coins_added": 100,
+            "new_balance": user.coins,
+            "streak": user.daily_streak
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+
+@app.get("/api/upgrade/waifus")
+async def get_upgrade_waifus(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Получение списка вайфу для прокачки (исключая максимального уровня)"""
+    try:
+        logger.info(f"📡 API REQUEST: GET /api/upgrade/waifus")
+        
+        if Waifu is None or User is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if not telegram_user_id:
+            logger.warning("⚠️ No initData provided for upgrade waifus")
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        logger.info(f"✅ Extracted Telegram user ID: {telegram_user_id}")
+        
+        # Get user
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Get waifus that can be upgraded (not at max level)
+        # Max levels: Common=30, Uncommon=35, Rare=40, Epic=45, Legendary=50
+        max_levels = {
+            'Common': 30,
+            'Uncommon': 35,
+            'Rare': 40,
+            'Epic': 45,
+            'Legendary': 50
+        }
+        
+        waifus = db.query(Waifu).filter(Waifu.owner_id == user.id).all()
+        
+        upgradeable_waifus = []
+        for waifu in waifus:
+            max_level = max_levels.get(waifu.rarity, 30)
+            if waifu.level < max_level:
+                # Calculate power for display
+                from bot.services.waifu_generator import calculate_waifu_power
+                power = calculate_waifu_power({
+                    'stats': waifu.stats or {},
+                    'dynamic': waifu.dynamic or {},
+                    'level': waifu.level
+                })
+                
+                upgradeable_waifus.append({
+                    "id": waifu.id,
+                    "card_number": waifu.card_number,
+                    "name": waifu.name,
+                    "rarity": waifu.rarity,
+                    "race": waifu.race,
+                    "profession": waifu.profession,
+                    "nationality": waifu.nationality,
+                    "level": waifu.level,
+                    "max_level": max_level,
+                    "power": power,
+                    "image_url": waifu.image_url,
+                    "xp": waifu.xp or 0
+                })
+        
+        logger.info(f"✅ Found {len(upgradeable_waifus)} upgradeable waifus")
+        
+        return {
+            "waifus": upgradeable_waifus
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+
+@app.get("/api/upgrade/sacrifice-candidates")
+async def get_sacrifice_candidates(request: Request, target_waifu_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Получение списка вайфу для жертвования (исключая целевую вайфу)"""
+    try:
+        logger.info(f"📡 API REQUEST: GET /api/upgrade/sacrifice-candidates?target_waifu_id={target_waifu_id}")
+        
+        if Waifu is None or User is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if not telegram_user_id:
+            logger.warning("⚠️ No initData provided for sacrifice candidates")
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        logger.info(f"✅ Extracted Telegram user ID: {telegram_user_id}")
+        
+        # Get user
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Get all waifus except the target one
+        waifus = db.query(Waifu).filter(
+            Waifu.owner_id == user.id,
+            Waifu.id != target_waifu_id
+        ).all()
+        
+        candidates = []
+        for waifu in waifus:
+            # Calculate XP value (based on level and rarity)
+            xp_value = calculate_sacrifice_xp(waifu)
+            
+            # Calculate power for display
+            from bot.services.waifu_generator import calculate_waifu_power
+            power = calculate_waifu_power({
+                'stats': waifu.stats or {},
+                'dynamic': waifu.dynamic or {},
+                'level': waifu.level
+            })
+            
+            candidates.append({
+                "id": waifu.id,
+                "card_number": waifu.card_number,
+                "name": waifu.name,
+                "rarity": waifu.rarity,
+                "race": waifu.race,
+                "profession": waifu.profession,
+                "nationality": waifu.nationality,
+                "level": waifu.level,
+                "power": power,
+                "xp_value": xp_value,
+                "image_url": waifu.image_url
+            })
+        
+        logger.info(f"✅ Found {len(candidates)} sacrifice candidates")
+        
+        return {
+            "candidates": candidates
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+
+@app.post("/api/upgrade/perform")
+async def perform_upgrade(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Выполнение улучшения вайфу"""
+    try:
+        logger.info(f"📡 API REQUEST: POST /api/upgrade/perform")
+        
+        if Waifu is None or User is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if not telegram_user_id:
+            logger.warning("⚠️ No initData provided for upgrade")
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        logger.info(f"✅ Extracted Telegram user ID: {telegram_user_id}")
+        
+        # Get request body
+        body = await request.json()
+        target_waifu_id = body.get("target_waifu_id")
+        sacrifice_waifu_ids = body.get("sacrifice_waifu_ids", [])
+        
+        if not target_waifu_id or not sacrifice_waifu_ids:
+            raise HTTPException(status_code=400, detail="Не указана целевая вайфу или вайфу для жертвования")
+        
+        # Get user
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Get target waifu
+        target_waifu = db.query(Waifu).filter(
+            Waifu.id == target_waifu_id,
+            Waifu.owner_id == user.id
+        ).first()
+        
+        if not target_waifu:
+            raise HTTPException(status_code=404, detail="Целевая вайфу не найдена")
+        
+        # Get sacrifice waifus
+        sacrifice_waifus = db.query(Waifu).filter(
+            Waifu.id.in_(sacrifice_waifu_ids),
+            Waifu.owner_id == user.id
+        ).all()
+        
+        if len(sacrifice_waifus) != len(sacrifice_waifu_ids):
+            raise HTTPException(status_code=400, detail="Некоторые вайфу для жертвования не найдены")
+        
+        # Calculate total XP to add
+        total_xp = sum(calculate_sacrifice_xp(waifu) for waifu in sacrifice_waifus)
+        
+        # Add XP to target waifu
+        old_level = target_waifu.level
+        old_xp = target_waifu.xp or 0
+        target_waifu.xp = old_xp + total_xp
+        
+        # Check for level up
+        new_level = calculate_level_from_xp(target_waifu.xp)
+        level_gained = new_level - old_level
+        target_waifu.level = new_level
+        
+        # Delete sacrifice waifus
+        for waifu in sacrifice_waifus:
+            db.delete(waifu)
+        
+        db.commit()
+        
+        logger.info(f"✅ Upgrade completed: +{total_xp} XP, level {old_level} → {new_level}")
+        
+        return {
+            "success": True,
+            "target_waifu_id": target_waifu_id,
+            "xp_added": total_xp,
+            "old_level": old_level,
+            "new_level": new_level,
+            "level_gained": level_gained,
+            "sacrificed_count": len(sacrifice_waifus)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+
+def calculate_sacrifice_xp(waifu) -> int:
+    """Calculate XP value when sacrificing a waifu"""
+    # Base XP from level
+    base_xp = waifu.level * 10
+    
+    # Rarity multiplier
+    rarity_multipliers = {
+        'Common': 1.0,
+        'Uncommon': 1.2,
+        'Rare': 1.5,
+        'Epic': 2.0,
+        'Legendary': 3.0
+    }
+    
+    multiplier = rarity_multipliers.get(waifu.rarity, 1.0)
+    return int(base_xp * multiplier)
+
+
+def calculate_level_from_xp(xp: int) -> int:
+    """Calculate level from total XP"""
+    level = 1
+    total_xp_needed = 0
+    
+    while True:
+        xp_for_next = int(100 * (level ** 1.1))
+        if total_xp_needed + xp_for_next > xp:
+            break
+        total_xp_needed += xp_for_next
+        level += 1
+        
+        # Safety check to prevent infinite loop
+        if level > 100:
+            break
+    
+    return level
+
+
 @app.get("/api/avatars")
 async def get_avatars(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Получение списка доступных аватаров"""

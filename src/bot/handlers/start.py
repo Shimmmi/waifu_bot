@@ -44,8 +44,7 @@ async def cmd_start(message: Message) -> None:
         keyboard_buttons = []
         if is_private:
             # Private chat - full menu
-            keyboard_buttons.append([InlineKeyboardButton(text="👤 Профиль", web_app=WebAppInfo(url=f"{WEBAPP_URL}/webapp/index.html"))])
-            keyboard_buttons.append([InlineKeyboardButton(text="👤 Профиль (NEW)", web_app=WebAppInfo(url=f"{WEBAPP_URL}/webapp/profile.html"))])
+            keyboard_buttons.append([InlineKeyboardButton(text="🎮 В игру", web_app=WebAppInfo(url=f"{WEBAPP_URL}/webapp/profile.html"))])
             keyboard_buttons.extend([
                 [InlineKeyboardButton(text="🎁 Ежедневный бонус", callback_data="daily")],
                 [InlineKeyboardButton(text="🎭 Вайфу", callback_data="waifu_menu")],

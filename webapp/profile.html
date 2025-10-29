@@ -157,7 +157,9 @@
         
         .waifu-image {
             width: 100%;
-            max-height: 200px;
+            height: auto;
+            max-width: 100%;
+            aspect-ratio: 1 / 1;
             object-fit: cover;
             border-radius: 12px;
             margin-bottom: 12px;
@@ -300,6 +302,27 @@
                     </div>
                 </div>
                 
+                <!-- Daily Bonus Button -->
+                <div id="daily-bonus-button" style="
+                    display: none;
+                    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+                    border-radius: 12px;
+                    padding: 12px;
+                    margin-bottom: 12px;
+                    cursor: pointer;
+                    text-align: center;
+                    color: white;
+                    box-shadow: 0 4px 16px rgba(255, 215, 0, 0.3);
+                    transition: transform 0.2s, box-shadow 0.2s;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="font-size: 24px; margin-bottom: 4px;">🎁</div>
+                    <div style="font-size: 12px; font-weight: bold;">Ежедневный бонус</div>
+                    <div style="font-size: 10px; opacity: 0.8;">+100💰</div>
+                </div>
+                
                 <!-- Level -->
                 <div class="level-section">
                     <div class="level-header">
@@ -326,7 +349,7 @@
                 <div class="nav-btn-wrapper">
                     <button class="nav-btn" onclick="navigateTo('waifus')">
                         <emoji>🎴</emoji>
-                        <label>Мои вайфу</label>
+                        <label>Вайфу</label>
                     </button>
                 </div>
                 <div class="nav-btn-wrapper">
@@ -372,6 +395,6 @@
         </div>
     </div>
     
-    <script src="profile-app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
