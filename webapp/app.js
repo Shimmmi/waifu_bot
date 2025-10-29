@@ -811,7 +811,7 @@ async function openUpgradeModal(targetWaifuId) {
         modal.innerHTML = `
             <div style="background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; position: relative;">
                 <!-- Close Button -->
-                <button onclick="closeUpgradeModal()" style="
+                <button onclick="event.stopPropagation(); closeUpgradeModal()" style="
                     position: absolute; top: 16px; right: 16px; width: 32px; height: 32px;
                     background: #dc3545; color: white; border: none; border-radius: 50%;
                     font-size: 16px; font-weight: bold; cursor: pointer; display: flex;
@@ -821,7 +821,7 @@ async function openUpgradeModal(targetWaifuId) {
                 <!-- Target Waifu Info -->
                 <div style="text-align: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #eee;">
                     <img src="${targetWaifu.image_url}" alt="${targetWaifu.name}" 
-                        style="width: 120px; height: 120px; object-fit: cover; border-radius: 20px; border: 4px solid ${rarityColor}; box-shadow: 0 0 20px ${rarityColor}66; margin-bottom: 12px;"
+                        style="width: 120px; height: 120px; object-fit: cover; border-radius: 20px; border: 4px solid ${rarityColor}; box-shadow: 0 0 20px ${rarityColor}66, inset 0 0 0 2px ${rarityColor}; margin-bottom: 12px;"
                         onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27120%27%20height=%27120%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2736%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
                     <h3 style="margin: 0; font-size: 18px; color: #333; font-weight: bold;">${targetWaifu.name}</h3>
                     <div style="font-size: 14px; color: #666; margin-top: 4px;">Уровень ${targetWaifu.level}/${maxLevel} • 💪${targetWaifu.power}</div>
@@ -846,12 +846,12 @@ async function openUpgradeModal(targetWaifuId) {
                         const candidateRarityColor = getRarityColor(waifu.rarity);
                         return `
                         <div class="candidate-card" data-waifu-id="${waifu.id}" data-xp-value="${waifu.xp_value}" style="
-                            background: white; border: 2px solid ${candidateRarityColor}; border-radius: 12px; 
+                            background: white; border: 3px solid ${candidateRarityColor}; border-radius: 12px; 
                             padding: 8px; cursor: pointer; transition: all 0.2s; text-align: center;
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.1), 0 0 0 1px ${candidateRarityColor}33;
                         " onclick="toggleCandidate(this)">
                             <img src="${waifu.image_url}" alt="${waifu.name}" 
-                                style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 6px; border: 2px solid ${candidateRarityColor};"
+                                style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 6px; border: 2px solid ${candidateRarityColor}; box-shadow: inset 0 0 0 1px ${candidateRarityColor}66;"
                                 onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
                             <div style="font-size: 11px; font-weight: bold; color: #333; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${waifu.name}</div>
                             <div style="font-size: 10px; color: #666; margin-bottom: 2px;">Ур.${waifu.level}</div>
