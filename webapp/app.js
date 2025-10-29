@@ -734,6 +734,16 @@ async function openUpgradeModal(targetWaifuId) {
             targetWaifu = allWaifus.find(w => String(w.id) === String(targetWaifuId));
         }
         
+        // If not found in all waifus, try to fetch directly by ID
+        if (!targetWaifu) {
+            console.log('Waifu not found in all waifus, trying direct fetch...');
+            const directResponse = await fetch(`/api/waifu/${targetWaifuId}`);
+            if (directResponse.ok) {
+                targetWaifu = await directResponse.json();
+                console.log('Found waifu via direct fetch:', targetWaifu.name);
+            }
+        }
+        
         if (!targetWaifu) {
             console.error('Target waifu not found with ID:', targetWaifuId, 'Type:', typeof targetWaifuId);
             throw new Error('Вайфу не найдена');
@@ -792,24 +802,39 @@ async function openUpgradeModal(targetWaifuId) {
         const rarityColor = getRarityColor(targetWaifu.rarity);
         
         modal.innerHTML = `
-            <div style="background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px;">
+            <div style="background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; position: relative;">
+                <!-- Close Button -->
+                <button onclick="closeUpgradeModal()" style="
+                    position: absolute; top: 16px; right: 16px; width: 32px; height: 32px;
+                    background: #dc3545; color: white; border: none; border-radius: 50%;
+                    font-size: 16px; font-weight: bold; cursor: pointer; display: flex;
+                    align-items: center; justify-content: center; z-index: 10;
+                ">×</button>
+                
                 <!-- Target Waifu Info -->
-                <div style="text-align: center; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid #eee;">
-                    <div style="font-size: 20px; margin-bottom: 12px; color: #666; font-weight: bold;">Улучшение вайфу:</div>
+                <div style="text-align: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #eee;">
                     <img src="${targetWaifu.image_url}" alt="${targetWaifu.name}" 
                         style="width: 120px; height: 120px; object-fit: cover; border-radius: 20px; border: 4px solid ${rarityColor}; box-shadow: 0 0 20px ${rarityColor}66; margin-bottom: 12px;"
                         onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27120%27%20height=%27120%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2736%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
-                    <h3 style="margin: 0; font-size: 18px; color: ${rarityColor}; font-weight: bold;">${targetWaifu.name}</h3>
+                    <h3 style="margin: 0; font-size: 18px; color: #333; font-weight: bold;">${targetWaifu.name}</h3>
                     <div style="font-size: 14px; color: #666; margin-top: 4px;">Уровень ${targetWaifu.level}/${maxLevel} • 💪${targetWaifu.power}</div>
                 </div>
                 
                 <!-- Selection Summary -->
-                <div id="selection-summary" style="background: #f8f9fa; border-radius: 12px; padding: 16px; margin-bottom: 20px; text-align: center;">
-                    <div id="selected-info" style="font-size: 14px; color: #666;">Выберите вайфу для получения опыта</div>
+                <div id="selection-summary" style="background: #f8f9fa; border-radius: 12px; padding: 12px; margin-bottom: 20px; text-align: center;">
+                    <div id="selected-info" style="font-size: 14px; color: #666; margin-bottom: 8px;">Выберите вайфу для получения опыта</div>
+                    <button id="confirm-upgrade" onclick="confirmUpgrade('${targetWaifuId}')" style="
+                        background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); 
+                        color: white; border: none; padding: 10px 20px; border-radius: 8px; 
+                        font-size: 14px; font-weight: bold; cursor: pointer;
+                        opacity: 0.5; pointer-events: none;
+                    " disabled>
+                        ⚡ Улучшить
+                    </button>
                 </div>
                 
                 <!-- Candidates Grid -->
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; max-height: 300px; overflow-y: auto;">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-height: 300px; overflow-y: auto;">
                     ${candidates.map(waifu => {
                         const candidateRarityColor = getRarityColor(waifu.rarity);
                         return `
@@ -818,31 +843,13 @@ async function openUpgradeModal(targetWaifuId) {
                             padding: 8px; cursor: pointer; transition: all 0.2s; text-align: center;
                         " onclick="toggleCandidate(this)">
                             <img src="${waifu.image_url}" alt="${waifu.name}" 
-                                style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 6px;"
+                                style="width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; margin-bottom: 6px; border: 2px solid ${candidateRarityColor};"
                                 onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
                             <div style="font-size: 11px; font-weight: bold; color: ${candidateRarityColor}; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${waifu.name}</div>
                             <div style="font-size: 10px; color: #666;">+${waifu.xp_value} XP</div>
                         </div>
                         `;
                     }).join('')}
-                </div>
-                
-                <!-- Action Buttons -->
-                <div style="display: flex; gap: 12px;">
-                    <button id="confirm-upgrade" onclick="confirmUpgrade('${targetWaifuId}')" style="
-                        background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); 
-                        color: white; border: none; padding: 14px; border-radius: 12px; 
-                        font-size: 16px; font-weight: bold; cursor: pointer; flex: 1;
-                        opacity: 0.5; pointer-events: none;
-                    " disabled>
-                        ⚡ Улучшить
-                    </button>
-                    <button onclick="closeUpgradeModal()" style="
-                        background: #6c757d; color: white; border: none; padding: 14px; 
-                        border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; flex: 1;
-                    ">
-                        Отмена
-                    </button>
                 </div>
             </div>
         `;
