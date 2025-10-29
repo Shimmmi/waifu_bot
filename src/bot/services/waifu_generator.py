@@ -131,11 +131,22 @@ def generate_waifu(card_number: int, owner_id: int = None) -> Dict:
     # Генерируем динамические характеристики
     dynamic = {
         "mood": random.randint(70, 100),
-        "loyalty": random.randint(40, 80),
-        "bond": 0,
+        "loyalty": 0,  # Лояльность должна быть 0 у новых вайфу
+        "bond": 0,  # Будет установлена на основе редкости
         "energy": random.randint(80, 100),
         "favor": 0
     }
+    
+    # Устанавливаем ловкость (bond) на основе редкости
+    dexterity_ranges = {
+        'Common': (5, 10),
+        'Uncommon': (10, 15),
+        'Rare': (15, 20),
+        'Epic': (20, 25),
+        'Legendary': (25, 30)
+    }
+    min_dex, max_dex = dexterity_ranges.get(rarity, (5, 10))
+    dynamic["bond"] = random.randint(min_dex, max_dex)
     
     # Выбираем имя на основе национальности
     name = random.choice(NAMES_BY_NATIONALITY[nationality])
