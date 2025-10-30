@@ -3,11 +3,11 @@ Skills system models for the waifu bot
 """
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, UniqueConstraint, JSON
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
-Base = declarative_base()
+# Import Base from the main models module
+from bot.models import Base
 
 
 class UserSkills(Base):
