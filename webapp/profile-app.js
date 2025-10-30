@@ -2032,9 +2032,17 @@ async function loadSkills(container) {
         
     } catch (error) {
         console.error('Error loading skills:', error);
+        
+        // Try to get error message from response
+        let errorMessage = 'Неизвестная ошибка';
+        if (error.message) {
+            errorMessage = error.message;
+        }
+        
         container.innerHTML = `
             <div style="text-align: center; padding: 20px;">
-                <p style="color: #f5576c; margin-bottom: 16px;">Ошибка загрузки навыков</p>
+                <p style="color: #f5576c; margin-bottom: 8px; font-weight: bold;">Ошибка загрузки навыков</p>
+                <p style="color: #999; margin-bottom: 16px; font-size: 12px;">${errorMessage}</p>
                 <button onclick="loadSkills(document.getElementById('other-views'))" style="
                     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     color: white; border: none; padding: 12px 24px; border-radius: 8px;

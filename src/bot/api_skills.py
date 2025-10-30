@@ -78,11 +78,18 @@ async def get_skills_status(request: Request, db: Session = Depends(get_db)) -> 
 @router.get("/api/skills/tree")
 async def get_skills_tree(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Get skills tree with user's progress"""
+    if not SKILLS_ENABLED:
+        raise HTTPException(status_code=503, detail="Skills system is not available")
+    
     try:
         user = get_user_from_request(request, db)
         
-        # Get all skills
-        skills = db.query(Skill).all()
+        # Get all skills - check if table exists
+        try:
+            skills = db.query(Skill).all()
+        except Exception as e:
+            logger.error(f"Error querying skills table: {e}")
+            raise HTTPException(status_code=503, detail="Skills table not created yet. Please wait for migration.")
         
         # Get user's skill levels
         skill_levels = db.query(UserSkillLevel).filter(UserSkillLevel.user_id == user.id).all()
