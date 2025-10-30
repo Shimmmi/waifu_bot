@@ -1834,7 +1834,7 @@ async function loadProfile() {
         // Update currency
         document.getElementById('gold-value').textContent = profileData.gold || 0;
         document.getElementById('gem-value').textContent = profileData.gems || 0;
-        document.getElementById('token-value').textContent = profileData.tokens || 0;
+        document.getElementById('token-value').textContent = profileData.skill_points || 0;
         
         // Update level and XP
         const currentLevel = profileData.level || 1;

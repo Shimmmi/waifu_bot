@@ -245,12 +245,21 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
                 "is_active": True
             }
         
+        # Get user skill points
+        try:
+            from bot.models import UserSkills
+            user_skills = db.query(UserSkills).filter(UserSkills.user_id == user.id).first()
+            skill_points = user_skills.skill_points if user_skills else 0
+        except:
+            skill_points = 0
+        
         profile_data = {
             "username": user.username or "username",
             "user_id": user.tg_id,
             "gold": user.coins,
             "gems": user.gems,
             "tokens": getattr(user, 'tokens', 0),
+            "skill_points": skill_points,
             "level": getattr(user, 'account_level', 1),
             "xp": getattr(user, 'global_xp', 0),
             "active_waifu": active_waifu
