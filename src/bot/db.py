@@ -12,8 +12,10 @@ logger = logging.getLogger(__name__)
 
 # Import all models to ensure they are registered with SQLAlchemy
 try:
-    from bot.models import Base, User, WaifuInstance, WaifuTemplate
-    from bot.models.skills import UserSkills, Skill, UserSkillLevel, SkillPointEarning
+    from bot.models import (
+        Base, User, WaifuInstance, WaifuTemplate,
+        UserSkills, Skill, UserSkillLevel, SkillPointEarning
+    )
     logger.info("✅ Skills models imported successfully")
 except Exception as e:
     logger.error(f"❌ Error importing skills models: {e}")

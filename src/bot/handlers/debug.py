@@ -13,7 +13,7 @@ from bot.models import User, Waifu
 
 # Import skills models
 try:
-    from bot.models.skills import UserSkills, UserSkillLevel
+    from bot.models import UserSkills, UserSkillLevel
     SKILLS_ENABLED = True
 except ImportError:
     UserSkills = None

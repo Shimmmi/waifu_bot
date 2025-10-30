@@ -191,3 +191,66 @@ class EventParticipation(Base):
     )
 
 
+# Skills system models
+class UserSkills(Base):
+    """User skill points and progress"""
+    __tablename__ = "user_skills"
+    
+    id = mapped_column(Integer, primary_key=True, index=True)
+    user_id = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    skill_points = mapped_column(Integer, nullable=False, default=0)
+    total_earned_points = mapped_column(Integer, nullable=False, default=0)
+    created_at = mapped_column(DateTime, nullable=False, server_default=text("now()"))
+    updated_at = mapped_column(DateTime, nullable=False, server_default=text("now()"))
+
+
+class Skill(Base):
+    """Skill definitions"""
+    __tablename__ = "skills"
+    
+    id = mapped_column(Integer, primary_key=True, index=True)
+    skill_id = mapped_column(String(50), unique=True, nullable=False, index=True)
+    name = mapped_column(String(100), nullable=False)
+    description = mapped_column(Text, nullable=False)
+    category = mapped_column(String(20), nullable=False)  # 'account', 'passive', 'training'
+    max_level = mapped_column(Integer, nullable=False, default=5)
+    base_cost = mapped_column(Integer, nullable=False, default=1)
+    cost_increase = mapped_column(Integer, nullable=False, default=1)
+    unlock_requirement = mapped_column(Integer, nullable=False, default=0)  # Points needed in category to unlock
+    effects = mapped_column(JSON, nullable=False, default={})  # Skill effects per level
+    icon = mapped_column(String(20), nullable=False, default="⭐")
+    created_at = mapped_column(DateTime, nullable=False, server_default=text("now()"))
+    
+    # Relationships
+    user_levels: Mapped[list["UserSkillLevel"]] = relationship("UserSkillLevel", back_populates="skill")
+
+
+class UserSkillLevel(Base):
+    """User skill levels"""
+    __tablename__ = "user_skill_levels"
+    
+    id = mapped_column(Integer, primary_key=True, index=True)
+    user_id = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    skill_id = mapped_column(String(50), ForeignKey("skills.skill_id", ondelete="CASCADE"), nullable=False)
+    level = mapped_column(Integer, nullable=False, default=0)
+    created_at = mapped_column(DateTime, nullable=False, server_default=text("now()"))
+    updated_at = mapped_column(DateTime, nullable=False, server_default=text("now()"))
+    
+    # Relationships
+    skill: Mapped["Skill"] = relationship("Skill", back_populates="user_levels")
+    
+    # Unique constraint is defined in SQL migration
+    __table_args__ = ({"schema": None})
+
+
+class SkillPointEarning(Base):
+    """Skill point earnings from chat activity"""
+    __tablename__ = "skill_point_earnings"
+    
+    id = mapped_column(Integer, primary_key=True, index=True)
+    user_id = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    points_earned = mapped_column(Integer, nullable=False)
+    source = mapped_column(String(50), nullable=False)  # 'chat_message', 'daily_bonus', 'special_event'
+    source_details = mapped_column(JSON, default={})
+    created_at = mapped_column(DateTime, nullable=False, server_default=text("now()"))
+

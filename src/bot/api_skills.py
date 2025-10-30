@@ -13,7 +13,7 @@ from bot.models import User
 
 # Import skills models
 try:
-    from bot.models.skills import UserSkills, Skill, UserSkillLevel, SkillPointEarning
+    from bot.models import UserSkills, Skill, UserSkillLevel, SkillPointEarning
     SKILLS_ENABLED = True
 except ImportError:
     # If skills models are not available, set flag to False
