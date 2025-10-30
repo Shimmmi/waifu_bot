@@ -10,6 +10,7 @@ from datetime import datetime
 
 from bot.db import SessionLocal
 from bot.models import User, Waifu
+from bot.models.skills import UserSkills, UserSkillLevel
 
 router = Router()
 
@@ -20,6 +21,8 @@ async def handle_debug_menu_callback(callback: CallbackQuery) -> None:
         [InlineKeyboardButton(text="⚡ Восстановить энергию всем вайфу", callback_data="debug_restore_energy")],
         [InlineKeyboardButton(text="💰 +10000 монет и +100 гемов", callback_data="debug_add_currency")],
         [InlineKeyboardButton(text="✨ +1000 XP для вайфу", callback_data="debug_add_xp_menu")],
+        [InlineKeyboardButton(text="🧬 +100 очков прокачки", callback_data="debug_add_skill_points")],
+        [InlineKeyboardButton(text="🗑️ Убрать все очки прокачки", callback_data="debug_wipe_skill_points")],
         [InlineKeyboardButton(text="🗑️ Удалить всех вайфу", callback_data="debug_wipe_confirm")],
         [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu")]
     ])
@@ -47,6 +50,10 @@ async def handle_debug_action_callback(callback: CallbackQuery) -> None:
         await handle_debug_add_currency(callback, tg_user_id)
     elif callback.data == "debug_add_xp_menu":
         await handle_debug_add_xp_menu(callback, tg_user_id)
+    elif callback.data == "debug_add_skill_points":
+        await handle_debug_add_skill_points(callback, tg_user_id)
+    elif callback.data == "debug_wipe_skill_points":
+        await handle_debug_wipe_skill_points(callback, tg_user_id)
     elif callback.data == "debug_wipe_confirm":
         await handle_debug_wipe_confirm(callback, tg_user_id)
     elif callback.data == "debug_wipe_execute":
@@ -356,6 +363,111 @@ async def handle_debug_wipe_execute(callback: CallbackQuery, tg_user_id: int) ->
             f"🗑️ <b>Вайфу удалены</b>\n\n"
             f"✅ Удалено вайфу: {count}\n\n"
             f"Теперь вы можете начать заново!",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Назад", callback_data="debug_menu")]
+            ]),
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        await callback.answer(f"Ошибка: {str(e)}")
+    finally:
+        session.close()
+
+
+async def handle_debug_add_skill_points(callback: CallbackQuery, tg_user_id: int) -> None:
+    """Добавление 100 очков навыков"""
+    session = SessionLocal()
+    try:
+        # Получаем пользователя
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            await callback.answer("Пользователь не найден")
+            return
+        
+        # Получаем или создаем запись UserSkills
+        user_skills_result = session.execute(
+            select(UserSkills).where(UserSkills.user_id == user.id)
+        )
+        user_skills = user_skills_result.scalar_one_or_none()
+        
+        if not user_skills:
+            user_skills = UserSkills(user_id=user.id, skill_points=0, total_earned_points=0)
+            session.add(user_skills)
+        
+        old_points = user_skills.skill_points
+        old_total = user_skills.total_earned_points
+        
+        user_skills.skill_points += 100
+        user_skills.total_earned_points += 100
+        
+        session.commit()
+        
+        await callback.answer("✅ Очки навыков добавлены!")
+        await callback.message.edit_text(
+            f"🧬 <b>Очки навыков добавлены</b>\n\n"
+            f"💰 Текущие очки: {old_points} → {user_skills.skill_points} (+100)\n"
+            f"📊 Всего получено: {old_total} → {user_skills.total_earned_points}",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Назад", callback_data="debug_menu")]
+            ]),
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        await callback.answer(f"Ошибка: {str(e)}")
+    finally:
+        session.close()
+
+
+async def handle_debug_wipe_skill_points(callback: CallbackQuery, tg_user_id: int) -> None:
+    """Удаление всех очков навыков и уровней"""
+    session = SessionLocal()
+    try:
+        # Получаем пользователя
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            await callback.answer("Пользователь не найден")
+            return
+        
+        # Получаем запись UserSkills
+        user_skills_result = session.execute(
+            select(UserSkills).where(UserSkills.user_id == user.id)
+        )
+        user_skills = user_skills_result.scalar_one_or_none()
+        
+        if not user_skills:
+            await callback.answer("❌ У вас нет очков навыков")
+            return
+        
+        # Получаем все уровни навыков
+        skill_levels_result = session.execute(
+            select(UserSkillLevel).where(UserSkillLevel.user_id == user.id)
+        )
+        skill_levels = skill_levels_result.scalars().all()
+        
+        # Удаляем все уровни навыков
+        skills_count = len(skill_levels)
+        for skill_level in skill_levels:
+            session.delete(skill_level)
+        
+        # Сбрасываем очки
+        old_points = user_skills.skill_points
+        user_skills.skill_points = 0
+        user_skills.total_earned_points = 0
+        
+        session.commit()
+        
+        await callback.answer("✅ Все очки навыков удалены!")
+        await callback.message.edit_text(
+            f"🗑️ <b>Очки навыков удалены</b>\n\n"
+            f"💰 Было очков: {old_points}\n"
+            f"📊 Удалено навыков: {skills_count}\n\n"
+            f"Все очки и уровни навыков сброшены!",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🔙 Назад", callback_data="debug_menu")]
             ]),
