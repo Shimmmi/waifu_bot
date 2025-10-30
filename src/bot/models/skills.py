@@ -21,9 +21,8 @@ class UserSkills(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relationships
-    user = relationship("User", back_populates="user_skills")
-    skill_levels = relationship("UserSkillLevel", back_populates="user_skills", cascade="all, delete-orphan")
+    # Relationships (removed to avoid circular imports)
+    # skill_levels can be accessed via UserSkillLevel query with user_id
 
 
 class Skill(Base):
@@ -59,7 +58,6 @@ class UserSkillLevel(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    user_skills = relationship("UserSkills", back_populates="skill_levels")
     skill = relationship("Skill", back_populates="user_levels")
     
     # Unique constraint
