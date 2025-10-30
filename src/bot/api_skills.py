@@ -10,7 +10,19 @@ from sqlalchemy import and_, func
 
 from bot.database import get_db
 from bot.models import User
-from bot.models.skills import UserSkills, Skill, UserSkillLevel, SkillPointEarning
+
+# Import skills models
+try:
+    from bot.models.skills import UserSkills, Skill, UserSkillLevel, SkillPointEarning
+    SKILLS_ENABLED = True
+except ImportError:
+    # If skills models are not available, set flag to False
+    UserSkills = None
+    Skill = None
+    UserSkillLevel = None
+    SkillPointEarning = None
+    SKILLS_ENABLED = False
+
 from bot.utils import get_user_from_request
 
 logger = logging.getLogger(__name__)
@@ -21,6 +33,9 @@ router = APIRouter()
 @router.get("/api/skills/status")
 async def get_skills_status(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Get user's skill points and progress"""
+    if not SKILLS_ENABLED:
+        raise HTTPException(status_code=503, detail="Skills system is not available")
+    
     try:
         user = get_user_from_request(request, db)
         

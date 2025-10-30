@@ -7,8 +7,17 @@ from sqlalchemy.orm import sessionmaker, Session
 
 from bot.config import get_settings
 
-# Setup logging
-logger = logging.getLogger(__name__)
+# Import all models to ensure they are registered with SQLAlchemy
+try:
+    from bot.models import Base, User, WaifuInstance, WaifuTemplate
+    from bot.models.skills import UserSkills, Skill, UserSkillLevel, SkillPointEarning
+    logger = logging.getLogger(__name__)
+    logger.info("✅ Skills models imported successfully")
+except Exception as e:
+    logger = logging.getLogger(__name__)
+    logger.error(f"❌ Error importing skills models: {e}")
+    # If skills models are not available yet, don't fail
+    pass
 
 try:
     settings = get_settings()
