@@ -3,12 +3,14 @@ Skills system API endpoints
 """
 
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
+import json
+from urllib.parse import parse_qs, unquote
 
-from bot.database import get_db
+from bot.db import get_db
 from bot.models import User
 
 # Import skills models
@@ -23,11 +25,57 @@ except ImportError:
     SkillPointEarning = None
     SKILLS_ENABLED = False
 
-from bot.utils import get_user_from_request
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def get_telegram_user_id(request: Request) -> Optional[int]:
+    """Extract user_id from Telegram WebApp initData"""
+    try:
+        # Get initData from header or query params
+        init_data = request.headers.get("X-Telegram-Init-Data") or request.query_params.get("initData")
+        
+        if not init_data:
+            logger.warning("⚠️ No initData provided")
+            return None
+        
+        # Decode initData
+        data_str = unquote(init_data)
+        parsed_data = parse_qs(data_str)
+        
+        # Get user from parsed_data
+        user_str = parsed_data.get('user', [None])[0]
+        if not user_str:
+            logger.warning("⚠️ No user data in initData")
+            return None
+        
+        # Parse JSON with user data
+        user_data = json.loads(user_str)
+        telegram_user_id = user_data.get('id')
+        
+        return telegram_user_id
+    except Exception as e:
+        logger.error(f"❌ Error extracting user ID: {e}")
+        return None
+
+
+def get_user_from_request(request: Request, db: Session) -> User:
+    """Get user from request initData"""
+    telegram_user_id = get_telegram_user_id(request)
+    
+    if telegram_user_id:
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if user:
+            return user
+    
+    # Fallback to first user if initData not available (for testing)
+    logger.warning("⚠️ No telegram_user_id, using first user as fallback")
+    user = db.query(User).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return user
 
 
 @router.get("/api/skills/status")
