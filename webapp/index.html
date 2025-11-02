@@ -88,12 +88,14 @@
             padding: 8px 12px;
             text-align: center;
             color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
         }
         
         .currency-item emoji {
             font-size: 16px;
-            display: block;
-            margin-bottom: 4px;
         }
         
         .currency-value {
@@ -372,12 +374,12 @@
                 <div class="level-section">
                     <div class="level-header">
                         <span style="font-weight: bold;">⭐ Уровень: <span id="player-level">1</span></span>
+                        <span style="font-size: 12px; color: #666;">
+                            Опыт: <span id="xp-current">0</span> / <span id="xp-next">100</span>
+                        </span>
                     </div>
                     <div class="xp-bar">
                         <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
-                    </div>
-                    <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                        Опыт: <span id="xp-current">0</span> / <span id="xp-next">100</span>
                     </div>
                 </div>
             </div>
