@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import BigInteger, Integer, String, Text, DateTime, text, ForeignKey, JSON
+from sqlalchemy import BigInteger, Integer, String, Text, DateTime, text, ForeignKey, JSON, Boolean
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -48,6 +48,8 @@ class User(Base):
     user_skills: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict, server_default=text("'{}'"))
     # User preferences
     waifu_sort_preference: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Clan reference
+    clan_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("clans.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     waifus: Mapped[list["WaifuInstance"]] = relationship("WaifuInstance", back_populates="owner")
@@ -255,4 +257,74 @@ class SkillPointEarning(Base):
     source = mapped_column(String(50), nullable=False)  # 'chat_message', 'daily_bonus', 'special_event'
     source_details = mapped_column(JSON, default={})
     created_at = mapped_column(DateTime, nullable=False, server_default=text("now()"))
+
+
+# Clan system models
+class Clan(Base):
+    """Clan information"""
+    __tablename__ = "clans"
+    
+    id = mapped_column(Integer, primary_key=True, index=True)
+    name = mapped_column(String(50), unique=True, nullable=False)
+    tag = mapped_column(String(10), unique=True, nullable=False)
+    description = mapped_column(Text, nullable=True)
+    emblem_id = mapped_column(Integer, nullable=False, default=1)
+    type = mapped_column(String(20), nullable=False, default='open')  # 'open', 'invite', 'closed'
+    leader_id = mapped_column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    level = mapped_column(Integer, nullable=False, default=1)
+    experience = mapped_column(BigInteger, nullable=False, default=0)
+    total_power = mapped_column(BigInteger, nullable=False, default=0)
+    created_at = mapped_column(DateTime, nullable=False, server_default=text("now()"))
+    settings = mapped_column(JSON, nullable=False, default={}, server_default=text("'{}'"))
+
+
+class ClanMember(Base):
+    """Clan membership"""
+    __tablename__ = "clan_members"
+    
+    id = mapped_column(Integer, primary_key=True, index=True)
+    clan_id = mapped_column(Integer, ForeignKey("clans.id", ondelete="CASCADE"), nullable=False)
+    user_id = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    role = mapped_column(String(20), nullable=False, default='member')  # 'leader', 'officer', 'member'
+    joined_at = mapped_column(DateTime, nullable=False, server_default=text("now()"))
+    last_active = mapped_column(DateTime, nullable=False, server_default=text("now()"))
+    donated_gold = mapped_column(BigInteger, nullable=False, default=0)
+    donated_skills = mapped_column(Integer, nullable=False, default=0)
+
+
+class ClanEvent(Base):
+    """Clan events"""
+    __tablename__ = "clan_events"
+    
+    id = mapped_column(Integer, primary_key=True, index=True)
+    clan_id = mapped_column(Integer, ForeignKey("clans.id", ondelete="CASCADE"), nullable=False)
+    event_type = mapped_column(String(50), nullable=False)  # 'raid', 'war', 'quest', 'boss_challenge'
+    started_at = mapped_column(DateTime, nullable=False, server_default=text("now()"))
+    ends_at = mapped_column(DateTime, nullable=True)
+    status = mapped_column(String(20), nullable=False, default='active')  # 'active', 'completed', 'cancelled'
+    data = mapped_column(JSON, nullable=False, default={}, server_default=text("'{}'"))
+    rewards = mapped_column(JSON, nullable=False, default={}, server_default=text("'{}'"))
+
+
+class ClanEventParticipation(Base):
+    """Clan event participation"""
+    __tablename__ = "clan_event_participations"
+    
+    id = mapped_column(Integer, primary_key=True, index=True)
+    event_id = mapped_column(Integer, ForeignKey("clan_events.id", ondelete="CASCADE"), nullable=False)
+    user_id = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    score = mapped_column(BigInteger, nullable=False, default=0)
+    contribution = mapped_column(JSON, nullable=False, default={}, server_default=text("'{}'"))
+
+
+class ClanChatMessage(Base):
+    """Clan chat messages"""
+    __tablename__ = "clan_chat_messages"
+    
+    id = mapped_column(Integer, primary_key=True, index=True)
+    clan_id = mapped_column(Integer, ForeignKey("clans.id", ondelete="CASCADE"), nullable=False)
+    user_id = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    message = mapped_column(Text, nullable=False)
+    created_at = mapped_column(DateTime, nullable=False, server_default=text("now()"))
+    is_deleted = mapped_column(Boolean, nullable=False, default=False)
 

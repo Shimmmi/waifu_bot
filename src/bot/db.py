@@ -14,12 +14,13 @@ logger = logging.getLogger(__name__)
 try:
     from bot.models import (
         Base, User, WaifuInstance, WaifuTemplate,
-        UserSkills, Skill, UserSkillLevel, SkillPointEarning
+        UserSkills, Skill, UserSkillLevel, SkillPointEarning,
+        Clan, ClanMember, ClanEvent, ClanEventParticipation, ClanChatMessage
     )
-    logger.info("✅ Skills models imported successfully")
+    logger.info("✅ All models imported successfully")
 except Exception as e:
-    logger.error(f"❌ Error importing skills models: {e}")
-    # If skills models are not available yet, don't fail
+    logger.error(f"❌ Error importing models: {e}")
+    # If models are not available yet, don't fail
     pass
 
 try:

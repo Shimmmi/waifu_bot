@@ -69,6 +69,14 @@ try:
 except ImportError:
     logger.warning("Skills API not available - skills_router not imported")
 
+# Import and register clans router
+try:
+    from bot.api_clans import router as clans_router
+    app.include_router(clans_router)
+    logger.info("✅ Clan API registered")
+except ImportError:
+    logger.warning("Clan API not available - clans_router not imported")
+
 # Функция для получения сессии базы данных
 def get_db():
     if SessionLocal is None:
