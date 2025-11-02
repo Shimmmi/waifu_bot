@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 
 from bot.db import get_db
 from bot.models import (
-    User, Clan, ClanMember, ClanEvent, ClanChatMessage,
+    User, Clan, ClanMember, ClanEvent, ClanEventParticipation, ClanChatMessage,
     Waifu
 )
 

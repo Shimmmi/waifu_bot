@@ -77,6 +77,14 @@ try:
 except ImportError:
     logger.warning("Clan API not available - clans_router not imported")
 
+# Import and register clan events router
+try:
+    from bot.api_clans_events import router as clan_events_router
+    app.include_router(clan_events_router)
+    logger.info("✅ Clan Events API registered")
+except ImportError:
+    logger.warning("Clan Events API not available - clan_events_router not imported")
+
 # Функция для получения сессии базы данных
 def get_db():
     if SessionLocal is None:
