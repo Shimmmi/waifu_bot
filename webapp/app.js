@@ -2192,6 +2192,9 @@ function renderClanView(container, clan) {
             </div>
         </div>
         
+        <!-- Active Raid -->
+        <div id="active-raid-section"></div>
+        
         <!-- Members -->
         <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
             <h3 style="margin: 0 0 12px 0; font-size: 18px;">👥 Участники</h3>
@@ -2229,6 +2232,9 @@ function renderClanView(container, clan) {
             🚪 Покинуть клан
         </button>
     `;
+    
+    // Load active raid
+    loadActiveRaid(clan.my_role);
 }
 
 // Render clan members
@@ -2443,6 +2449,130 @@ async function leaveClan() {
     } catch (error) {
         console.error('Error leaving clan:', error);
         window.Telegram?.WebApp?.showAlert?.('Ошибка');
+    }
+}
+
+// Load active raid
+async function loadActiveRaid(myRole) {
+    const section = document.getElementById('active-raid-section');
+    if (!section) return;
+    
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/clans/events?' + new URLSearchParams({ initData }));
+        
+        if (!response.ok) {
+            section.innerHTML = '';
+            return;
+        }
+        
+        const data = await response.json();
+        const activeRaids = data.active.filter(e => e.type === 'raid');
+        
+        if (activeRaids.length === 0) {
+            // No active raid - show start button for leaders/officers
+            if (myRole === 'leader' || myRole === 'officer') {
+                section.innerHTML = `
+                    <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); 
+                                color: white; padding: 16px; border-radius: 12px; margin-bottom: 16px; text-align: center;">
+                        <h3 style="margin: 0 0 8px 0; font-size: 18px;">🐉 Clan Raid</h3>
+                        <p style="margin: 0 0 12px 0; font-size: 14px; opacity: 0.9;">Начните новый рейд!</p>
+                        <button onclick="startRaid()" style="
+                            background: white; color: #ff6b6b; border: none; padding: 10px 20px;
+                            border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer;
+                        ">Запустить рейд</button>
+                    </div>
+                `;
+            } else {
+                section.innerHTML = '';
+            }
+        } else {
+            // Active raid
+            const raid = activeRaids[0];
+            const boss_hp = raid.data.boss_hp || 0;
+            const boss_max_hp = raid.data.boss_max_hp || 1;
+            const hp_percent = Math.round((boss_hp / boss_max_hp) * 100);
+            
+            section.innerHTML = `
+                <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); 
+                            color: white; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 18px;">🐉 ${raid.data.boss_name || 'Clan Raid'}</h3>
+                    <div style="margin-bottom: 12px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px;">
+                            <span>HP Босса</span>
+                            <span>${hp_percent}%</span>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.3); border-radius: 8px; height: 24px; overflow: hidden;">
+                            <div style="background: white; height: 100%; width: ${hp_percent}%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                    <button onclick="attackRaidBoss()" style="
+                        width: 100%; background: white; color: #ff6b6b; border: none;
+                        padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold;
+                        cursor: pointer;
+                    ">⚔️ Атаковать</button>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading raid:', error);
+        section.innerHTML = '';
+    }
+}
+
+// Attack raid boss
+async function attackRaidBoss() {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/clans/raid/attack?' + new URLSearchParams({ initData }), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            window.Telegram?.WebApp?.showAlert?.(error.detail || 'Ошибка атаки');
+            return;
+        }
+        
+        const result = await response.json();
+        
+        if (result.boss_defeated) {
+            window.Telegram?.WebApp?.showAlert?.(`🎉 Босс повержен! Урон: ${result.damage.toLocaleString()}`);
+        } else {
+            window.Telegram?.WebApp?.showAlert?.(`⚔️ Урон: ${result.damage.toLocaleString()}`);
+        }
+        
+        loadActiveRaid(clanData.my_role);
+        loadProfile();
+        
+    } catch (error) {
+        console.error('Error attacking raid:', error);
+        window.Telegram?.WebApp?.showAlert?.('Ошибка атаки');
+    }
+}
+
+// Start raid
+async function startRaid() {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/clans/raid/start?' + new URLSearchParams({ initData }), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            window.Telegram?.WebApp?.showAlert?.(error.detail || 'Ошибка запуска рейда');
+            return;
+        }
+        
+        window.Telegram?.WebApp?.showAlert?.('Рейд запущен!');
+        loadActiveRaid(clanData.my_role);
+        
+    } catch (error) {
+        console.error('Error starting raid:', error);
+        window.Telegram?.WebApp?.showAlert?.('Ошибка запуска рейда');
     }
 }
 
