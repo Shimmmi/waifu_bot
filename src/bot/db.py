@@ -74,4 +74,12 @@ def get_session():
         session.close()
 
 
+# Alias for compatibility with FastAPI Depends
+def get_db():
+    """FastAPI dependency for database session"""
+    session = SessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
 
