@@ -46,6 +46,40 @@ window.addEventListener('focus', async () => {
     }
 });
 
+// Refresh current page
+async function refreshCurrentPage() {
+    const refreshBtn = document.getElementById('refresh-btn');
+    if (!refreshBtn) return;
+    
+    // Add spinning animation
+    refreshBtn.classList.add('spinning');
+    
+    try {
+        if (currentView === 'profile') {
+            await loadProfile();
+        } else if (currentView === 'waifus') {
+            const container = document.getElementById('view-content');
+            await loadWaifuList(container);
+        } else if (currentView === 'skills') {
+            const container = document.getElementById('view-content');
+            await loadSkills(container);
+        } else if (currentView === 'upgrade') {
+            const container = document.getElementById('view-content');
+            await loadUpgradePage(container);
+        }
+        
+        // Show success animation
+        refreshBtn.classList.remove('spinning');
+        refreshBtn.style.transform = 'scale(1.2)';
+        setTimeout(() => {
+            refreshBtn.style.transform = '';
+        }, 200);
+    } catch (error) {
+        console.error('Error refreshing page:', error);
+        refreshBtn.classList.remove('spinning');
+    }
+}
+
 // Navigation function
 function navigateTo(view) {
     console.log(`🧭 Navigating to: ${view} (from: ${currentView})`);
@@ -476,9 +510,25 @@ function closeSortModal() {
 }
 
 // Set sort by
-function setSortBy(sortBy) {
+async function setSortBy(sortBy) {
     waifuSortBy = sortBy;
     closeSortModal();
+    
+    // Save preference to backend
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        await fetch('/api/profile/preferences?' + new URLSearchParams({ initData }), {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                waifu_sort_preference: sortBy
+            })
+        });
+    } catch (error) {
+        console.error('Error saving sort preference:', error);
+    }
     
     // Re-render waifu list with new sort
     const viewContent = document.getElementById('view-content');
@@ -1835,6 +1885,11 @@ async function loadProfile() {
         document.getElementById('gold-value').textContent = profileData.gold || 0;
         document.getElementById('gem-value').textContent = profileData.gems || 0;
         document.getElementById('token-value').textContent = profileData.skill_points || 0;
+        
+        // Load user preferences
+        if (profileData.waifu_sort_preference) {
+            waifuSortBy = profileData.waifu_sort_preference;
+        }
         
         // Update level and XP
         const currentLevel = profileData.level || 1;

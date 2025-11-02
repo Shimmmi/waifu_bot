@@ -270,9 +270,53 @@
             margin-bottom: 16px;
             width: 100%;
         }
+        
+        /* Refresh button */
+        .refresh-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid #ddd;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .refresh-button:hover {
+            background: white;
+            border-color: #667eea;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .refresh-button:active {
+            transform: scale(0.95);
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .refresh-button.spinning {
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 <body>
+    <!-- Refresh button -->
+    <button id="refresh-btn" class="refresh-button" onclick="refreshCurrentPage()" title="Обновить">
+        🔄
+    </button>
     <div class="container">
         <!-- Profile View -->
         <div id="profile-view" class="view">

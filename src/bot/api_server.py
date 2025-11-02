@@ -262,11 +262,59 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
             "skill_points": skill_points,
             "level": getattr(user, 'account_level', 1),
             "xp": getattr(user, 'global_xp', 0),
+            "waifu_sort_preference": getattr(user, 'waifu_sort_preference', 'name'),
             "active_waifu": active_waifu
         }
         
         logger.info(f"✅ Profile data fetched")
         return profile_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+@app.patch("/api/profile/preferences")
+async def update_preferences(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Update user preferences (sort preference, etc.)"""
+    try:
+        logger.info(f"📡 API REQUEST: PATCH /api/profile/preferences")
+        
+        if User is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if not telegram_user_id:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        # Find user
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Parse request body
+        body = await request.json()
+        sort_by = body.get('waifu_sort_preference')
+        
+        # Validate sort_by value
+        valid_sorts = ['name', 'rarity', 'level', 'power', 'race', 'profession', 'nationality']
+        if sort_by and sort_by not in valid_sorts:
+            raise HTTPException(status_code=400, detail=f"Invalid sort preference: {sort_by}. Valid values: {', '.join(valid_sorts)}")
+        
+        # Update preference
+        user.waifu_sort_preference = sort_by
+        db.commit()
+        db.refresh(user)
+        
+        logger.info(f"✅ Updated sort preference for user {user.id}: {sort_by}")
+        
+        return {
+            "success": True,
+            "waifu_sort_preference": user.waifu_sort_preference
+        }
         
     except HTTPException:
         raise
