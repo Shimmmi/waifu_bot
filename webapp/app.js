@@ -2389,9 +2389,138 @@ async function createClan() {
     }
 }
 
-// Search clans modal (placeholder)
+// Search clans modal
 function openSearchClansModal() {
-    window.Telegram?.WebApp?.showAlert?.('Функция поиска кланов будет добавлена позже');
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.8); display: flex; align-items: center;
+        justify-content: center; z-index: 10000;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; padding: 24px; border-radius: 16px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto;">
+            <h3 style="margin: 0 0 16px 0;">🔍 Найти клан</h3>
+            
+            <div style="margin-bottom: 16px;">
+                <input type="text" id="clan-search-input" placeholder="Название или тег..." style="
+                    width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;
+                    font-size: 14px; box-sizing: border-box;
+                " onkeyup="if(event.key==='Enter') searchClans()">
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <select id="clan-type-filter" style="
+                    width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;
+                    font-size: 14px;
+                ">
+                    <option value="">Все типы</option>
+                    <option value="open">Открытые</option>
+                    <option value="invite">По приглашению</option>
+                    <option value="closed">Закрытые</option>
+                </select>
+            </div>
+            
+            <button onclick="searchClans()" style="
+                width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white; border: none; padding: 12px; border-radius: 8px;
+                font-size: 14px; font-weight: bold; cursor: pointer;
+                margin-bottom: 16px;
+            ">🔍 Найти</button>
+            
+            <div id="search-results"></div>
+            
+            <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" style="
+                width: 100%; background: #e0e0e0; border: none; padding: 12px;
+                border-radius: 8px; font-size: 14px; cursor: pointer;
+            ">Закрыть</button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Search clans
+async function searchClans() {
+    const query = document.getElementById('clan-search-input').value.trim();
+    const type = document.getElementById('clan-type-filter').value;
+    const resultsDiv = document.getElementById('search-results');
+    
+    resultsDiv.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">Загрузка...</p>';
+    
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const params = new URLSearchParams({ initData });
+        if (query) params.append('q', query);
+        if (type) params.append('type', type);
+        
+        const response = await fetch(`/api/clans/search?${params}`);
+        
+        if (!response.ok) {
+            resultsDiv.innerHTML = '<p style="text-align: center; color: #f5576c; padding: 20px;">Ошибка поиска</p>';
+            return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.clans.length === 0) {
+            resultsDiv.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">Кланы не найдены</p>';
+            return;
+        }
+        
+        resultsDiv.innerHTML = data.clans.map(clan => `
+            <div style="border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div>
+                        <div style="font-weight: bold; font-size: 16px;">${clan.name}</div>
+                        <div style="font-size: 12px; color: #666;">#${clan.tag}</div>
+                    </div>
+                    <button onclick="joinClanNow(${clan.id})" style="
+                        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+                        color: white; border: none; padding: 8px 16px;
+                        border-radius: 8px; font-size: 12px; cursor: pointer;
+                    ">Вступить</button>
+                </div>
+                ${clan.description ? `<div style="font-size: 12px; color: #666; margin-bottom: 8px;">${clan.description}</div>` : ''}
+                <div style="display: flex; gap: 16px; font-size: 12px; color: #666;">
+                    <span>👥 ${clan.members_count}/${50 + clan.level * 5}</span>
+                    <span>💪 ${clan.total_power.toLocaleString()}</span>
+                    <span>⭐ Ур. ${clan.level}</span>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Error searching clans:', error);
+        resultsDiv.innerHTML = '<p style="text-align: center; color: #f5576c; padding: 20px;">Ошибка поиска</p>';
+    }
+}
+
+// Join clan from search
+async function joinClanNow(clanId) {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/clans/join?' + new URLSearchParams({ initData }), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clan_id: clanId })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            window.Telegram?.WebApp?.showAlert?.(error.detail || 'Ошибка вступления');
+            return;
+        }
+        
+        window.Telegram?.WebApp?.showAlert?.('Вы присоединились к клану!');
+        document.querySelector('div[style*="position: fixed"]').remove();
+        loadClanInfo(document.getElementById('other-views'));
+        loadProfile();
+        
+    } catch (error) {
+        console.error('Error joining clan:', error);
+        window.Telegram?.WebApp?.showAlert?.('Ошибка вступления');
+    }
 }
 
 // Send clan message
