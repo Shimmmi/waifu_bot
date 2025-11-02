@@ -66,6 +66,9 @@ async function refreshCurrentPage() {
         } else if (currentView === 'upgrade') {
             const container = document.getElementById('view-content');
             await loadUpgradePage(container);
+        } else if (currentView === 'clan') {
+            const container = document.getElementById('view-content');
+            await loadClanInfo(container);
         }
         
         // Show success animation
@@ -2085,6 +2088,363 @@ function closeWebApp() {
 
 let skillsData = null;
 let skillsTree = null;
+
+// Clan system state
+let clanData = null;
+
+// Load clan page
+async function loadClanInfo(container) {
+    console.log('🏰 Loading clan page');
+    container.innerHTML = '<p class="loading">Загрузка информации о клане...</p>';
+    
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/clans/my-clan?' + new URLSearchParams({ initData }));
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch clan info');
+        }
+        
+        const data = await response.json();
+        clanData = data.clan;
+        
+        if (!clanData) {
+            // User is not in a clan - show search/create UI
+            renderNoClanView(container);
+        } else {
+            // User is in a clan - show clan info
+            renderClanView(container, clanData);
+        }
+        
+    } catch (error) {
+        console.error('Error loading clan:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <p style="color: #f5576c; margin-bottom: 8px; font-weight: bold;">Ошибка загрузки клана</p>
+                <p style="color: #999; margin-bottom: 16px; font-size: 12px;">${error.message}</p>
+                <button onclick="loadClanInfo(document.getElementById('other-views'))" style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white; border: none; padding: 12px 24px; border-radius: 8px;
+                    font-size: 14px; cursor: pointer;
+                ">Повторить</button>
+            </div>
+        `;
+    }
+}
+
+// Render no clan view
+function renderNoClanView(container) {
+    container.innerHTML = `
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    color: white; padding: 20px; border-radius: 16px; margin-bottom: 20px; text-align: center;">
+            <h2 style="margin: 0 0 8px 0; font-size: 24px;">🏰 Клан</h2>
+            <div style="font-size: 14px; opacity: 0.9;">Присоединяйтесь к кланам или создайте свой!</div>
+        </div>
+        
+        <button onclick="openCreateClanModal()" style="
+            width: 100%; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white; border: none; padding: 16px; border-radius: 12px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+            margin-bottom: 16px; box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        ">
+            ➕ Создать клан
+        </button>
+        
+        <button onclick="openSearchClansModal()" style="
+            width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; padding: 16px; border-radius: 12px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+            margin-bottom: 16px;
+        ">
+            🔍 Найти клан
+        </button>
+    `;
+}
+
+// Render clan view
+function renderClanView(container, clan) {
+    container.innerHTML = `
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    color: white; padding: 20px; border-radius: 16px; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <h2 style="margin: 0; font-size: 24px;">🏰 ${clan.name}</h2>
+                ${clan.my_role === 'leader' ? '<button onclick="openClanSettingsModal()" style="background: rgba(255,255,255,0.2); border: none; border-radius: 8px; padding: 8px 12px; font-size: 14px; color: white; cursor: pointer;">⚙️</button>' : ''}
+            </div>
+            <div style="font-size: 16px; opacity: 0.9;">#${clan.tag}</div>
+        </div>
+        
+        <!-- Stats -->
+        <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: center;">
+                <div>
+                    <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Уровень</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #667eea;">${clan.level}</div>
+                </div>
+                <div>
+                    <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Сила</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #667eea;">${clan.total_power.toLocaleString()}</div>
+                </div>
+                <div>
+                    <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Участников</div>
+                    <div style="font-size: 20px; font-weight: bold; color: #667eea;">${clan.members.length}</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Members -->
+        <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+            <h3 style="margin: 0 0 12px 0; font-size: 18px;">👥 Участники</h3>
+            <div id="clan-members-list">
+                ${renderClanMembers(clan.members)}
+            </div>
+        </div>
+        
+        <!-- Chat -->
+        <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+            <h3 style="margin: 0 0 12px 0; font-size: 18px;">💬 Чат клана</h3>
+            <div id="clan-chat-messages" style="max-height: 200px; overflow-y: auto; margin-bottom: 12px;">
+                ${renderClanChat(clan.messages)}
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="clan-chat-input" placeholder="Введите сообщение..." style="
+                    flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px;
+                    font-size: 14px;
+                " onkeypress="if(event.key==='Enter') sendClanMessage()">
+                <button onclick="sendClanMessage()" style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white; border: none; padding: 10px 20px; border-radius: 8px;
+                    font-size: 14px; cursor: pointer;
+                ">Отправить</button>
+            </div>
+        </div>
+        
+        <!-- Leave Button -->
+        <button onclick="leaveClan()" style="
+            width: 100%; background: #ff4444;
+            color: white; border: none; padding: 12px; border-radius: 12px;
+            font-size: 14px; font-weight: bold; cursor: pointer;
+            margin-top: 16px;
+        ">
+            🚪 Покинуть клан
+        </button>
+    `;
+}
+
+// Render clan members
+function renderClanMembers(members) {
+    const roleEmojis = {
+        'leader': '👑',
+        'officer': '⭐',
+        'member': '👤'
+    };
+    
+    return members.map(m => `
+        <div style="display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #f0f0f0;">
+            <div style="font-size: 24px; margin-right: 8px;">${roleEmojis[m.role]}</div>
+            <div style="flex: 1;">
+                <div style="font-weight: bold; font-size: 14px;">@${m.username}</div>
+                <div style="font-size: 12px; color: #666;">В клане с ${new Date(m.joined_at).toLocaleDateString('ru-RU')}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Render clan chat
+function renderClanChat(messages) {
+    if (!messages || messages.length === 0) {
+        return '<div style="text-align: center; color: #999; padding: 20px;">Нет сообщений</div>';
+    }
+    
+    return messages.map(m => `
+        <div style="margin-bottom: 8px;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 2px;">
+                <strong>@${m.username}</strong> • ${new Date(m.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <div style="background: #f5f5f5; padding: 8px; border-radius: 8px; font-size: 14px;">
+                ${m.message}
+            </div>
+        </div>
+    `).join('');
+}
+
+// Open create clan modal
+function openCreateClanModal() {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.8); display: flex; align-items: center;
+        justify-content: center; z-index: 10000;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; padding: 24px; border-radius: 16px; width: 90%; max-width: 400px;">
+            <h3 style="margin: 0 0 16px 0;">Создать клан</h3>
+            
+            <div style="margin-bottom: 12px;">
+                <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #666;">Название</label>
+                <input type="text" id="clan-name-input" placeholder="Введите название..." style="
+                    width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;
+                    font-size: 14px; box-sizing: border-box;
+                ">
+            </div>
+            
+            <div style="margin-bottom: 12px;">
+                <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #666;">Тег</label>
+                <input type="text" id="clan-tag-input" placeholder="TAG" maxlength="10" style="
+                    width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;
+                    font-size: 14px; box-sizing: border-box; text-transform: uppercase;
+                ">
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #666;">Описание</label>
+                <textarea id="clan-desc-input" placeholder="Описание клана..." rows="3" style="
+                    width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;
+                    font-size: 14px; box-sizing: border-box; resize: vertical;
+                "></textarea>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 4px; font-size: 12px; color: #666;">Тип клана</label>
+                <select id="clan-type-input" style="
+                    width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;
+                    font-size: 14px;
+                ">
+                    <option value="open">Открытый (любой может присоединиться)</option>
+                    <option value="invite">По приглашению</option>
+                    <option value="closed">Закрытый</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 8px;">
+                <button onclick="createClan()" style="
+                    flex: 1; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+                    color: white; border: none; padding: 12px; border-radius: 8px;
+                    font-size: 14px; font-weight: bold; cursor: pointer;
+                ">Создать</button>
+                <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" style="
+                    background: #e0e0e0; border: none; padding: 12px 16px;
+                    border-radius: 8px; font-size: 14px; cursor: pointer;
+                ">Отмена</button>
+            </div>
+            
+            <div style="margin-top: 12px; font-size: 12px; color: #666; text-align: center;">
+                Стоимость: 1000 золота
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Create clan
+async function createClan() {
+    try {
+        const name = document.getElementById('clan-name-input').value.trim();
+        const tag = document.getElementById('clan-tag-input').value.trim().toUpperCase();
+        const description = document.getElementById('clan-desc-input').value.trim();
+        const type = document.getElementById('clan-type-input').value;
+        
+        if (!name || name.length < 3) {
+            window.Telegram?.WebApp?.showAlert?.('Название должно быть не менее 3 символов');
+            return;
+        }
+        
+        if (!tag || tag.length < 2) {
+            window.Telegram?.WebApp?.showAlert?.('Тег должен быть не менее 2 символов');
+            return;
+        }
+        
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/clans/create?' + new URLSearchParams({ initData }), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, tag, description, type })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            window.Telegram?.WebApp?.showAlert?.(error.detail || 'Ошибка создания клана');
+            return;
+        }
+        
+        const result = await response.json();
+        window.Telegram?.WebApp?.showAlert?.('Клан создан!');
+        
+        // Close modal and reload
+        document.querySelector('div[style*="position: fixed"]').remove();
+        loadClanInfo(document.getElementById('other-views'));
+        loadProfile();
+        
+    } catch (error) {
+        console.error('Error creating clan:', error);
+        window.Telegram?.WebApp?.showAlert?.('Ошибка создания клана');
+    }
+}
+
+// Search clans modal (placeholder)
+function openSearchClansModal() {
+    window.Telegram?.WebApp?.showAlert?.('Функция поиска кланов будет добавлена позже');
+}
+
+// Send clan message
+async function sendClanMessage() {
+    const input = document.getElementById('clan-chat-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/clans/chat/send?' + new URLSearchParams({ initData }), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            window.Telegram?.WebApp?.showAlert?.(error.detail || 'Ошибка отправки сообщения');
+            return;
+        }
+        
+        input.value = '';
+        loadClanInfo(document.getElementById('other-views'));
+        
+    } catch (error) {
+        console.error('Error sending message:', error);
+        window.Telegram?.WebApp?.showAlert?.('Ошибка отправки сообщения');
+    }
+}
+
+// Leave clan
+async function leaveClan() {
+    const confirmed = await window.Telegram?.WebApp?.showConfirm?.('Вы действительно хотите покинуть клан?');
+    if (!confirmed) return;
+    
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/clans/leave?' + new URLSearchParams({ initData }), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            window.Telegram?.WebApp?.showAlert?.(error.detail || 'Ошибка');
+            return;
+        }
+        
+        window.Telegram?.WebApp?.showAlert?.('Вы покинули клан');
+        loadClanInfo(document.getElementById('other-views'));
+        loadProfile();
+        
+    } catch (error) {
+        console.error('Error leaving clan:', error);
+        window.Telegram?.WebApp?.showAlert?.('Ошибка');
+    }
+}
 
 // Load skills page
 async function loadSkills(container) {
