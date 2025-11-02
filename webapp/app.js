@@ -104,7 +104,7 @@ function navigateTo(view) {
             'shop': { title: '🏪 Магазин', content: 'loadShopItems()' },
             'clan': { title: '🏰 Клан', content: 'loadClanInfo()' },
             'quests': { title: '📅 Ежедневные задания', content: 'loadQuests()' },
-            'skills': { title: '🧬 Прокачка навыков', content: 'loadSkills()' },
+            'skills': { title: '', content: 'loadSkills()' },
             'settings': { title: '⚙️ Настройки профиля', content: 'loadSettings()' },
             'upgrade': { title: '⚡ Прокачка вайфу', content: 'loadUpgradePage()' }
         };
@@ -382,7 +382,7 @@ async function openSelectActiveWaifuModal() {
                             <div style="width: 100%; height: 100px; overflow: hidden; border-radius: 8px; margin-bottom: 6px; flex-shrink: 0;">
                                 <img src="${waifu.image_url}" alt="${waifu.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
                             </div>
-                            <div style="font-size: 11px; font-weight: bold; text-align: center; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${waifu.name}</div>
+                            <div style="font-size: 11px; font-weight: bold; text-align: center; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #333;">${waifu.name}</div>
                             <div style="font-size: 9px; color: #666; text-align: center;">Ур.${waifu.level} • 💪${power}</div>
                         </div>
                         `;
@@ -1307,9 +1307,27 @@ function getFlagEmoji(countryCode) {
     const flagMap = {
         'RU': '🇷🇺', 'US': '🇺🇸', 'JP': '🇯🇵', 'CN': '🇨🇳',
         'FR': '🇫🇷', 'DE': '🇩🇪', 'GB': '🇬🇧', 'IT': '🇮🇹',
-        'ES': '🇪🇸', 'KR': '🇰🇷', 'BR': '🇧🇷', 'IN': '🇮🇳'
+        'ES': '🇪🇸', 'KR': '🇰🇷', 'BR': '🇧🇷', 'IN': '🇮🇳',
+        'CA': '🇨🇦', 'Russian': '🇷🇺', 'American': '🇺🇸', 'Japanese': '🇯🇵',
+        'Chinese': '🇨🇳', 'French': '🇫🇷', 'German': '🇩🇪', 'British': '🇬🇧',
+        'Italian': '🇮🇹', 'Korean': '🇰🇷', 'Brazilian': '🇧🇷', 'Indian': '🇮🇳',
+        'Canadian': '🇨🇦'
     };
-    return flagMap[countryCode] || countryCode;
+    return flagMap[countryCode] || '🌎';
+}
+
+// Helper function to get profession emoji
+function getProfessionEmoji(profession) {
+    const professionMap = {
+        'Warrior': '⚔️',
+        'Mage': '🔮',
+        'Assassin': '🗡️',
+        'Knight': '🛡️',
+        'Archer': '🏹',
+        'Healer': '💚',
+        'Merchant': '💰'
+    };
+    return professionMap[profession] || '👤';
 }
 
 // Open avatar selection
@@ -2016,12 +2034,14 @@ async function loadActiveWaifu() {
     
     const waifu = profileData.active_waifu;
     const power = calculatePower(waifu);
+    const professionEmoji = getProfessionEmoji(waifu.profession);
+    const flagEmoji = getFlagEmoji(waifu.nationality);
     
     activeWaifuCard.innerHTML = `
         <div onclick="openSelectActiveWaifuModal()" style="cursor: pointer;">
             <img src="${waifu.image_url}" alt="${waifu.name}" class="waifu-image" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27100%27%20height=%27100%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2714%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
             <div class="waifu-name">${waifu.name}</div>
-            <div class="waifu-info">Уровень ${waifu.level} • 💪${power}</div>
+            <div class="waifu-info">Уровень ${waifu.level} • 💪${power} • ${professionEmoji} ${flagEmoji}</div>
         </div>
     `;
 }

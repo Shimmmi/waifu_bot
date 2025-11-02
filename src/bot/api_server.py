@@ -242,6 +242,8 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
                 "image_url": waifu.image_url,
                 "stats": waifu.stats,
                 "dynamic": waifu.dynamic,
+                "profession": waifu.profession,
+                "nationality": waifu.nationality,
                 "is_active": True
             }
         

@@ -155,6 +155,13 @@ async def get_skills_tree(request: Request, db: Session = Depends(get_db)) -> Di
             total_points = sum(sl.level for sl in category_skills)
             category_progress[category] = total_points
         
+        # Get user skill points
+        try:
+            user_skills = db.query(UserSkills).filter(UserSkills.user_id == user.id).first()
+            skill_points = user_skills.skill_points if user_skills else 0
+        except:
+            skill_points = 0
+        
         # Build skills tree
         skills_tree = {}
         for category in ['account', 'passive', 'training']:
@@ -189,7 +196,8 @@ async def get_skills_tree(request: Request, db: Session = Depends(get_db)) -> Di
         
         return {
             "skills_tree": skills_tree,
-            "category_progress": category_progress
+            "category_progress": category_progress,
+            "skill_points": skill_points
         }
         
     except Exception as e:
