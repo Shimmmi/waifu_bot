@@ -208,12 +208,18 @@ async def get_skills_tree(request: Request, db: Session = Depends(get_db)) -> Di
 @router.post("/api/skills/upgrade")
 async def upgrade_skill(
     request: Request, 
-    skill_id: str, 
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """Upgrade a skill"""
     try:
         user = get_user_from_request(request, db)
+        
+        # Parse request body
+        body = await request.json()
+        skill_id = body.get('skill_id')
+        
+        if not skill_id:
+            raise HTTPException(status_code=400, detail="skill_id is required")
         
         # Get skill definition
         skill = db.query(Skill).filter(Skill.skill_id == skill_id).first()

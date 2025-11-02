@@ -2130,7 +2130,7 @@ async function loadSkills(container) {
 
 // Render skills page
 function renderSkillsPage(container, data) {
-    const { skills_tree, category_progress } = data;
+    const { skills_tree, category_progress, skill_points } = data;
     
     container.innerHTML = `
         <!-- Header -->
@@ -2138,7 +2138,7 @@ function renderSkillsPage(container, data) {
                     color: white; padding: 20px; border-radius: 16px; margin-bottom: 20px; text-align: center;">
             <h2 style="margin: 0 0 8px 0; font-size: 24px;">🧬 Прокачка</h2>
             <div style="font-size: 14px; opacity: 0.9;">
-                Очки навыков: <span style="font-weight: bold;">${skillsData.skill_points || 0}</span>
+                Очки навыков: <span style="font-weight: bold;">${skill_points || 0}</span>
             </div>
         </div>
         
