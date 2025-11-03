@@ -2148,7 +2148,7 @@ function renderClanChat(messages) {
             <div style="font-size: 12px; color: #666; margin-bottom: 2px;">
                 <strong>@${m.username}</strong> • ${new Date(m.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
             </div>
-            <div style="background: #f5f5f5; padding: 8px; border-radius: 8px; font-size: 14px;">
+            <div style="background: #f5f5f5; padding: 8px; border-radius: 8px; font-size: 14px; color: #333;">
                 ${m.message}
             </div>
         </div>
