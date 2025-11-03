@@ -277,8 +277,22 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
         try:
             from bot.services.skill_effects import get_user_skill_effects
             skill_effects = get_user_skill_effects(db, user.id)
-            # Recalculate power with skills if we have active waifu
+            
+            # Calculate collection-based bonuses (synergy, harmony)
             if waifu:
+                all_waifus = db.query(Waifu).filter(Waifu.owner_id == user.id).all()
+                favorite_count = sum(1 for w in all_waifus if w.is_favorite)
+                synergy_bonus = min(favorite_count * skill_effects.get('favorite_power_bonus', 0.0), 0.5)
+                
+                unique_rarities = len(set(w.rarity for w in all_waifus))
+                harmony_bonus = min(unique_rarities * skill_effects.get('rarity_bonus', 0.0), 0.25)
+                
+                # Add collection bonus to skill_effects
+                collection_bonus = synergy_bonus + harmony_bonus
+                if collection_bonus > 0:
+                    skill_effects['collection_power_bonus'] = collection_bonus
+                
+                # Recalculate power with skills if we have active waifu
                 active_waifu["power"] = calculate_waifu_power(waifu.__dict__, skill_effects)
         except Exception as e:
             logger.warning(f"⚠️ Error fetching skill effects for profile: {e}")
@@ -384,6 +398,19 @@ async def get_waifus(request: Request, db: Session = Depends(get_db)):
         try:
             from bot.services.skill_effects import get_user_skill_effects
             skill_effects = get_user_skill_effects(db, user.id)
+            
+            # Calculate collection-based bonuses (synergy, harmony)
+            favorite_count = sum(1 for w in waifus if w.is_favorite)
+            synergy_bonus = min(favorite_count * skill_effects.get('favorite_power_bonus', 0.0), 0.5)
+            
+            unique_rarities = len(set(w.rarity for w in waifus))
+            harmony_bonus = min(unique_rarities * skill_effects.get('rarity_bonus', 0.0), 0.25)
+            
+            # Add collection bonus to skill_effects
+            collection_bonus = synergy_bonus + harmony_bonus
+            if collection_bonus > 0:
+                skill_effects['collection_power_bonus'] = collection_bonus
+                
         except Exception as e:
             logger.warning(f"⚠️ Error fetching skill effects for waifus: {e}")
         
@@ -1302,8 +1329,18 @@ async def perform_upgrade(request: Request, db: Session = Depends(get_db)) -> Di
         if len(sacrifice_waifus) != len(sacrifice_waifu_ids):
             raise HTTPException(status_code=400, detail="Некоторые вайфу для жертвования не найдены")
         
-        # Calculate total XP to add
-        total_xp = sum(calculate_sacrifice_xp(waifu) for waifu in sacrifice_waifus)
+        # Calculate total XP to add with skill bonus
+        base_total_xp = sum(calculate_sacrifice_xp(waifu) for waifu in sacrifice_waifus)
+        
+        # Apply upgrade_xp_bonus from mentor skill
+        try:
+            from bot.services.skill_effects import get_user_skill_effects
+            skill_effects = get_user_skill_effects(db, user.id)
+            upgrade_bonus = 1.0 + skill_effects.get('upgrade_xp_bonus', 0.0)
+            total_xp = int(base_total_xp * upgrade_bonus)
+        except Exception as e:
+            logger.warning(f"⚠️ Error fetching skill effects for upgrade: {e}")
+            total_xp = base_total_xp
         
         # Add XP to target waifu
         old_level = target_waifu.level

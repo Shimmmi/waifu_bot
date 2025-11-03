@@ -13,11 +13,12 @@ from bot.models import User, Waifu
 
 # Import skills models
 try:
-    from bot.models import UserSkills, UserSkillLevel
+    from bot.models import UserSkills, UserSkillLevel, Skill
     SKILLS_ENABLED = True
 except ImportError:
     UserSkills = None
     UserSkillLevel = None
+    Skill = None
     SKILLS_ENABLED = False
 
 router = Router()
@@ -435,7 +436,7 @@ async def handle_debug_add_skill_points(callback: CallbackQuery, tg_user_id: int
 
 
 async def handle_debug_wipe_skill_points(callback: CallbackQuery, tg_user_id: int) -> None:
-    """Удаление всех очков навыков и уровней"""
+    """Удаление всех очков навыков и уровней с возвратом потраченных очков"""
     if not SKILLS_ENABLED:
         await callback.answer("⚠️ Система навыков пока не активирована")
         return
@@ -460,30 +461,42 @@ async def handle_debug_wipe_skill_points(callback: CallbackQuery, tg_user_id: in
             await callback.answer("❌ У вас нет очков навыков")
             return
         
-        # Получаем все уровни навыков
+        # Получаем все уровни навыков и считаем возврат очков
         skill_levels_result = session.execute(
-            select(UserSkillLevel).where(UserSkillLevel.user_id == user.id)
+            select(UserSkillLevel).join(Skill).where(UserSkillLevel.user_id == user.id)
         )
         skill_levels = skill_levels_result.scalars().all()
+        
+        # Рассчитываем возврат очков за каждый уровень каждого навыка
+        points_refunded = 0
+        for skill_level in skill_levels:
+            skill = skill_level.skill
+            for level in range(1, skill_level.level + 1):
+                # Calculate cost for this level
+                cost = skill.base_cost + (level - 1) * skill.cost_increase
+                points_refunded += cost
         
         # Удаляем все уровни навыков
         skills_count = len(skill_levels)
         for skill_level in skill_levels:
             session.delete(skill_level)
         
-        # Сбрасываем очки
+        # Возвращаем очки
         old_points = user_skills.skill_points
-        user_skills.skill_points = 0
-        user_skills.total_earned_points = 0
+        new_points = old_points + points_refunded
+        
+        user_skills.skill_points = new_points
+        # Не сбрасываем total_earned_points, т.к. очки были заработаны легитимно
         
         session.commit()
         
-        await callback.answer("✅ Все очки навыков удалены!")
+        await callback.answer("✅ Все очки навыков возвращены!")
         await callback.message.edit_text(
-            f"🗑️ <b>Очки навыков удалены</b>\n\n"
-            f"💰 Было очков: {old_points}\n"
-            f"📊 Удалено навыков: {skills_count}\n\n"
-            f"Все очки и уровни навыков сброшены!",
+            f"💰 <b>Очки навыков сброшены</b>\n\n"
+            f"📊 Навыков сброшено: {skills_count}\n"
+            f"💰 Возвращено очков: {points_refunded}\n"
+            f"💵 Текущих очков: {old_points} → {new_points}\n\n"
+            f"Все уровни навыков сброшены, очки возвращены!",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🔙 Назад", callback_data="debug_menu")]
             ]),

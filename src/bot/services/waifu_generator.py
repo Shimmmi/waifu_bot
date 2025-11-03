@@ -283,6 +283,13 @@ def calculate_waifu_power(waifu: Dict, skill_effects: Dict = None) -> int:
     level_bonus = level * 2
     
     total_power = base_power + mood_bonus + loyalty_bonus + level_bonus
+    
+    # Применяем бонусы от коллекции (synergy, harmony)
+    # Эти бонусы рассчитываются на уровне API и добавляются в skill_effects
+    collection_bonus = skill_effects.get('collection_power_bonus', 0.0)
+    if collection_bonus > 0:
+        total_power = int(total_power * (1.0 + collection_bonus))
+    
     return int(total_power)
 
 

@@ -103,20 +103,20 @@ Remaining skills require new systems (energy, mood, loyalty restoration) or are 
 - **Location**: Energy consumption system (not implemented)
 - **Implementation**: Create energy consumption system
 
-#### 18. `mentor` - Ментор ⏳ PENDING
+#### 18. `mentor` - Ментор ✅ IMPLEMENTED
 - **Effect**: `upgrade_xp_bonus` (0.25 to 1.25)
 - **Location**: Waifu upgrade in `src/bot/api_server.py` (`perform_upgrade` endpoint)
-- **Status**: ⏳ Requires implementation in upgrade XP calculation
+- **Status**: ✅ Implemented - applies bonus to XP from sacrificed waifus
 
 #### 19. `golden_hand` - Золотая рука
 - **Effect**: `waifu_gold_bonus` (0.1 to 0.3)
 - **Location**: Gold rewards from waifu actions (not implemented)
 - **Implementation**: Create gold reward system
 
-#### 20. `synergy` - Синергия ⏳ PENDING
+#### 20. `synergy` - Синергия ✅ IMPLEMENTED
 - **Effect**: `favorite_power_bonus` (0.05 per favorite, max 0.5)
 - **Location**: Power calculation in `src/bot/services/waifu_generator.py`
-- **Status**: ⏳ Requires counting favorite waifus in collection
+- **Status**: ✅ Implemented - counts favorite waifus and applies bonus
 
 ### 🏋️ TRAINING WAIFU SKILLS
 
@@ -165,10 +165,10 @@ Remaining skills require new systems (energy, mood, loyalty restoration) or are 
 - **Location**: Power calculation in `src/bot/services/waifu_generator.py`
 - **Status**: ✅ Implemented - multiplies power for epic/legendary waifus
 
-#### 30. `harmony` - Гармония ⏳ PENDING
+#### 30. `harmony` - Гармония ✅ IMPLEMENTED
 - **Effect**: `rarity_bonus` (0.05 per rarity type, max 0.25)
 - **Location**: Power calculation
-- **Status**: ⏳ Requires counting unique rarities in collection
+- **Status**: ✅ Implemented - counts unique rarities and applies bonus
 
 ## 🔧 Implementation Summary
 
@@ -214,7 +214,7 @@ Modified files to fetch and apply skill effects:
 | `lucky_novice` | Удача новичка | `rare_chance` | 0.02-0.1 | `waifu_generator.py` | ✅ IMPLEMENTED |
 | `summon_mage` | Маг призыва | `epic_chance` | 0.01-0.03 | `waifu_generator.py` | ✅ IMPLEMENTED |
 | `legend_seeker` | Легенда | `legendary_chance` | 0.005-0.01 | `waifu_generator.py` | ✅ IMPLEMENTED |
-| `mentor` | Ментор | `upgrade_xp_bonus` | 0.25-1.25 | `api_server.py` | ⏳ PENDING |
+| `mentor` | Ментор | `upgrade_xp_bonus` | 0.25-1.25 | `api_server.py` | ✅ IMPLEMENTED |
 | `loyalty` | Верность | `loyalty_power_bonus` | 0.2-1.0 | `waifu_generator.py` | ✅ IMPLEMENTED |
 | `joy` | Радость | `mood_power_bonus` | 0.15-0.75 | `waifu_generator.py` | ✅ IMPLEMENTED |
 | `spiritual_strength` | Сила духа | `power_bonus` | 0.1-0.5 | `waifu_generator.py` | ✅ IMPLEMENTED |
@@ -225,17 +225,19 @@ Modified files to fetch and apply skill effects:
 | `speed` | Скорость | `speed_bonus` | 0.15-0.45 | `waifu_generator.py` | ✅ IMPLEMENTED |
 | `elite` | Элита | `rare_power_bonus` | 0.25-0.5 | `waifu_generator.py` | ✅ IMPLEMENTED |
 | `legend` | Легенда | `epic_power_bonus` | 0.5-1.0 | `waifu_generator.py` | ✅ IMPLEMENTED |
-| `synergy` | Синергия | `favorite_power_bonus` | 0.05-0.5 | `waifu_generator.py` | ⏳ PENDING |
-| `harmony` | Гармония | `rarity_bonus` | 0.05-0.25 | `waifu_generator.py` | ⏳ PENDING |
+| `synergy` | Синергия | `favorite_power_bonus` | 0.05-0.5 | `waifu_generator.py` | ✅ IMPLEMENTED |
+| `harmony` | Гармония | `rarity_bonus` | 0.05-0.25 | `waifu_generator.py` | ✅ IMPLEMENTED |
 
 ## ✅ Completed Implementation
 
-All core gameplay skills have been successfully implemented. The skills system is now fully functional for:
+All core gameplay skills have been successfully implemented (21 out of 30 skills). The skills system is now fully functional for:
 - Summon cost reduction
 - Rarity improvements
 - Gold/XP bonuses
 - Waifu power scaling
 - Daily bonus enhancements
+- Upgrade bonuses
+- Collection synergies (favorites and rarities)
 
 ## ⏳ Future Enhancements
 
