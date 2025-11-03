@@ -263,13 +263,25 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
                 "is_active": True
             }
         
-        # Get user skill points
+        # Get user skill points and skill effects
+        skill_points = 0
+        skill_effects = {}
         try:
             from bot.models import UserSkills
             user_skills = db.query(UserSkills).filter(UserSkills.user_id == user.id).first()
             skill_points = user_skills.skill_points if user_skills else 0
         except:
             skill_points = 0
+        
+        # Get skill effects for power calculation
+        try:
+            from bot.services.skill_effects import get_user_skill_effects
+            skill_effects = get_user_skill_effects(db, user.id)
+            # Recalculate power with skills if we have active waifu
+            if waifu:
+                active_waifu["power"] = calculate_waifu_power(waifu.__dict__, skill_effects)
+        except Exception as e:
+            logger.warning(f"⚠️ Error fetching skill effects for profile: {e}")
         
         profile_data = {
             "username": user.username or "username",
@@ -367,9 +379,17 @@ async def get_waifus(request: Request, db: Session = Depends(get_db)):
         # Get all waifus for user
         waifus = db.query(Waifu).filter(Waifu.owner_id == user.id).all()
         
+        # Get skill effects for power calculation
+        skill_effects = {}
+        try:
+            from bot.services.skill_effects import get_user_skill_effects
+            skill_effects = get_user_skill_effects(db, user.id)
+        except Exception as e:
+            logger.warning(f"⚠️ Error fetching skill effects for waifus: {e}")
+        
         waifu_list = []
         for waifu in waifus:
-            power = calculate_waifu_power(waifu.__dict__)
+            power = calculate_waifu_power(waifu.__dict__, skill_effects)
             waifu_list.append({
                 "id": waifu.id,
                 "name": waifu.name,
@@ -556,8 +576,8 @@ async def summon_waifus(request: Request, db: Session = Depends(get_db)) -> Dict
             waifu = Waifu(**waifu_data)
             db.add(waifu)
             
-            # Calculate power for response
-            power = calculate_waifu_power(waifu_data)
+            # Calculate power for response with skill effects
+            power = calculate_waifu_power(waifu_data, skill_effects)
             
             summoned_waifus.append({
                 "id": waifu.id,
@@ -1039,17 +1059,44 @@ async def claim_daily_bonus(request: Request, db: Session = Depends(get_db)) -> 
             minutes = int((time_left.total_seconds() % 3600) // 60)
             raise HTTPException(status_code=400, detail=f"Бонус недоступен. Осталось: {hours}ч {minutes}м")
         
+        # Apply skill bonuses before giving bonus
+        base_gold = 100
+        base_xp = 0
+        gold_bonus = 0
+        xp_bonus = 0
+        
+        try:
+            from bot.services.skill_effects import get_user_skill_effects, apply_skill_multiplier
+            skill_effects = get_user_skill_effects(db, user.id)
+            
+            # Apply daily_gold_bonus from investor
+            gold_bonus = skill_effects.get('daily_gold_bonus', 0.0)
+            if gold_bonus > 0:
+                base_gold = int(apply_skill_multiplier(base_gold, gold_bonus))
+                logger.debug(f"💰 Applied daily gold bonus: {gold_bonus*100:.0f}%")
+            
+            # Apply daily_xp_bonus from wise_mentor
+            xp_bonus = skill_effects.get('daily_xp_bonus', 0.0)
+            if xp_bonus > 0:
+                base_xp = int(apply_skill_multiplier(10, xp_bonus))  # Base 10 XP for daily bonus
+                logger.debug(f"✨ Applied daily XP bonus: {xp_bonus*100:.0f}%")
+        except Exception as e:
+            logger.warning(f"⚠️ Error applying daily bonus skill effects: {e}")
+        
         # Give bonus
-        user.coins += 100
+        user.coins += base_gold
+        if base_xp > 0:
+            user.global_xp += base_xp
         user.daily_streak += 1
         user.last_daily = now
         db.commit()
         
-        logger.info(f"✅ Daily bonus claimed for user {user.id}, new balance: {user.coins}")
+        logger.info(f"✅ Daily bonus claimed for user {user.id}: +{base_gold} gold (+{base_xp} XP), new balance: {user.coins}")
         
         return {
             "success": True,
-            "coins_added": 100,
+            "coins_added": base_gold,
+            "xp_added": base_xp,
             "new_balance": user.coins,
             "streak": user.daily_streak
         }

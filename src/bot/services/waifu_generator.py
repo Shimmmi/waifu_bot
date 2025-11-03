@@ -216,17 +216,67 @@ def generate_waifu_name(nationality: str = None) -> str:
         return random.choice(NAMES_BY_NATIONALITY[nat])
 
 
-def calculate_waifu_power(waifu: Dict) -> int:
-    """Вычисляет общую силу вайфу"""
+def calculate_waifu_power(waifu: Dict, skill_effects: Dict = None) -> int:
+    """Вычисляет общую силу вайфу с учетом навыков
+    
+    Args:
+        waifu: Dictionary with waifu data (stats, dynamic, level, rarity)
+        skill_effects: Dictionary of skill effects to apply
+    """
+    if skill_effects is None:
+        skill_effects = {}
+    
     stats = waifu.get("stats", {})
     dynamic = waifu.get("dynamic", {})
+    rarity = waifu.get("rarity", "Common")
     
-    # Базовая сила из характеристик
-    base_power = sum(stats.values())
+    # Вычисляем базовую силу из характеристик с применением бонусов к каждой
+    stat_bonuses = {
+        'power': 1.0,
+        'intellect': 1.0,
+        'charm': 1.0,
+        'speed': 1.0,
+        'luck': 1.0,
+        'affection': 1.0  # affection is a stat too
+    }
     
-    # Бонусы от динамических характеристик
-    mood_bonus = dynamic.get("mood", 50) * 0.1
-    loyalty_bonus = dynamic.get("loyalty", 50) * 0.05
+    # Применяем бонусы к характеристикам от тренировок
+    if 'power_bonus' in skill_effects:
+        stat_bonuses['power'] += skill_effects['power_bonus']
+    if 'intellect_bonus' in skill_effects:
+        stat_bonuses['intellect'] += skill_effects['intellect_bonus']
+    if 'charm_bonus' in skill_effects:
+        stat_bonuses['charm'] += skill_effects['charm_bonus']
+    if 'speed_bonus' in skill_effects:
+        stat_bonuses['speed'] += skill_effects['speed_bonus']
+    if 'luck_bonus' in skill_effects:
+        stat_bonuses['luck'] += skill_effects['luck_bonus']
+    
+    # Применяем бонусы к редкости
+    rarity_bonus = 1.0
+    if rarity in ['Rare', 'Epic', 'Legendary']:
+        rare_power_bonus = skill_effects.get('rare_power_bonus', 0.0)
+        epic_power_bonus = skill_effects.get('epic_power_bonus', 0.0)
+        if rarity == 'Rare':
+            rarity_bonus += rare_power_bonus
+        elif rarity in ['Epic', 'Legendary']:
+            rarity_bonus += epic_power_bonus
+    
+    # Суммируем характеристики с бонусами
+    base_power = 0
+    for stat_name, stat_value in stats.items():
+        bonus = stat_bonuses.get(stat_name, 1.0)
+        base_power += int(stat_value * bonus)
+    
+    # Применяем глобальный бонус к редкости
+    base_power = int(base_power * rarity_bonus)
+    
+    # Бонусы от динамических характеристик с модификаторами навыков
+    mood_bonus_multiplier = 1.0 + skill_effects.get('mood_power_bonus', 0.0)
+    loyalty_bonus_multiplier = 1.0 + skill_effects.get('loyalty_power_bonus', 0.0)
+    
+    mood_bonus = dynamic.get("mood", 50) * 0.1 * mood_bonus_multiplier
+    loyalty_bonus = dynamic.get("loyalty", 50) * 0.05 * loyalty_bonus_multiplier
     
     # Бонус за уровень
     level = waifu.get("level", 1)
