@@ -1498,50 +1498,13 @@ async function selectWaifu(waifuId) {
 
 // Load shop items
 async function loadShopItems(container) {
-    container.innerHTML = '<p class="loading">Загрузка...</p>';
-    
-    try {
-        const initData = window.Telegram?.WebApp?.initData || '';
-        const response = await fetch('/api/shop?' + new URLSearchParams({ initData }));
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch shop items');
-        }
-        
-        const data = await response.json();
-        const items = data.items || [];
-        
-        if (items.length === 0) {
-            container.innerHTML = '<p style="padding: 20px; color: #666;">В магазине пока нет товаров</p>';
-            return;
-        }
-        
-        // Render shop items
-        container.innerHTML = `
-            <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 16px;">
-                ${items.map(item => `
-                    <div style="background: white; border-radius: 12px; padding: 16px;">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            <div style="font-size: 32px;">${item.emoji}</div>
-                            <div style="flex: 1;">
-                                <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${item.name}</div>
-                                <div style="font-size: 12px; color: #666;">${item.description}</div>
-                            </div>
-                        </div>
-                        <button 
-                            onclick="purchaseItem('${item.id}')" 
-                            style="width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; padding: 12px; font-weight: bold; cursor: pointer; font-size: 14px;">
-                            Купить за ${item.price} ${item.currency === 'gold' ? '💰' : item.currency === 'gems' ? '💎' : '🔮'}
-                        </button>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-        
-    } catch (error) {
-        console.error('Error loading shop items:', error);
-        container.innerHTML = '<p style="color: red; padding: 20px;">Ошибка загрузки</p>';
-    }
+    container.innerHTML = `
+        <div style="text-align: center; padding: 60px 20px; color: #666;">
+            <div style="font-size: 64px; margin-bottom: 16px;">🚧</div>
+            <p style="margin: 0 0 8px 0; font-size: 18px; font-weight: bold;">Магазин временно не работает</p>
+            <p style="margin: 0; font-size: 14px; color: #999;">Но скоро будет открыт!</p>
+        </div>
+    `;
 }
 
 // Purchase item

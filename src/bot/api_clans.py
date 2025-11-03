@@ -130,10 +130,6 @@ async def create_clan(request: Request, db: Session = Depends(get_db)) -> Dict[s
         if existing_clan:
             raise HTTPException(status_code=400, detail="Клан с таким названием или тегом уже существует")
         
-        # Check level requirement
-        if user.account_level < 10:
-            raise HTTPException(status_code=400, detail="Для создания клана нужен 10-й уровень аккаунта")
-        
         # Check cost (1000 gold)
         if user.coins < 1000:
             raise HTTPException(status_code=400, detail="Недостаточно золота. Требуется: 1000")
