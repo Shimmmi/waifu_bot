@@ -108,13 +108,39 @@ def get_waifu_image(race: str = None, profession: str = None, nationality: str =
     return image_url
 
 
-def generate_waifu(card_number: int, owner_id: int = None) -> Dict:
-    """Генерирует новую вайфу с случайными характеристиками"""
+def generate_waifu(card_number: int, owner_id: int = None, skill_effects: Dict = None) -> Dict:
+    """Генерирует новую вайфу с случайными характеристиками
     
-    # Выбираем редкость (веса: 60%, 25%, 10%, 4%, 1%)
+    Args:
+        card_number: Unique card number
+        owner_id: User ID who owns this waifu
+        skill_effects: Dictionary of skill effects to apply (for rarity bonuses)
+    """
+    if skill_effects is None:
+        skill_effects = {}
+    
+    # Base rarity weights: Common 60%, Uncommon 25%, Rare 10%, Epic 4%, Legendary 1%
+    weights = [60, 25, 10, 4, 1]
+    
+    # Apply rarity bonuses from skills
+    rare_chance = skill_effects.get('rare_chance', 0.0)
+    epic_chance = skill_effects.get('epic_chance', 0.0)
+    legendary_chance = skill_effects.get('legendary_chance', 0.0)
+    
+    # Increase weights for rare rarities, decrease common proportionally
+    if rare_chance > 0 or epic_chance > 0 or legendary_chance > 0:
+        total_bonus = rare_chance + epic_chance + legendary_chance
+        # Redistribute weights: increase rare/epic/legendary, decrease common
+        weights[0] = max(1, int(weights[0] * (1 - total_bonus * 0.5)))  # Common
+        weights[2] = min(25, int(weights[2] * (1 + rare_chance * 10)))  # Rare
+        weights[3] = min(15, int(weights[3] * (1 + epic_chance * 20)))  # Epic
+        weights[4] = min(10, int(weights[4] * (1 + legendary_chance * 30)))  # Legendary
+        logger.debug(f"🎲 Adjusted rarity weights: {weights} (rare: +{rare_chance*100:.0f}%, epic: +{epic_chance*100:.0f}%, legend: +{legendary_chance*100:.0f}%)")
+    
+    # Выбираем редкость с модифицированными весами
     rarity = random.choices(
         list(RARITIES.keys()), 
-        weights=[60, 25, 10, 4, 1]
+        weights=weights
     )[0]
     
     # Выбираем расу, профессию и национальность

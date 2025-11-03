@@ -209,9 +209,28 @@ class GlobalXPService:
             user.last_xp_reset = now
             logger.info(f"Reset daily XP for user {user_id}")
         
+        # Apply skill bonuses to XP and gold
+        try:
+            from bot.services.skill_effects import get_user_skill_effects, apply_skill_multiplier
+            skill_effects = get_user_skill_effects(session, user.id)
+            
+            # Apply XP bonus from experienced_player
+            xp_bonus = skill_effects.get('xp_bonus', 0.0)
+            if xp_bonus > 0:
+                xp_amount = apply_skill_multiplier(xp_amount, xp_bonus)
+                logger.debug(f"✨ Applied XP bonus: {xp_bonus*100:.0f}%")
+            
+            # Apply gold bonus from gold_mine
+            gold_bonus = skill_effects.get('gold_bonus', 0.0)
+            if gold_bonus > 0:
+                gold_amount = apply_skill_multiplier(gold_amount, gold_bonus)
+                logger.debug(f"💰 Applied gold bonus: {gold_bonus*100:.0f}%")
+        except Exception as e:
+            logger.warning(f"⚠️ Error applying skill bonuses: {e}")
+        
         # Check daily XP cap
         remaining_daily_xp = self.DAILY_XP_CAP - user.daily_xp
-        actual_xp = min(xp_amount, remaining_daily_xp)
+        actual_xp = min(int(xp_amount), remaining_daily_xp)
         
         # Handle daily gold reset
         last_gold_reset = user.last_gold_reset
@@ -232,7 +251,7 @@ class GlobalXPService:
         
         # Check daily gold cap
         remaining_daily_gold = self.DAILY_GOLD_CAP - user.daily_gold
-        actual_gold = min(gold_amount, remaining_daily_gold)
+        actual_gold = min(int(gold_amount), remaining_daily_gold)
         
         # Update global XP and daily XP
         old_level = user.account_level

@@ -518,12 +518,25 @@ async def summon_waifus(request: Request, db: Session = Depends(get_db)) -> Dict
         if count not in [1, 10]:
             raise HTTPException(status_code=400, detail="Можно призвать только 1 или 10 вайфу")
         
-        cost = 100 if count == 1 else 1000
+        base_cost = 100 if count == 1 else 1000
         
         # Get user
         user = db.query(User).filter(User.tg_id == telegram_user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Apply skill discount (bargain_hunter)
+        try:
+            from bot.services.skill_effects import get_user_skill_effects, apply_skill_discount
+            skill_effects = get_user_skill_effects(db, user.id)
+            summon_discount = skill_effects.get('summon_discount', 0.0)
+            cost = apply_skill_discount(base_cost, summon_discount)
+            # Round down to integer
+            cost = int(cost)
+            logger.info(f"💰 Summon cost: {base_cost} -> {cost} (discount: {summon_discount*100:.0f}%)")
+        except Exception as e:
+            logger.warning(f"⚠️ Error applying summon discount: {e}")
+            cost = base_cost
         
         # Check if user has enough coins
         if user.coins < cost:
@@ -536,10 +549,10 @@ async def summon_waifus(request: Request, db: Session = Depends(get_db)) -> Dict
         # Get max card number
         max_card = db.query(func.max(Waifu.card_number)).scalar() or 0
         
-        # Generate waifus
+        # Generate waifus with skill effects
         summoned_waifus = []
         for i in range(count):
-            waifu_data = generate_waifu(max_card + 1 + i, user.id)
+            waifu_data = generate_waifu(max_card + 1 + i, user.id, skill_effects)
             waifu = Waifu(**waifu_data)
             db.add(waifu)
             
