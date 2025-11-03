@@ -163,11 +163,43 @@ async function loadWaifuList(container) {
             return;
         }
 
+        // Fetch skill effects to calculate summon costs
+        summonCosts = await calculateSummonCosts();
         renderWaifuList(container);
 
     } catch (error) {
         console.error('Error loading waifu list:', error);
         container.innerHTML = '<p style="color: red; padding: 20px;">Ошибка загрузки</p>';
+    }
+}
+
+// Global variable to store summon costs
+let summonCosts = { single: 100, multi: 1000 };
+
+// Calculate summon costs with skill discounts
+async function calculateSummonCosts() {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/skills/effects?' + new URLSearchParams({ initData }));
+        
+        if (!response.ok) {
+            return { single: 100, multi: 1000 };
+        }
+        
+        const data = await response.json();
+        const effects = data.effects || {};
+        
+        // Apply summon_discount
+        const discount = effects.summon_discount || 0.0;
+        const singleCost = Math.floor(100 * (1 - discount));
+        const multiCost = Math.floor(1000 * (1 - discount));
+        
+        console.log(`💰 Summon costs calculated: ${singleCost} (${multiCost}) with ${discount*100}% discount`);
+        return { single: singleCost, multi: multiCost };
+        
+    } catch (error) {
+        console.error('Error calculating summon costs:', error);
+        return { single: 100, multi: 1000 };
     }
 }
 
@@ -244,7 +276,7 @@ function renderWaifuList(container) {
                 flex-direction: column; align-items: center; justify-content: center; gap: 4px;
             ">
                 <div style="font-size: 14px;">✨ Призыв</div>
-                <div style="font-size: 12px; opacity: 0.9;">(100💰)</div>
+                <div style="font-size: 12px; opacity: 0.9;">(${summonCosts.single}💰)</div>
             </button>
             <button onclick="summonWaifu(10)" style="
                 background: linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 90%, #2BFF88 100%); 
@@ -253,7 +285,7 @@ function renderWaifuList(container) {
                 flex-direction: column; align-items: center; justify-content: center; gap: 4px;
             ">
                 <div style="font-size: 14px;">✨ Призыв x10</div>
-                <div style="font-size: 12px; opacity: 0.9;">(1000💰)</div>
+                <div style="font-size: 12px; opacity: 0.9;">(${summonCosts.multi}💰)</div>
             </button>
         </div>
         
