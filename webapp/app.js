@@ -2163,6 +2163,7 @@ function renderClanChat(messages) {
 // Open create clan modal
 function openCreateClanModal() {
     const modal = document.createElement('div');
+    modal.id = 'create-clan-modal';
     modal.style.cssText = `
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
         background: rgba(0,0,0,0.8); display: flex; align-items: center;
@@ -2215,7 +2216,7 @@ function openCreateClanModal() {
                     color: white; border: none; padding: 12px; border-radius: 8px;
                     font-size: 14px; font-weight: bold; cursor: pointer;
                 ">Создать</button>
-                <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" style="
+                <button onclick="closeCreateClanModal()" style="
                     background: #e0e0e0; border: none; padding: 12px 16px;
                     border-radius: 8px; font-size: 14px; cursor: pointer;
                 ">Отмена</button>
@@ -2227,7 +2228,21 @@ function openCreateClanModal() {
         </div>
     `;
     
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
     document.body.appendChild(modal);
+}
+
+// Close create clan modal
+function closeCreateClanModal() {
+    const modal = document.getElementById('create-clan-modal');
+    if (modal) {
+        modal.remove();
+    }
 }
 
 // Create clan
@@ -2265,7 +2280,7 @@ async function createClan() {
         window.Telegram?.WebApp?.showAlert?.('Клан создан!');
         
         // Close modal and reload
-        document.querySelector('div[style*="position: fixed"]').remove();
+        closeCreateClanModal();
         loadClanInfo(document.getElementById('other-views'));
         loadProfile();
         
@@ -2278,6 +2293,7 @@ async function createClan() {
 // Search clans modal
 function openSearchClansModal() {
     const modal = document.createElement('div');
+    modal.id = 'search-clans-modal';
     modal.style.cssText = `
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
         background: rgba(0,0,0,0.8); display: flex; align-items: center;
@@ -2316,14 +2332,28 @@ function openSearchClansModal() {
             
             <div id="search-results"></div>
             
-            <button onclick="this.closest('div[style*=\"position: fixed\"]').remove()" style="
+            <button onclick="closeSearchClansModal()" style="
                 width: 100%; background: #e0e0e0; border: none; padding: 12px;
                 border-radius: 8px; font-size: 14px; cursor: pointer;
             ">Закрыть</button>
         </div>
     `;
     
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
     document.body.appendChild(modal);
+}
+
+// Close search clans modal
+function closeSearchClansModal() {
+    const modal = document.getElementById('search-clans-modal');
+    if (modal) {
+        modal.remove();
+    }
 }
 
 // Search clans
