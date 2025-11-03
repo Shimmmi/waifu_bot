@@ -154,12 +154,19 @@ def generate_waifu(card_number: int, owner_id: int = None, skill_effects: Dict =
     for stat_name, (min_val, max_val) in base_stats.items():
         stats[stat_name] = random.randint(min_val, max_val)
     
+    # Calculate base max energy
+    base_max_energy = 100
+    
+    # Apply battery skill bonus for max energy
+    if 'max_energy' in skill_effects:
+        base_max_energy += int(skill_effects['max_energy'])
+    
     # Генерируем динамические характеристики
     dynamic = {
         "mood": random.randint(70, 100),
         "loyalty": 0,  # Лояльность должна быть 0 у новых вайфу
         "bond": 0,  # Будет установлена на основе редкости
-        "energy": random.randint(80, 100),
+        "energy": random.randint(80, base_max_energy),
         "favor": 0
     }
     

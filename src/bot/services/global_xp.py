@@ -212,6 +212,8 @@ class GlobalXPService:
         # Apply skill bonuses to XP and gold
         try:
             from bot.services.skill_effects import get_user_skill_effects, apply_skill_multiplier
+            from bot.models import Waifu
+            
             skill_effects = get_user_skill_effects(session, user.id)
             
             # Apply XP bonus from experienced_player
@@ -220,11 +222,35 @@ class GlobalXPService:
                 xp_amount = apply_skill_multiplier(xp_amount, xp_bonus)
                 logger.debug(f"✨ Applied XP bonus: {xp_bonus*100:.0f}%")
             
+            # Apply teacher bonus (high-level waifus)
+            high_level_xp_bonus = skill_effects.get('high_level_xp_bonus', 0.0)
+            if high_level_xp_bonus > 0:
+                # Count waifus above level 20
+                high_level_waifus = session.query(Waifu).filter(
+                    Waifu.owner_id == user.id,
+                    Waifu.level > 20
+                ).count()
+                teacher_bonus = min(high_level_waifus * high_level_xp_bonus, 1.0)  # Cap at 1.0
+                if teacher_bonus > 0:
+                    xp_amount *= (1.0 + teacher_bonus)
+                    logger.debug(f"👨‍🏫 Applied teacher bonus: {teacher_bonus*100:.0f}% from {high_level_waifus} high-level waifus")
+            
             # Apply gold bonus from gold_mine
             gold_bonus = skill_effects.get('gold_bonus', 0.0)
             if gold_bonus > 0:
                 gold_amount = apply_skill_multiplier(gold_amount, gold_bonus)
                 logger.debug(f"💰 Applied gold bonus: {gold_bonus*100:.0f}%")
+            
+            # Apply banker bonus (collection gold per waifu)
+            collection_gold_bonus = skill_effects.get('collection_gold_bonus', 0.0)
+            max_collection_bonus = skill_effects.get('max_collection_bonus', 0.5)
+            if collection_gold_bonus > 0:
+                # Count all waifus
+                total_waifus = session.query(Waifu).filter(Waifu.owner_id == user.id).count()
+                banker_bonus = min(total_waifus * collection_gold_bonus, max_collection_bonus)
+                if banker_bonus > 0:
+                    gold_amount *= (1.0 + banker_bonus)
+                    logger.debug(f"🏦 Applied banker bonus: {banker_bonus*100:.0f}% from {total_waifus} waifus")
         except Exception as e:
             logger.warning(f"⚠️ Error applying skill bonuses: {e}")
         

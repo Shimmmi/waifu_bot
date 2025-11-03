@@ -31,10 +31,10 @@ Remaining skills require new systems (energy, mood, loyalty restoration) or are 
 - **Location**: `src/bot/api_server.py` (`summon_waifus` endpoint) - **Line 521**
 - **Status**: ✅ Implemented - applies 5-10% discount to summon costs
 
-#### 4. `banker` - Банкир
+#### 4. `banker` - Банкир ✅ IMPLEMENTED
 - **Effect**: `collection_gold_bonus` (0.01 per waifu, max 0.5 total)
-- **Location**: Passive income system (not implemented yet)
-- **Implementation**: Create new endpoint for passive gold collection
+- **Location**: `src/bot/services/global_xp.py`
+- **Status**: ✅ Implemented - applies gold bonus based on collection size to chat rewards
 
 #### 5. `experienced_player` - Опытный игрок ✅ IMPLEMENTED
 - **Effect**: `xp_bonus` (0.2 to 1.0)
@@ -46,10 +46,10 @@ Remaining skills require new systems (energy, mood, loyalty restoration) or are 
 - **Location**: Daily bonus claim in `src/bot/api_server.py`
 - **Status**: ✅ Implemented - applies bonus to XP from daily bonus
 
-#### 7. `teacher` - Наставник
+#### 7. `teacher` - Наставник ✅ IMPLEMENTED
 - **Effect**: `high_level_xp_bonus` (0.05 per waifu >20 lvl, max 1.0)
-- **Location**: XP calculation system
-- **Implementation**: Modify XP calculation to count high-level waifus and apply bonus
+- **Location**: `src/bot/services/global_xp.py`
+- **Status**: ✅ Implemented - counts high-level waifus and applies XP bonus to chat rewards
 
 #### 8. `lucky_novice` - Удача новичка ✅ IMPLEMENTED
 - **Effect**: `rare_chance` (0.02 to 0.1)
@@ -78,40 +78,40 @@ Remaining skills require new systems (energy, mood, loyalty restoration) or are 
 - **Location**: Power calculation in `src/bot/services/waifu_generator.py`
 - **Status**: ✅ Implemented - multiplies mood bonus in power calculation 
 
-#### 13. `trust` - Доверие
+#### 13. `trust` - Доверие ✅ IMPLEMENTED
 - **Effect**: `loyalty_growth` (0.1 to 0.3)
-- **Location**: Loyalty restoration system (not implemented)
-- **Implementation**: Create loyalty restoration system
+- **Location**: `src/bot/services/stat_restoration.py`
+- **Status**: ✅ Implemented - multiplies loyalty restoration rate
 
-#### 14. `optimism` - Оптимизм
+#### 14. `optimism` - Оптимизм ✅ IMPLEMENTED
 - **Effect**: `mood_recovery` (0.05 to 0.15)
-- **Location**: Mood restoration system (not implemented)
-- **Implementation**: Create mood restoration system
+- **Location**: `src/bot/services/stat_restoration.py`
+- **Status**: ✅ Implemented - multiplies mood restoration rate
 
-#### 15. `battery` - Батарейка
+#### 15. `battery` - Батарейка ✅ IMPLEMENTED
 - **Effect**: `max_energy` (+20 to +100)
-- **Location**: Waifu generation in `src/bot/services/waifu_generator.py`
-- **Implementation**: Modify initial `max_energy` based on skills
+- **Location**: `src/bot/services/waifu_generator.py` and `stat_restoration.py`
+- **Status**: ✅ Implemented - increases max energy on generation and restoration
 
-#### 16. `regeneration` - Регенерация
+#### 16. `regeneration` - Регенерация ✅ IMPLEMENTED
 - **Effect**: `energy_recovery` (0.1 to 0.3)
-- **Location**: Energy restoration system (not implemented)
-- **Implementation**: Create energy restoration system
+- **Location**: `src/bot/services/stat_restoration.py`
+- **Status**: ✅ Implemented - multiplies energy restoration rate
 
-#### 17. `endurance` - Неутомимость
+#### 17. `endurance` - Неутомимость ⏳ PENDING
 - **Effect**: `energy_cost_reduction` (0.2 to 0.6)
 - **Location**: Energy consumption system (not implemented)
-- **Implementation**: Create energy consumption system
+- **Status**: ⏳ Requires energy consumption mechanics
 
 #### 18. `mentor` - Ментор ✅ IMPLEMENTED
 - **Effect**: `upgrade_xp_bonus` (0.25 to 1.25)
 - **Location**: Waifu upgrade in `src/bot/api_server.py` (`perform_upgrade` endpoint)
 - **Status**: ✅ Implemented - applies bonus to XP from sacrificed waifus
 
-#### 19. `golden_hand` - Золотая рука
+#### 19. `golden_hand` - Золотая рука ⏳ PENDING
 - **Effect**: `waifu_gold_bonus` (0.1 to 0.3)
 - **Location**: Gold rewards from waifu actions (not implemented)
-- **Implementation**: Create gold reward system
+- **Status**: ⏳ Requires waifu action system
 
 #### 20. `synergy` - Синергия ✅ IMPLEMENTED
 - **Effect**: `favorite_power_bonus` (0.05 per favorite, max 0.5)
@@ -152,8 +152,8 @@ Remaining skills require new systems (energy, mood, loyalty restoration) or are 
 
 #### 27. `stamina` - Выносливость ⏳ PENDING
 - **Effect**: `health_bonus` (0.2 to 0.6)
-- **Location**: Combat system (not implemented)
-- **Status**: ⏳ Requires combat system implementation
+- **Location**: Combat/health system (not implemented)
+- **Status**: ⏳ Requires combat/health system
 
 #### 28. `elite` - Элита ✅ IMPLEMENTED
 - **Effect**: `rare_power_bonus` (0.25 to 0.5)
@@ -211,12 +211,18 @@ Modified files to fetch and apply skill effects:
 | `experienced_player` | Опытный игрок | `xp_bonus` | 0.2-1.0 | `global_xp.py` | ✅ IMPLEMENTED |
 | `investor` | Инвестор | `daily_gold_bonus` | 0.05-0.15 | `api_server.py` | ✅ IMPLEMENTED |
 | `wise_mentor` | Мудрец | `daily_xp_bonus` | 0.1-0.3 | `api_server.py` | ✅ IMPLEMENTED |
+| `teacher` | Наставник | `high_level_xp_bonus` | 0.05 per >20lvl | `global_xp.py` | ✅ IMPLEMENTED |
+| `banker` | Банкир | `collection_gold_bonus` | 0.01 per waifu | `global_xp.py` | ✅ IMPLEMENTED |
 | `lucky_novice` | Удача новичка | `rare_chance` | 0.02-0.1 | `waifu_generator.py` | ✅ IMPLEMENTED |
 | `summon_mage` | Маг призыва | `epic_chance` | 0.01-0.03 | `waifu_generator.py` | ✅ IMPLEMENTED |
 | `legend_seeker` | Легенда | `legendary_chance` | 0.005-0.01 | `waifu_generator.py` | ✅ IMPLEMENTED |
 | `mentor` | Ментор | `upgrade_xp_bonus` | 0.25-1.25 | `api_server.py` | ✅ IMPLEMENTED |
 | `loyalty` | Верность | `loyalty_power_bonus` | 0.2-1.0 | `waifu_generator.py` | ✅ IMPLEMENTED |
 | `joy` | Радость | `mood_power_bonus` | 0.15-0.75 | `waifu_generator.py` | ✅ IMPLEMENTED |
+| `trust` | Доверие | `loyalty_growth` | 0.1-0.3 | `stat_restoration.py` | ✅ IMPLEMENTED |
+| `optimism` | Оптимизм | `mood_recovery` | 0.05-0.15 | `stat_restoration.py` | ✅ IMPLEMENTED |
+| `battery` | Батарейка | `max_energy` | +20 to +100 | `waifu_generator.py` | ✅ IMPLEMENTED |
+| `regeneration` | Регенерация | `energy_recovery` | 0.1-0.3 | `stat_restoration.py` | ✅ IMPLEMENTED |
 | `spiritual_strength` | Сила духа | `power_bonus` | 0.1-0.5 | `waifu_generator.py` | ✅ IMPLEMENTED |
 | `mental_acuity` | Острота ума | `intellect_bonus` | 0.1-0.5 | `waifu_generator.py` | ✅ IMPLEMENTED |
 | `magnetism` | Магнетизм | `charm_bonus` | 0.1-0.5 | `waifu_generator.py` | ✅ IMPLEMENTED |
@@ -227,27 +233,48 @@ Modified files to fetch and apply skill effects:
 | `legend` | Легенда | `epic_power_bonus` | 0.5-1.0 | `waifu_generator.py` | ✅ IMPLEMENTED |
 | `synergy` | Синергия | `favorite_power_bonus` | 0.05-0.5 | `waifu_generator.py` | ✅ IMPLEMENTED |
 | `harmony` | Гармония | `rarity_bonus` | 0.05-0.25 | `waifu_generator.py` | ✅ IMPLEMENTED |
+| `stamina` | Выносливость | `health_bonus` | 0.2-0.6 | - | ⏳ PENDING |
+| `endurance` | Неутомимость | `energy_cost_reduction` | 0.2-0.6 | - | ⏳ PENDING |
+| `golden_hand` | Золотая рука | `waifu_gold_bonus` | 0.1-0.3 | - | ⏳ PENDING |
 
 ## ✅ Completed Implementation
 
-All core gameplay skills have been successfully implemented (21 out of 30 skills). The skills system is now fully functional for:
-- Summon cost reduction
-- Rarity improvements
-- Gold/XP bonuses
-- Waifu power scaling
-- Daily bonus enhancements
-- Upgrade bonuses
-- Collection synergies (favorites and rarities)
+**27 out of 30 skills successfully implemented!** The comprehensive skills system is now fully functional across all gameplay mechanics:
 
-## ⏳ Future Enhancements
+### 🎰 **Summon System**
+- **Summon Discount** (bargain_hunter): 5-10% cost reduction
+- **Rarity Bonuses** (lucky_novice, summon_mage, legend_seeker): Increased rare/epic/legendary chances
 
-Skills requiring new systems:
-- Energy management (battery, regeneration, endurance)
-- Mood/loyalty restoration (optimism, trust)
-- Passive income (banker, golden_hand)
-- Collection synergies (synergy, harmony, teacher, banker)
+### 💰 **Gold System**
+- **Chat Bonuses** (gold_mine): +10-30% gold from messages
+- **Daily Bonuses** (investor): +5-15% daily gold
+- **Collection Bonuses** (banker): +0.01% per waifu, capped at +50%
 
-These will be implemented as their respective game systems are developed.
+### ⚡ **XP System**
+- **Chat Bonuses** (experienced_player): +20-100% XP from messages
+- **Daily Bonuses** (wise_mentor): +10-30% daily XP
+- **High-Level Bonuses** (teacher): +0.05% per waifu above level 20, capped at +100%
+- **Upgrade Bonuses** (mentor): +25-125% XP from sacrificed waifus
+
+### 💪 **Power System**
+- **Stat Training** (spiritual_strength, mental_acuity, magnetism, agility, fortune, speed): +10-50% to each stat
+- **Rarity Bonuses** (elite, legend): +25-100% for rare/epic waifus
+- **Collection Synergies** (synergy, harmony): Bonuses from favorites and unique rarities
+- **Dynamic Bonuses** (loyalty, joy): Multipliers for mood/loyalty contributions
+
+### 🔋 **Restoration System**
+- **Energy Recovery** (regeneration, battery): Faster recovery and increased max energy
+- **Mood Recovery** (optimism): Faster mood restoration
+- **Loyalty Growth** (trust): Faster loyalty increase
+
+## ⏳ Future Enhancements (3 skills remaining)
+
+Skills requiring new game systems:
+- **`stamina`** - Requires health/combat system
+- **`endurance`** - Requires energy consumption mechanics
+- **`golden_hand`** - Requires waifu action system
+
+These will be implemented when their respective game systems are developed.
 
 ## ⚠️ Notes
 
