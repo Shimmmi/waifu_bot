@@ -39,10 +39,13 @@ try:
     from bot.db import SessionLocal
     from bot.models import Waifu, User
     from bot.services.waifu_generator import calculate_waifu_power
+    from bot.services.global_xp import GlobalXPService
     logger.info("✅ Database modules imported successfully")
     logger.info(f"   SessionLocal: {SessionLocal}")
     logger.info(f"   Waifu model: {Waifu}")
     logger.info(f"   User model: {User}")
+    # Initialize GlobalXPService
+    global_xp_service = GlobalXPService()
 except ImportError as e:
     logger.error(f"❌ Failed to import database modules: {e}", exc_info=True)
     # Если не можем импортировать, создаем заглушки
@@ -50,6 +53,7 @@ except ImportError as e:
     Waifu = None
     User = None
     calculate_waifu_power = lambda x: 0
+    global_xp_service = None
 
 app = FastAPI(title="Waifu Bot API", version="1.0.0")
 
@@ -1154,10 +1158,37 @@ async def claim_quest_reward(request: Request, quest_id: str, db: Session = Depe
         if quest_rewards_claimed.get(quest_id) == today_str:
             raise HTTPException(status_code=400, detail="Награда уже получена сегодня")
         
-        # Award rewards
+        # Award rewards using GlobalXPService to handle level ups properly
         reward = quest_rewards[quest_id]
-        user.coins += reward["gold"]
-        user.global_xp += reward["xp"]
+        
+        if global_xp_service is not None:
+            # Use GlobalXPService for proper level-up handling
+            result = await global_xp_service.award_global_xp(
+                session=db,
+                user_id=user.id,
+                xp_amount=reward["xp"],
+                gold_amount=reward["gold"],
+                source=f"quest_{quest_id}",
+                meta={"quest_id": quest_id},
+                skip_rate_limit=True  # Quest rewards bypass rate limit
+            )
+            
+            # Check for level up
+            if result.get("level_up"):
+                logger.info(
+                    f"🎉 Quest level up for user {user.username} ({user.id}): "
+                    f"Level {result['old_level']} → {result['new_level']} "
+                    f"(+{result['skill_points_gained']} skill points)"
+                )
+        else:
+            # Fallback to direct award if service not available
+            user.coins += reward["gold"]
+            user.global_xp += reward["xp"]
+            result = {
+                "gold_awarded": reward["gold"],
+                "global_xp": user.global_xp,
+                "daily_xp": user.daily_xp
+            }
         
         # Mark as claimed
         quest_rewards_claimed[quest_id] = today_str
@@ -1170,7 +1201,10 @@ async def claim_quest_reward(request: Request, quest_id: str, db: Session = Depe
             "success": True,
             "gold": reward["gold"],
             "xp": reward["xp"],
-            "message": f"Получено {reward['gold']}💰 + {reward['xp']}⭐"
+            "message": f"Получено {reward['gold']}💰 + {reward['xp']}⭐",
+            "level_up": result.get("level_up", False),
+            "new_level": result.get("new_level"),
+            "skill_points_gained": result.get("skill_points_gained", 0)
         }
         
     except HTTPException:
