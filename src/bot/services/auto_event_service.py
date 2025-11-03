@@ -9,7 +9,7 @@ import random
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select, distinct, cast, String
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from bot.db import SessionLocal
@@ -66,24 +66,27 @@ class AutoEventService:
         
         session = SessionLocal()
         try:
-            # Get all unique chat_ids from XPLog where source is 'message'
-            # These are groups where users have been active
-            # Use PostgreSQL JSONB operators
+            # Get all XPLog entries with message source
             result = session.execute(
-                select(
-                    cast(XPLog.meta['chat_id'].astext, String)
-                ).distinct()
+                select(XPLog.meta)
                 .where(XPLog.source == 'message')
-                .where(XPLog.meta['chat_id'].astext.isnot(None))
+                .distinct()
             )
             
+            # Extract unique chat_ids from meta JSONB field
             chat_ids = []
+            seen_chat_ids = set()
+            
             for row in result:
-                try:
-                    chat_id = int(row[0])
-                    chat_ids.append(chat_id)
-                except (ValueError, TypeError):
-                    continue
+                if row[0] and isinstance(row[0], dict):
+                    chat_id = row[0].get('chat_id')
+                    if chat_id and chat_id not in seen_chat_ids:
+                        try:
+                            chat_id_int = int(chat_id)
+                            chat_ids.append(chat_id_int)
+                            seen_chat_ids.add(chat_id)
+                        except (ValueError, TypeError):
+                            continue
             
             logger.info(f"Found {len(chat_ids)} active groups for events")
             
@@ -141,14 +144,22 @@ class AutoEventService:
         try:
             from bot.models import User
             
-            # Get unique user_ids who have messaged in this chat
+            # Get all XPLog entries from this chat
             result = session.execute(
-                select(XPLog.user_id).distinct()
+                select(XPLog.user_id, XPLog.meta)
                 .where(XPLog.source == 'message')
-                .where(XPLog.meta['chat_id'].astext == str(chat_id))
             )
             
-            user_ids = [row[0] for row in result]
+            # Filter and collect unique user_ids from this chat
+            user_ids = []
+            seen_user_ids = set()
+            
+            for row in result:
+                user_id, meta = row[0], row[1]
+                if meta and isinstance(meta, dict):
+                    if meta.get('chat_id') == chat_id and user_id not in seen_user_ids:
+                        user_ids.append(user_id)
+                        seen_user_ids.add(user_id)
             
             # Get users and send invitations
             from bot.services.group_event_system import send_event_invitation, group_event_manager
