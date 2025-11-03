@@ -956,7 +956,33 @@ async def get_quests(request: Request, db: Session = Depends(get_db)) -> Dict[st
         if not user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
         
-        # Define quests (in future, these can be stored in database)
+        # Get quest progress from database
+        from datetime import datetime, timedelta
+        from bot.models import XPLog, Waifu
+        
+        # Get today's date range
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        if today_start.tzinfo is None:
+            from datetime import timezone
+            today_start = today_start.replace(tzinfo=timezone.utc)
+        
+        # Count messages from today (via xp_logs)
+        message_count = db.query(XPLog).filter(
+            XPLog.user_id == user.id,
+            XPLog.source == 'message',
+            XPLog.created_at >= today_start
+        ).count()
+        
+        # Count waifus summoned today
+        waifu_count = db.query(Waifu).filter(
+            Waifu.owner_id == user.id,
+            Waifu.created_at >= today_start
+        ).count()
+        
+        # Get daily XP
+        daily_xp = getattr(user, 'daily_xp', 0)
+        
+        # Define quests
         quests = [
             {
                 "id": "daily_message",
@@ -965,9 +991,9 @@ async def get_quests(request: Request, db: Session = Depends(get_db)) -> Dict[st
                 "icon": "💬",
                 "reward_gold": 50,
                 "reward_xp": 10,
-                "progress": 0,
+                "progress": message_count,
                 "target": 10,
-                "completed": False
+                "completed": message_count >= 10
             },
             {
                 "id": "daily_waifu",
@@ -976,9 +1002,9 @@ async def get_quests(request: Request, db: Session = Depends(get_db)) -> Dict[st
                 "icon": "🎴",
                 "reward_gold": 100,
                 "reward_xp": 20,
-                "progress": 0,
+                "progress": min(waifu_count, 1),  # Binary: 0 or 1
                 "target": 1,
-                "completed": False
+                "completed": waifu_count >= 1
             },
             {
                 "id": "daily_active",
@@ -987,9 +1013,9 @@ async def get_quests(request: Request, db: Session = Depends(get_db)) -> Dict[st
                 "icon": "⭐",
                 "reward_gold": 150,
                 "reward_xp": 30,
-                "progress": getattr(user, 'daily_xp', 0),
+                "progress": daily_xp,
                 "target": 100,
-                "completed": getattr(user, 'daily_xp', 0) >= 100
+                "completed": daily_xp >= 100
             }
         ]
         

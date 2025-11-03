@@ -14,7 +14,7 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from bot.config import get_settings
-from bot.models import User
+from bot.models import User, XPLog
 
 logger = logging.getLogger(__name__)
 
@@ -306,8 +306,23 @@ class GlobalXPService:
                 f"🎉 User {user_id} leveled up! "
                 f"Level {old_level} → {new_level} (+{skill_points_gained} skill points)"
             )
-            
-            session.commit()
+        
+        # Log to XPLog for quest tracking
+        try:
+            xp_log = XPLog(
+                user_id=user.id,
+                waifu_id=None,
+                source=source,
+                amount=actual_xp,
+                meta=meta
+            )
+            session.add(xp_log)
+        except Exception as e:
+            logger.warning(f"⚠️ Error logging XP: {e}")
+        
+        session.commit()
+        
+        if should_level_up:
             
             return {
                 "level_up": True,
@@ -321,6 +336,19 @@ class GlobalXPService:
                 "total_coins": user.coins,
                 "daily_gold": user.daily_gold
             }
+        
+        # Log to XPLog for quest tracking
+        try:
+            xp_log = XPLog(
+                user_id=user.id,
+                waifu_id=None,
+                source=source,
+                amount=actual_xp,
+                meta=meta
+            )
+            session.add(xp_log)
+        except Exception as e:
+            logger.warning(f"⚠️ Error logging XP: {e}")
         
         session.commit()
         
