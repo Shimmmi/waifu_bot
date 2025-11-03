@@ -4,6 +4,7 @@ let waifuList = [];
 let currentView = 'profile';
 let waifuSortBy = 'name'; // Default sort: name, rarity, level, power, race, profession, nationality
 let showOnlyFavorites = false; // Filter toggle
+let currentSkillCategory = 'account'; // Track active skill category
 
 // Initialize WebApp
 if (window.Telegram && window.Telegram.WebApp) {
@@ -2771,7 +2772,7 @@ async function loadSkills(container) {
             <div style="text-align: center; padding: 20px;">
                 <p style="color: #f5576c; margin-bottom: 8px; font-weight: bold;">Ошибка загрузки навыков</p>
                 <p style="color: #999; margin-bottom: 16px; font-size: 12px;">${errorMessage}</p>
-                <button onclick="loadSkills(document.getElementById('other-views'))" style="
+                <button onclick="loadSkills(document.getElementById('view-content'))" style="
                     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     color: white; border: none; padding: 12px 24px; border-radius: 8px;
                     font-size: 14px; cursor: pointer;
@@ -2841,18 +2842,23 @@ function renderSkillsPage(container, data) {
         
         <!-- Skills Content -->
         <div id="skills-content">
-            ${renderSkillCategory('account', skills_tree.account)}
+            ${renderSkillCategory(currentSkillCategory, skills_tree[currentSkillCategory] || skills_tree.account)}
         </div>
     `;
     
-    // Set active tab
-    document.getElementById('tab-account').style.opacity = '1';
-    document.getElementById('tab-passive').style.opacity = '0.7';
-    document.getElementById('tab-training').style.opacity = '0.7';
+    // Set active tab based on current category
+    document.getElementById(`tab-${currentSkillCategory}`).style.opacity = '1';
+    ['account', 'passive', 'training'].filter(cat => cat !== currentSkillCategory).forEach(cat => {
+        const tab = document.getElementById(`tab-${cat}`);
+        if (tab) tab.style.opacity = '0.7';
+    });
 }
 
 // Show skill category
 function showSkillCategory(category) {
+    // Update global state
+    currentSkillCategory = category;
+    
     // Update tab styles
     document.querySelectorAll('[id^="tab-"]').forEach(tab => {
         tab.style.opacity = '0.7';
@@ -3052,8 +3058,8 @@ async function upgradeSkill(skillId) {
         
         const result = await response.json();
         
-        // Reload skills page
-        loadSkills(document.getElementById('other-views'));
+        // Reload skills page with current category preserved
+        loadSkills(document.getElementById('view-content'));
         
     } catch (error) {
         console.error('Error upgrading skill:', error);
