@@ -2133,6 +2133,22 @@ function renderSkillsPage(container, data) {
     const { skills_tree, category_progress, skill_points } = data;
     
     container.innerHTML = `
+        <!-- Back button -->
+        <button onclick="navigateTo('profile')" class="back-btn" style="
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 20px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 16px;
+            width: 100%;
+        ">
+            ← Назад
+        </button>
+        
         <!-- Header -->
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                     color: white; padding: 20px; border-radius: 16px; margin-bottom: 20px; text-align: center;">
@@ -2226,22 +2242,36 @@ function renderSkillCard(skill) {
     
     return `
         <div style="${cardStyle}" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-            <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                <div style="font-size: 24px; margin-right: 12px;">${skill.icon}</div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="font-size: 32px;">${skill.icon}</div>
                 <div style="flex: 1;">
                     <h3 style="margin: 0 0 4px 0; font-size: 16px; color: #333;">${skill.name}</h3>
                     <div style="font-size: 12px; color: #666;">${skill.description}</div>
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-size: 14px; font-weight: bold; color: #333;">
-                        ${skill.current_level}/${skill.max_level}
-                    </div>
+                    ${canUpgrade ? `
+                        <button onclick="upgradeSkill('${skill.skill_id}')" style="
+                            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+                            color: white; border: none; padding: 8px 16px; border-radius: 8px;
+                            font-size: 13px; font-weight: bold; cursor: pointer;
+                            transition: all 0.2s; min-width: 70px;
+                        " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                            ${skill.current_level}/${skill.max_level}
+                        </button>
+                    ` : isMaxLevel ? `
+                        <div style="
+                            background: #e8f5e8; color: #4CAF50; padding: 8px 16px; border-radius: 8px;
+                            text-align: center; font-size: 13px; font-weight: bold; min-width: 70px;
+                        ">
+                            МАХ
+                        </div>
+                    ` : `<div style="font-size: 14px; font-weight: bold; color: #333;">${skill.current_level}/${skill.max_level}</div>`}
                     ${isLocked ? '<div style="font-size: 10px; color: #999;">Заблокирован</div>' : ''}
                 </div>
             </div>
             
             <!-- Progress Bar -->
-            <div style="background: #f0f0f0; border-radius: 8px; height: 6px; margin-bottom: 12px;">
+            <div style="background: #f0f0f0; border-radius: 8px; height: 6px; margin-top: 12px;">
                 <div style="
                     background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
                     height: 100%; border-radius: 8px; width: ${(skill.current_level / skill.max_level) * 100}%;
@@ -2249,64 +2279,116 @@ function renderSkillCard(skill) {
                 "></div>
             </div>
             
-            <!-- Effects -->
-            ${skill.current_level > 0 ? `
-                <div style="background: #f8f9fa; border-radius: 8px; padding: 8px; margin-bottom: 12px;">
-                    <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Текущие эффекты:</div>
-                    ${Object.entries(skill.effects[skill.current_level] || {}).map(([key, value]) => 
-                        `<div style="font-size: 11px; color: #333;">${key}: +${(value * 100).toFixed(0)}%</div>`
-                    ).join('')}
+            <!-- Click to view details -->
+            ${skill.current_level > 0 || isLocked || !canUpgrade ? `
+                <div style="margin-top: 8px; text-align: center;">
+                    <button onclick="openSkillDetailModalBySkillId('${skill.skill_id}')" style="
+                        background: transparent; color: #667eea; border: 1px solid #667eea;
+                        padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
+                        transition: all 0.2s;
+                    " onmouseover="this.style.background='#667eea'; this.style.color='white'" 
+                       onmouseout="this.style.background='transparent'; this.style.color='#667eea'">
+                        📋 Детали
+                    </button>
                 </div>
             ` : ''}
-            
-            <!-- Upgrade Button -->
-            ${canUpgrade ? `
-                <button onclick="upgradeSkill('${skill.skill_id}')" style="
-                    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-                    color: white; border: none; padding: 10px 16px; border-radius: 8px;
-                    font-size: 14px; font-weight: bold; cursor: pointer; width: 100%;
-                    transition: all 0.2s;
-                " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-                    ⚡ Улучшить (${skill.next_level_cost} очков)
-                </button>
-            ` : isMaxLevel ? `
-                <div style="
-                    background: #e8f5e8; color: #4CAF50; padding: 10px 16px; border-radius: 8px;
-                    text-align: center; font-size: 14px; font-weight: bold;
-                ">
-                    ✅ Максимальный уровень
-                </div>
-            ` : isLocked ? `
-                <div style="
-                    background: #f5f5f5; color: #999; padding: 10px 16px; border-radius: 8px;
-                    text-align: center; font-size: 14px;
-                ">
-                    🔒 Требуется ${skill.unlock_requirement} очков в категории
-                </div>
-            ` : `
-                <div style="
-                    background: #f5f5f5; color: #999; padding: 10px 16px; border-radius: 8px;
-                    text-align: center; font-size: 14px;
-                ">
-                    Недостаточно очков навыков
-                </div>
-            `}
         </div>
     `;
+}
+
+// Open skill detail modal
+function openSkillDetailModal(skill) {
+    const isMaxLevel = skill.current_level >= skill.max_level;
+    const canUpgrade = skill.can_upgrade && skill.is_unlocked;
+    const isLocked = !skill.is_unlocked;
+    
+    let modalContent = `
+        <div style="
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7);
+            z-index: 10000; display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        " onclick="closeSkillDetailModal()" id="skill-detail-modal">
+            <div style="
+                background: white; border-radius: 20px; padding: 24px; max-width: 400px; width: 100%;
+                max-height: 80vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            " onclick="event.stopPropagation()">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 8px;">${skill.icon}</div>
+                    <h2 style="margin: 0 0 8px 0; font-size: 20px; color: #333;">${skill.name}</h2>
+                    <p style="margin: 0; font-size: 14px; color: #666;">${skill.description}</p>
+                </div>
+                
+                <div style="text-align: center; margin-bottom: 16px;">
+                    <span style="font-size: 18px; font-weight: bold; color: #333;">
+                        ${skill.current_level}/${skill.max_level}
+                    </span>
+                </div>
+                
+                <!-- Effects -->
+                ${skill.current_level > 0 ? `
+                    <div style="background: #f8f9fa; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                        <div style="font-size: 14px; color: #666; margin-bottom: 8px; font-weight: bold;">Текущие эффекты:</div>
+                        ${Object.entries(skill.effects[skill.current_level] || {}).map(([key, value]) => 
+                            `<div style="font-size: 13px; color: #333; margin-bottom: 4px;">${key}: +${(value * 100).toFixed(0)}%</div>`
+                        ).join('')}
+                    </div>
+                ` : ''}
+                
+                <!-- Locked info -->
+                ${isLocked ? `
+                    <div style="background: #fff3cd; border-radius: 8px; padding: 12px; margin-bottom: 16px; text-align: center;">
+                        <div style="font-size: 13px; color: #856404;">🔒 Требуется ${skill.unlock_requirement} очков в категории</div>
+                    </div>
+                ` : ''}
+                
+                <button onclick="closeSkillDetailModal()" style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white; border: none; padding: 12px 24px; border-radius: 8px;
+                    font-size: 14px; font-weight: bold; cursor: pointer; width: 100%;
+                ">
+                    Закрыть
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalContent);
+}
+
+function closeSkillDetailModal() {
+    const modal = document.getElementById('skill-detail-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function openSkillDetailModalBySkillId(skillId) {
+    // Find the skill in the current skillsTree
+    let foundSkill = null;
+    for (const category in skillsTree) {
+        const skill = skillsTree[category].find(s => s.skill_id === skillId);
+        if (skill) {
+            foundSkill = skill;
+            break;
+        }
+    }
+    
+    if (foundSkill) {
+        openSkillDetailModal(foundSkill);
+    }
 }
 
 // Upgrade skill
 async function upgradeSkill(skillId) {
     try {
         const initData = window.Telegram?.WebApp?.initData || '';
-        const response = await fetch('/api/skills/upgrade', {
+        const response = await fetch('/api/skills/upgrade?' + new URLSearchParams({ initData }), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                skill_id: skillId,
-                initData: initData
+                skill_id: skillId
             })
         });
         
@@ -2316,11 +2398,6 @@ async function upgradeSkill(skillId) {
         }
         
         const result = await response.json();
-        
-        // Show success message
-        if (window.Telegram?.WebApp?.showAlert) {
-            window.Telegram.WebApp.showAlert(`✅ Навык улучшен до уровня ${result.new_level}!`);
-        }
         
         // Reload skills page
         loadSkills(document.getElementById('other-views'));
