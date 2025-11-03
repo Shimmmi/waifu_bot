@@ -106,7 +106,7 @@ function navigateTo(view) {
             'waifus': { title: '', content: 'loadWaifuList()' },
             'select-waifu': { title: '🎯 Выбрать активную вайфу', content: 'loadSelectWaifu()' },
             'shop': { title: '🏪 Магазин', content: 'loadShopItems()' },
-            'clan': { title: '🏰 Клан', content: 'loadClanInfo()' },
+            'clan': { title: '', content: 'loadClanInfo()' },
             'quests': { title: '📅 Ежедневные задания', content: 'loadQuests()' },
             'skills': { title: '', content: 'loadSkills()' },
             'settings': { title: '⚙️ Настройки профиля', content: 'loadSettings()' },
@@ -2143,12 +2143,27 @@ function renderClanView(container, clan) {
         
         <!-- Header -->
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                    color: white; padding: 20px; border-radius: 16px; margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <h2 style="margin: 0; font-size: 24px;">🏰 ${clan.name}</h2>
-                ${clan.my_role === 'leader' ? '<button onclick="openClanSettingsModal()" style="background: rgba(255,255,255,0.2); border: none; border-radius: 8px; padding: 8px 12px; font-size: 14px; color: white; cursor: pointer;">⚙️</button>' : ''}
+                    color: white; padding: 16px; border-radius: 16px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                ${clan.my_role === 'leader' ? `
+                    <input type="file" id="clan-image-upload" accept="image/*" style="display: none;" onchange="handleClanImageUpload(event)">
+                    <label for="clan-image-upload" style="
+                        width: 48px; height: 48px; border-radius: 8px; 
+                        background: rgba(255,255,255,0.2); cursor: pointer;
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 24px; border: 2px dashed rgba(255,255,255,0.5);
+                    ">📷</label>
+                ` : `
+                    <div style="width: 48px; height: 48px; border-radius: 8px; 
+                                background: rgba(255,255,255,0.2); 
+                                display: flex; align-items: center; justify-content: center;
+                                font-size: 24px;">🏰</div>
+                `}
+                <div style="flex: 1;">
+                    <h2 style="margin: 0; font-size: 20px;">${clan.name}</h2>
+                    <div style="font-size: 14px; opacity: 0.9;">#${clan.tag}</div>
+                </div>
             </div>
-            <div style="font-size: 16px; opacity: 0.9;">#${clan.tag}</div>
         </div>
         
         <!-- Stats -->
@@ -2172,12 +2187,17 @@ function renderClanView(container, clan) {
         <!-- Active Raid -->
         <div id="active-raid-section"></div>
         
-        <!-- Members -->
+        <!-- Members Link -->
         <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
-            <h3 style="margin: 0 0 12px 0; font-size: 18px; color: #333;">👥 Участники</h3>
-            <div id="clan-members-list">
-                ${renderClanMembers(clan.members)}
-            </div>
+            <button onclick="openClanMembersModal()" style="
+                width: 100%; background: none; border: none; padding: 0;
+                text-align: left; cursor: pointer;
+            ">
+                <h3 style="margin: 0; font-size: 18px; color: #333; display: flex; align-items: center; justify-content: space-between;">
+                    <span>👥 Участники</span>
+                    <span style="font-size: 14px; color: #666; font-weight: normal;">${clan.members.length} →</span>
+                </h3>
+            </button>
         </div>
         
         <!-- Chat -->
@@ -2200,15 +2220,23 @@ function renderClanView(container, clan) {
             </div>
         </div>
         
-        <!-- Leave Button -->
-        <button onclick="leaveClan()" style="
-            width: 100%; background: #ff4444;
-            color: white; border: none; padding: 12px; border-radius: 12px;
-            font-size: 14px; font-weight: bold; cursor: pointer;
-            margin-top: 16px;
-        ">
-            🚪 Покинуть клан
-        </button>
+        <!-- Footer Buttons -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+            <button onclick="openClanSkillsModal()" style="
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                color: white; border: none; padding: 12px; border-radius: 12px;
+                font-size: 14px; font-weight: bold; cursor: pointer;
+            ">
+                🧬 Навыки клана
+            </button>
+            <button onclick="openClanSettingsModal()" style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white; border: none; padding: 12px; border-radius: 12px;
+                font-size: 14px; font-weight: bold; cursor: pointer;
+            ">
+                ⚙️ Настройки
+            </button>
+        </div>
     `;
     
     // Load active raid
@@ -2614,6 +2642,187 @@ async function leaveClan() {
         console.error('Error leaving clan:', error);
         window.Telegram?.WebApp?.showAlert?.('Ошибка');
     }
+}
+
+// Open clan members modal
+function openClanMembersModal() {
+    // Fetch current clan info to get members
+    (async () => {
+        try {
+            const initData = window.Telegram?.WebApp?.initData || '';
+            const response = await fetch('/api/clans/my-clan?' + new URLSearchParams({ initData }));
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch clan info');
+            }
+            
+            const data = await response.json();
+            const clan = data.clan;
+            
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.8); display: flex; align-items: center;
+                justify-content: center; z-index: 10000; padding: 20px;
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: white; border-radius: 20px; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; font-size: 20px; color: #333;">👥 Участники клана</h3>
+                        <button onclick="closeClanMembersModal()" style="
+                            background: #dc3545; color: white; border: none; border-radius: 50%;
+                            width: 32px; height: 32px; font-size: 18px; font-weight: bold;
+                            cursor: pointer; display: flex; align-items: center; justify-content: center;
+                        ">×</button>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        ${renderClanMembers(clan.members)}
+                    </div>
+                </div>
+            `;
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+            
+            document.body.appendChild(modal);
+        } catch (error) {
+            console.error('Error loading clan members:', error);
+            window.Telegram?.WebApp?.showAlert?.('Ошибка загрузки участников');
+        }
+    })();
+}
+
+// Close clan members modal
+function closeClanMembersModal() {
+    const modal = document.querySelector('div[style*="position: fixed"]');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Open clan skills modal
+function openClanSkillsModal() {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.8); display: flex; align-items: center;
+        justify-content: center; z-index: 10000; padding: 20px;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 20px; max-width: 400px; width: 100%; padding: 24px; text-align: center;">
+            <button onclick="closeClanSkillsModal()" style="
+                position: absolute; top: 16px; right: 16px; width: 32px; height: 32px;
+                background: #dc3545; color: white; border: none; border-radius: 50%;
+                font-size: 16px; font-weight: bold; cursor: pointer;
+            ">×</button>
+            <div style="font-size: 64px; margin-bottom: 16px;">🚧</div>
+            <h3 style="margin: 0 0 8px 0; font-size: 20px; color: #333;">В разработке</h3>
+            <p style="margin: 0; font-size: 14px; color: #666;">Навыки клана появятся в будущих обновлениях</p>
+        </div>
+    `;
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    document.body.appendChild(modal);
+}
+
+// Close clan skills modal
+function closeClanSkillsModal() {
+    const modal = document.querySelector('div[style*="position: fixed"]');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Open clan settings modal
+async function openClanSettingsModal() {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/clans/my-clan?' + new URLSearchParams({ initData }));
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch clan info');
+        }
+        
+        const data = await response.json();
+        const clan = data.clan;
+        
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8); display: flex; align-items: center;
+            justify-content: center; z-index: 10000; padding: 20px;
+        `;
+        
+        modal.innerHTML = `
+            <div style="background: white; border-radius: 20px; max-width: 400px; width: 100%; padding: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0; font-size: 20px; color: #333;">⚙️ Настройки клана</h3>
+                    <button onclick="closeClanSettingsModal()" style="
+                        background: #dc3545; color: white; border: none; border-radius: 50%;
+                        width: 32px; height: 32px; font-size: 18px; font-weight: bold;
+                        cursor: pointer; display: flex; align-items: center; justify-content: center;
+                    ">×</button>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="background: #f8f9fa; padding: 16px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Уровень клана</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #667eea;">${clan.level}</div>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 16px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">Общая сила</div>
+                        <div style="font-size: 20px; font-weight: bold; color: #667eea;">${clan.total_power.toLocaleString()}</div>
+                    </div>
+                    ${clan.my_role === 'leader' ? `
+                        <div style="padding-top: 12px; border-top: 2px solid #eee;">
+                            <p style="font-size: 14px; color: #666; margin: 0 0 8px 0;">Действия</p>
+                            <button onclick="leaveClan()" style="
+                                width: 100%; background: #ff4444;
+                                color: white; border: none; padding: 12px; border-radius: 12px;
+                                font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 8px;
+                            ">
+                                🚪 Покинуть клан
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+        
+        document.body.appendChild(modal);
+    } catch (error) {
+        console.error('Error loading clan settings:', error);
+        window.Telegram?.WebApp?.showAlert?.('Ошибка загрузки настроек');
+    }
+}
+
+// Close clan settings modal
+function closeClanSettingsModal() {
+    const modal = document.querySelector('div[style*="position: fixed"]');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Handle clan image upload
+function handleClanImageUpload(event) {
+    // Placeholder for image upload
+    window.Telegram?.WebApp?.showAlert?.('Загрузка изображения в разработке');
 }
 
 // Load active raid
