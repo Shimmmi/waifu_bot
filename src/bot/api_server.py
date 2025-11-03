@@ -1161,9 +1161,7 @@ async def claim_quest_reward(request: Request, quest_id: str, db: Session = Depe
         
         # Mark as claimed
         quest_rewards_claimed[quest_id] = today_str
-        # Check if field exists before assigning
-        if hasattr(user, 'quest_rewards_claimed'):
-            user.quest_rewards_claimed = quest_rewards_claimed
+        user.quest_rewards_claimed = quest_rewards_claimed
         
         db.commit()
         
