@@ -2124,6 +2124,22 @@ function renderNoClanView(container) {
 // Render clan view
 function renderClanView(container, clan) {
     container.innerHTML = `
+        <!-- Back button -->
+        <button onclick="navigateTo('profile')" style="
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 20px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 16px;
+            width: 100%;
+        ">
+            ← Назад
+        </button>
+        
         <!-- Header -->
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                     color: white; padding: 20px; border-radius: 16px; margin-bottom: 20px;">
@@ -2157,7 +2173,7 @@ function renderClanView(container, clan) {
         
         <!-- Members -->
         <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
-            <h3 style="margin: 0 0 12px 0; font-size: 18px;">👥 Участники</h3>
+            <h3 style="margin: 0 0 12px 0; font-size: 18px; color: #333;">👥 Участники</h3>
             <div id="clan-members-list">
                 ${renderClanMembers(clan.members)}
             </div>
@@ -2165,7 +2181,7 @@ function renderClanView(container, clan) {
         
         <!-- Chat -->
         <div style="background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
-            <h3 style="margin: 0 0 12px 0; font-size: 18px;">💬 Чат клана</h3>
+            <h3 style="margin: 0 0 12px 0; font-size: 18px; color: #333;">💬 Чат клана</h3>
             <div id="clan-chat-messages" style="max-height: 200px; overflow-y: auto; margin-bottom: 12px;">
                 ${renderClanChat(clan.messages)}
             </div>
@@ -2176,9 +2192,10 @@ function renderClanView(container, clan) {
                 " onkeypress="if(event.key==='Enter') sendClanMessage()">
                 <button onclick="sendClanMessage()" style="
                     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white; border: none; padding: 10px 20px; border-radius: 8px;
-                    font-size: 14px; cursor: pointer;
-                ">Отправить</button>
+                    color: white; border: none; padding: 10px; border-radius: 8px;
+                    font-size: 20px; cursor: pointer; width: 40px; height: 40px; display: flex;
+                    align-items: center; justify-content: center;
+                ">➤</button>
             </div>
         </div>
         
@@ -2535,11 +2552,38 @@ async function sendClanMessage() {
         }
         
         input.value = '';
-        loadClanInfo(document.getElementById('other-views'));
+        // Reload just the chat instead of entire page
+        await reloadClanChat();
         
     } catch (error) {
         console.error('Error sending message:', error);
         window.Telegram?.WebApp?.showAlert?.('Ошибка отправки сообщения');
+    }
+}
+
+// Reload clan chat messages
+async function reloadClanChat() {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/clans/my-clan?' + new URLSearchParams({ initData }));
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch clan info');
+        }
+        
+        const data = await response.json();
+        const clan = data.clan;
+        
+        if (clan && clan.messages) {
+            const chatContainer = document.getElementById('clan-chat-messages');
+            if (chatContainer) {
+                chatContainer.innerHTML = renderClanChat(clan.messages);
+                // Scroll to bottom to show latest message
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }
+    } catch (error) {
+        console.error('Error reloading clan chat:', error);
     }
 }
 
