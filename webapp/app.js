@@ -2260,7 +2260,7 @@ function renderClanMembers(members) {
         <div style="display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #f0f0f0;">
             <div style="font-size: 24px; margin-right: 8px;">${roleEmojis[m.role]}</div>
             <div style="flex: 1;">
-                <div style="font-weight: bold; font-size: 14px;">@${m.username}</div>
+                <div style="font-weight: bold; font-size: 14px; color: #333;">@${m.username}</div>
                 <div style="font-size: 12px; color: #666;">В клане с ${new Date(m.joined_at).toLocaleDateString('ru-RU')}</div>
             </div>
         </div>
