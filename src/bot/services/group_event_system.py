@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from aiogram import Bot
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from bot.models import User, Waifu
 from bot.data_tables import EVENTS
@@ -291,17 +292,47 @@ async def finalize_group_event(
         
         # Apply rewards
         waifu.xp += rewards["xp"]
-        waifu.dynamic["energy"] = max(0, waifu.dynamic["energy"] - 20)
-        waifu.dynamic["mood"] = min(100, waifu.dynamic["mood"] + 5)
-        waifu.dynamic["loyalty"] = min(100, waifu.dynamic["loyalty"] + 2)
+        
+        # Update dynamic stats properly
+        waifu.dynamic = {
+            **waifu.dynamic,
+            "energy": max(0, waifu.dynamic.get("energy", 0) - 20),
+            "mood": min(100, waifu.dynamic.get("mood", 50)),
+            "loyalty": min(100, waifu.dynamic.get("loyalty", 50))
+        }
+        flag_modified(waifu, "dynamic")
+        
         user.coins += rewards["coins"]
         
         results.append({
             "username": user.username or "User",
             "waifu_name": waifu.name,
             "score": score,
-            "rewards": rewards
+            "rewards": rewards,
+            "user_id": user_id
         })
+    
+    # Sort by score and apply medal mood bonuses
+    results.sort(key=lambda x: x["score"], reverse=True)
+    
+    # Apply medal bonuses
+    for i, result in enumerate(results, 1):
+        if i == 1:  # Gold
+            bonus_mood = 15
+        elif i == 2:  # Silver
+            bonus_mood = 10
+        elif i == 3:  # Bronze
+            bonus_mood = 5
+        else:
+            bonus_mood = 0
+        
+        if bonus_mood > 0:
+            # Get waifu again to update mood bonus
+            waifu_result = session.execute(select(Waifu).where(Waifu.id == event_state.participants[result["user_id"]]))
+            waifu = waifu_result.scalar_one_or_none()
+            if waifu:
+                waifu.dynamic["mood"] = min(100, waifu.dynamic.get("mood", 50) + bonus_mood)
+                flag_modified(waifu, "dynamic")
     
     session.commit()
     
@@ -309,9 +340,6 @@ async def finalize_group_event(
     event = EVENTS.get(event_state.event_type, {})
     text = f"🎪 <b>Групповое событие завершено!</b>\n\n"
     text += f"🎯 <b>{event.get('name', 'Событие')}</b>\n\n"
-    
-    # Sort by score
-    results.sort(key=lambda x: x["score"], reverse=True)
     
     for i, result in enumerate(results[:10], 1):  # Show top 10
         medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."

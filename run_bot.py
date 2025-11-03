@@ -33,6 +33,7 @@ if __name__ == "__main__":
     from bot.handlers.debug import router as debug_router
     from bot.handlers.webapp import router as webapp_router
     from bot.services.stat_restoration import start_restoration_service, stop_restoration_service
+    from bot.services.auto_event_service import start_auto_event_service, stop_auto_event_service
 
     # Configure logging
     logging.basicConfig(
@@ -101,6 +102,10 @@ if __name__ == "__main__":
         logger.info("🔄 Starting stat restoration service...")
         await start_restoration_service()
         
+        # Start auto event service
+        logger.info("🔄 Starting auto event service...")
+        await start_auto_event_service(bot)
+        
         logger.info("✅ Waifu Bot is ready!")
         logger.info("📡 Polling for updates...")
         
@@ -109,5 +114,6 @@ if __name__ == "__main__":
         finally:
             logger.info("🛑 Shutting down...")
             await stop_restoration_service()
+            await stop_auto_event_service()
 
     asyncio.run(main())
