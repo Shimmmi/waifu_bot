@@ -2152,12 +2152,17 @@ function renderClanView(container, clan) {
                         background: rgba(255,255,255,0.2); cursor: pointer;
                         display: flex; align-items: center; justify-content: center;
                         font-size: 24px; border: 2px dashed rgba(255,255,255,0.5);
-                    ">📷</label>
+                        background-size: cover; background-position: center;
+                        ${clan.image ? `background-image: url('${clan.image}');` : ''}
+                    ">${clan.image ? '' : '📷'}</label>
                 ` : `
                     <div style="width: 48px; height: 48px; border-radius: 8px; 
                                 background: rgba(255,255,255,0.2); 
                                 display: flex; align-items: center; justify-content: center;
-                                font-size: 24px;">🏰</div>
+                                font-size: 24px;
+                                background-size: cover; background-position: center;
+                                ${clan.image ? `background-image: url('${clan.image}');` : ''}
+                    ">${clan.image ? '' : '🏰'}</div>
                 `}
                 <div style="flex: 1;">
                     <h2 style="margin: 0; font-size: 20px;">${clan.name}</h2>
@@ -2821,8 +2826,61 @@ function closeClanSettingsModal() {
 
 // Handle clan image upload
 function handleClanImageUpload(event) {
-    // Placeholder for image upload
-    window.Telegram?.WebApp?.showAlert?.('Загрузка изображения в разработке');
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+        window.Telegram?.WebApp?.showAlert?.('Пожалуйста, выберите изображение');
+        return;
+    }
+    
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        window.Telegram?.WebApp?.showAlert?.('Файл слишком большой (макс. 5МБ)');
+        return;
+    }
+    
+    // Read file as base64
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const imageData = e.target.result;
+        
+        try {
+            const initData = window.Telegram?.WebApp?.initData || '';
+            const response = await fetch('/api/clans/upload-image?' + new URLSearchParams({ initData }), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image: imageData
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Ошибка загрузки');
+            }
+            
+            const result = await response.json();
+            
+            window.Telegram?.WebApp?.showAlert?.('✅ Изображение загружено');
+            
+            // Reload clan page
+            loadClanInfo(document.getElementById('view-content'));
+            
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            window.Telegram?.WebApp?.showAlert?.('❌ ' + error.message);
+        }
+    };
+    
+    reader.onerror = () => {
+        window.Telegram?.WebApp?.showAlert?.('Ошибка чтения файла');
+    };
+    
+    reader.readAsDataURL(file);
 }
 
 // Load active raid

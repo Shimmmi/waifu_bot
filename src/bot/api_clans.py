@@ -280,6 +280,11 @@ async def get_my_clan(request: Request, db: Session = Depends(get_db)) -> Dict[s
                 "created_at": msg.created_at.isoformat()
             })
         
+        # Get clan image from settings
+        clan_image = None
+        if clan.settings and isinstance(clan.settings, dict):
+            clan_image = clan.settings.get('image')
+        
         return {
             "clan": {
                 "id": clan.id,
@@ -292,7 +297,8 @@ async def get_my_clan(request: Request, db: Session = Depends(get_db)) -> Dict[s
                 "total_power": clan.total_power,
                 "members": members_data,
                 "messages": messages_data,
-                "my_role": member.role
+                "my_role": member.role,
+                "image": clan_image
             }
         }
         
@@ -473,6 +479,61 @@ async def send_clan_message(request: Request, db: Session = Depends(get_db)) -> 
         return {
             "success": True,
             "message": "Сообщение отправлено"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+
+@router.post("/api/clans/upload-image")
+async def upload_clan_image(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Upload clan image"""
+    try:
+        logger.info(f"📡 API REQUEST: POST /api/clans/upload-image")
+        
+        # Get user
+        user = get_user_from_request(request, db)
+        
+        # Get user's clan
+        member = db.query(ClanMember).filter(ClanMember.user_id == user.id).first()
+        if not member:
+            raise HTTPException(status_code=404, detail="Вы не состоите в клане")
+        
+        # Check if user is leader
+        if member.role != 'leader':
+            raise HTTPException(status_code=403, detail="Только лидер может загрузить изображение")
+        
+        # Get request body
+        body = await request.json()
+        image_data = body.get('image')
+        
+        if not image_data:
+            raise HTTPException(status_code=400, detail="Изображение не предоставлено")
+        
+        # Validate image format
+        if not image_data.startswith('data:image'):
+            raise HTTPException(status_code=400, detail="Неверный формат изображения")
+        
+        # Get clan
+        clan = db.query(Clan).filter(Clan.id == member.clan_id).first()
+        if not clan:
+            raise HTTPException(status_code=404, detail="Клан не найден")
+        
+        # Update clan settings
+        if clan.settings is None:
+            clan.settings = {}
+        
+        clan.settings['image'] = image_data
+        db.commit()
+        
+        logger.info(f"✅ Clan {clan.id} image uploaded by user {user.id}")
+        return {
+            "success": True,
+            "message": "Изображение загружено"
         }
         
     except HTTPException:
