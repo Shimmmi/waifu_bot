@@ -1574,31 +1574,110 @@ async function loadQuests(container) {
         // Render quests
         container.innerHTML = `
             <div style="margin-top: 16px;">
-                ${quests.map(quest => `
-                    <div style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; ${quest.completed ? 'border: 2px solid #4CAF50;' : ''}">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            <div style="font-size: 32px;">${quest.icon}</div>
-                            <div style="flex: 1;">
-                                <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${quest.name}</div>
-                                <div style="font-size: 12px; color: #666;">${quest.description}</div>
+                ${quests.map(quest => {
+                    if (quest.claimed) {
+                        return `
+                            <div style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 2px solid #4CAF50;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div style="font-size: 32px;">${quest.icon}</div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${quest.name}</div>
+                                        <div style="font-size: 14px; color: #4CAF50; font-weight: bold;">✅ Задание выполнено, будет обновлено завтра</div>
+                                    </div>
+                                </div>
                             </div>
-                            ${quest.completed ? '<div style="font-size: 24px;">✅</div>' : ''}
-                        </div>
-                        <div style="background: #e0e0e0; border-radius: 8px; height: 8px; margin-bottom: 8px; overflow: hidden;">
-                            <div style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); height: 100%; width: ${Math.min(100, (quest.progress / quest.target) * 100)}%; transition: width 0.3s;"></div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #666;">
-                            <span>Прогресс: ${quest.progress}/${quest.target}</span>
-                            <span>🎁 ${quest.reward_gold} 💰 + ${quest.reward_xp} ⭐</span>
-                        </div>
-                    </div>
-                `).join('')}
+                        `;
+                    } else if (quest.completed) {
+                        return `
+                            <div style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 2px solid #4CAF50;">
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                    <div style="font-size: 32px;">${quest.icon}</div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${quest.name}</div>
+                                        <div style="font-size: 12px; color: #666;">${quest.description}</div>
+                                    </div>
+                                </div>
+                                <div style="background: #e0e0e0; border-radius: 8px; height: 8px; margin-bottom: 12px; overflow: hidden;">
+                                    <div style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); height: 100%; width: 100%; transition: width 0.3s;"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 12px; color: #666;">
+                                    <span>Прогресс: ${quest.progress}/${quest.target}</span>
+                                    <span>🎁 ${quest.reward_gold} 💰 + ${quest.reward_xp} ⭐</span>
+                                </div>
+                                <button onclick="claimQuestReward('${quest.id}')" style="
+                                    width: 100%; background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+                                    color: white; border: none; padding: 12px; border-radius: 8px;
+                                    font-size: 14px; font-weight: bold; cursor: pointer;
+                                ">✅ Получить награду</button>
+                            </div>
+                        `;
+                    } else {
+                        return `
+                            <div style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                    <div style="font-size: 32px;">${quest.icon}</div>
+                                    <div style="flex: 1;">
+                                        <div style="font-weight: bold; font-size: 16px; margin-bottom: 4px;">${quest.name}</div>
+                                        <div style="font-size: 12px; color: #666;">${quest.description}</div>
+                                    </div>
+                                </div>
+                                <div style="background: #e0e0e0; border-radius: 8px; height: 8px; margin-bottom: 8px; overflow: hidden;">
+                                    <div style="background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); height: 100%; width: ${Math.min(100, (quest.progress / quest.target) * 100)}%; transition: width 0.3s;"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #666;">
+                                    <span>Прогресс: ${quest.progress}/${quest.target}</span>
+                                    <span>🎁 ${quest.reward_gold} 💰 + ${quest.reward_xp} ⭐</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }).join('')}
             </div>
         `;
         
     } catch (error) {
         console.error('Error loading quests:', error);
         container.innerHTML = '<p style="color: red; padding: 20px;">Ошибка загрузки</p>';
+    }
+}
+
+// Claim quest reward
+async function claimQuestReward(questId) {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch(`/api/quests/claim?quest_id=${questId}&${new URLSearchParams({ initData })}`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            if (window.Telegram?.WebApp?.showAlert) {
+                window.Telegram.WebApp.showAlert('❌ Ошибка: ' + (errorData.detail || 'Не удалось получить награду'));
+            }
+            return;
+        }
+        
+        const result = await response.json();
+        
+        // Show success message
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert('✅ ' + result.message);
+        }
+        
+        // Reload quests
+        const viewContent = document.getElementById('view-content');
+        if (viewContent && currentView === 'quests') {
+            await loadQuests(viewContent);
+        }
+        
+        // Reload profile to update currency
+        await loadProfile();
+        
+    } catch (error) {
+        console.error('Error claiming quest reward:', error);
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert('❌ Ошибка: Не удалось получить награду');
+        }
     }
 }
 

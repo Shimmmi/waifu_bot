@@ -982,6 +982,10 @@ async def get_quests(request: Request, db: Session = Depends(get_db)) -> Dict[st
         # Get daily XP
         daily_xp = getattr(user, 'daily_xp', 0)
         
+        # Get quest rewards claimed status
+        quest_rewards_claimed = getattr(user, 'quest_rewards_claimed', {}) or {}
+        today_str = datetime.utcnow().strftime('%Y-%m-%d')
+        
         # Define quests
         quests = [
             {
@@ -993,7 +997,8 @@ async def get_quests(request: Request, db: Session = Depends(get_db)) -> Dict[st
                 "reward_xp": 10,
                 "progress": message_count,
                 "target": 10,
-                "completed": message_count >= 10
+                "completed": message_count >= 10,
+                "claimed": quest_rewards_claimed.get('daily_message') == today_str
             },
             {
                 "id": "daily_waifu",
@@ -1004,7 +1009,8 @@ async def get_quests(request: Request, db: Session = Depends(get_db)) -> Dict[st
                 "reward_xp": 20,
                 "progress": min(waifu_count, 1),  # Binary: 0 or 1
                 "target": 1,
-                "completed": waifu_count >= 1
+                "completed": waifu_count >= 1,
+                "claimed": quest_rewards_claimed.get('daily_waifu') == today_str
             },
             {
                 "id": "daily_active",
@@ -1015,7 +1021,8 @@ async def get_quests(request: Request, db: Session = Depends(get_db)) -> Dict[st
                 "reward_xp": 30,
                 "progress": daily_xp,
                 "target": 100,
-                "completed": daily_xp >= 100
+                "completed": daily_xp >= 100,
+                "claimed": quest_rewards_claimed.get('daily_active') == today_str
             }
         ]
         
@@ -1069,6 +1076,101 @@ async def get_daily_bonus_status(request: Request, db: Session = Depends(get_db)
             "can_claim": can_claim,
             "time_remaining": time_remaining,
             "streak": user.daily_streak
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+
+@app.post("/api/quests/claim")
+async def claim_quest_reward(request: Request, quest_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Получение награды за выполненное задание"""
+    try:
+        logger.info(f"📡 API REQUEST: POST /api/quests/claim?quest_id={quest_id}")
+        
+        if User is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Extract Telegram user ID from initData
+        telegram_user_id = get_telegram_user_id(request)
+        
+        if not telegram_user_id:
+            logger.warning("⚠️ No initData provided for quest reward claim")
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        logger.info(f"✅ Extracted Telegram user ID: {telegram_user_id}")
+        
+        # Get user
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Define quest rewards
+        quest_rewards = {
+            "daily_message": {"gold": 50, "xp": 10},
+            "daily_waifu": {"gold": 100, "xp": 20},
+            "daily_active": {"gold": 150, "xp": 30}
+        }
+        
+        if quest_id not in quest_rewards:
+            raise HTTPException(status_code=400, detail="Неверный ID задания")
+        
+        # Check if quest is completed
+        from datetime import datetime
+        from bot.models import XPLog, Waifu
+        
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        if today_start.tzinfo is None:
+            from datetime import timezone
+            today_start = today_start.replace(tzinfo=timezone.utc)
+        
+        if quest_id == "daily_message":
+            message_count = db.query(XPLog).filter(
+                XPLog.user_id == user.id,
+                XPLog.source == 'message',
+                XPLog.created_at >= today_start
+            ).count()
+            if message_count < 10:
+                raise HTTPException(status_code=400, detail="Задание не выполнено")
+        elif quest_id == "daily_waifu":
+            waifu_count = db.query(Waifu).filter(
+                Waifu.owner_id == user.id,
+                Waifu.created_at >= today_start
+            ).count()
+            if waifu_count < 1:
+                raise HTTPException(status_code=400, detail="Задание не выполнено")
+        elif quest_id == "daily_active":
+            daily_xp = getattr(user, 'daily_xp', 0)
+            if daily_xp < 100:
+                raise HTTPException(status_code=400, detail="Задание не выполнено")
+        
+        # Check if already claimed today
+        quest_rewards_claimed = getattr(user, 'quest_rewards_claimed', {}) or {}
+        today_str = datetime.utcnow().strftime('%Y-%m-%d')
+        
+        if quest_rewards_claimed.get(quest_id) == today_str:
+            raise HTTPException(status_code=400, detail="Награда уже получена сегодня")
+        
+        # Award rewards
+        reward = quest_rewards[quest_id]
+        user.coins += reward["gold"]
+        user.global_xp += reward["xp"]
+        
+        # Mark as claimed
+        quest_rewards_claimed[quest_id] = today_str
+        user.quest_rewards_claimed = quest_rewards_claimed
+        
+        db.commit()
+        
+        logger.info(f"✅ Quest {quest_id} reward claimed by user {user.id}: {reward}")
+        return {
+            "success": True,
+            "gold": reward["gold"],
+            "xp": reward["xp"],
+            "message": f"Получено {reward['gold']}💰 + {reward['xp']}⭐"
         }
         
     except HTTPException:
