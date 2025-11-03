@@ -6,6 +6,7 @@ import logging
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import and_, or_
 from urllib.parse import parse_qs, unquote
 import json
@@ -528,6 +529,7 @@ async def upload_clan_image(request: Request, db: Session = Depends(get_db)) -> 
             clan.settings = {}
         
         clan.settings['image'] = image_data
+        flag_modified(clan, 'settings')
         db.commit()
         
         logger.info(f"✅ Clan {clan.id} image uploaded by user {user.id}")
