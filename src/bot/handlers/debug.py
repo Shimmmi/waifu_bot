@@ -7,9 +7,10 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMar
 from aiogram import Router
 from sqlalchemy import select, update
 from datetime import datetime
+import random
 
 from bot.db import SessionLocal
-from bot.models import User, Waifu
+from bot.models import User, Waifu, XPLog
 
 # Import skills models
 try:
@@ -26,6 +27,12 @@ router = Router()
 
 async def handle_debug_menu_callback(callback: CallbackQuery) -> None:
     """Отображение меню отладки"""
+    # Check if admin
+    ADMIN_ID = 305174198
+    if callback.from_user is None or callback.from_user.id != ADMIN_ID:
+        await callback.answer("❌ Нет прав")
+        return
+    
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="⚡ Восстановить энергию всем вайфу", callback_data="debug_restore_energy")],
         [InlineKeyboardButton(text="💰 +10000 монет и +100 гемов", callback_data="debug_add_currency")],
@@ -33,6 +40,7 @@ async def handle_debug_menu_callback(callback: CallbackQuery) -> None:
         [InlineKeyboardButton(text="🧬 +100 очков прокачки", callback_data="debug_add_skill_points")],
         [InlineKeyboardButton(text="🗑️ Убрать все очки прокачки", callback_data="debug_wipe_skill_points")],
         [InlineKeyboardButton(text="🗑️ Удалить всех вайфу", callback_data="debug_wipe_confirm")],
+        [InlineKeyboardButton(text="🎯 Запустить событие", callback_data="debug_trigger_event")],
         [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu")]
     ])
     
@@ -69,6 +77,10 @@ async def handle_debug_action_callback(callback: CallbackQuery) -> None:
         await handle_debug_wipe_execute(callback, tg_user_id)
     elif callback.data.startswith("debug_add_xp_"):
         await handle_debug_add_xp_to_waifu(callback, tg_user_id)
+    elif callback.data == "debug_trigger_event":
+        await handle_debug_trigger_event(callback, tg_user_id)
+    elif callback.data.startswith("debug_event_chat_"):
+        await handle_debug_event_select_chat(callback, tg_user_id)
 
 
 async def handle_debug_restore_energy(callback: CallbackQuery, tg_user_id: int) -> None:
@@ -208,6 +220,215 @@ async def handle_debug_add_xp_menu(callback: CallbackQuery, tg_user_id: int) -> 
             parse_mode="HTML"
         )
         await callback.answer()
+        
+    except Exception as e:
+        await callback.answer(f"Ошибка: {str(e)}")
+        finally:
+        session.close()
+
+
+async def handle_debug_trigger_event(callback: CallbackQuery, tg_user_id: int) -> None:
+    """Меню выбора чата для запуска события"""
+    # Check if admin
+    ADMIN_ID = 305174198
+    if tg_user_id != ADMIN_ID:
+        await callback.answer("❌ Нет прав")
+        return
+    
+    session = SessionLocal()
+    try:
+        # Get all unique chat_ids from XPLog where source is 'message'
+        # These are groups where users have been active
+        result = session.execute(
+            select(XPLog.meta)
+            .where(XPLog.source == 'message')
+            .distinct()
+        )
+        
+        # Extract unique chat_ids from meta JSONB field
+        chat_ids = []
+        seen_chat_ids = set()
+        
+        for row in result:
+            if row[0] and isinstance(row[0], dict):
+                chat_id = row[0].get('chat_id')
+                if chat_id and chat_id not in seen_chat_ids:
+                    try:
+                        chat_id_int = int(chat_id)
+                        chat_ids.append(chat_id_int)
+                        seen_chat_ids.add(chat_id)
+                    except (ValueError, TypeError):
+                        continue
+        
+        if not chat_ids:
+            await callback.answer("❌ Нет активных чатов")
+            await callback.message.edit_text(
+                "❌ <b>Активных чатов не найдено</b>\n\n"
+                "Нет групп, где пользователи писали сообщения.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🔙 Назад", callback_data="debug_menu")]
+                ]),
+                parse_mode="HTML"
+            )
+            return
+        
+        # Create keyboard with chat selection buttons
+        keyboard_buttons = []
+        for chat_id in chat_ids[:20]:  # Limit to 20 chats
+            keyboard_buttons.append([
+                InlineKeyboardButton(
+                    text=f"💬 Chat ID: {chat_id}",
+                    callback_data=f"debug_event_chat_{chat_id}"
+                )
+            ])
+        
+        keyboard_buttons.append([
+            InlineKeyboardButton(text="🔙 Назад", callback_data="debug_menu")
+        ])
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+        
+        await callback.message.edit_text(
+            f"🎯 <b>Выберите чат для запуска события:</b>\n\n"
+            f"Найдено активных чатов: {len(chat_ids)}",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        await callback.answer()
+        
+    except Exception as e:
+        await callback.answer(f"Ошибка: {str(e)}")
+    finally:
+        session.close()
+
+
+async def handle_debug_event_select_chat(callback: CallbackQuery, tg_user_id: int) -> None:
+    """Trigger event in selected chat"""
+    # Check if admin
+    ADMIN_ID = 305174198
+    if tg_user_id != ADMIN_ID:
+        await callback.answer("❌ Нет прав")
+        return
+    
+    # Extract chat_id from callback_data: debug_event_chat_{chat_id}
+    chat_id = int(callback.data.replace("debug_event_chat_", ""))
+    
+    bot = callback.bot
+    
+    # Check if there's already an active event in this chat
+    from bot.services.group_event_system import group_event_manager
+    existing_event = group_event_manager.get_event(chat_id)
+    
+    if existing_event and not existing_event.is_expired():
+        await callback.answer("⚠️ Уже есть активное событие в этом чате!")
+        return
+    
+    # Select random event type
+    from bot.data_tables import EVENTS
+    event_type = random.choice(list(EVENTS.keys()))
+    
+    # Start the event
+    event_state = group_event_manager.start_event(chat_id, event_type)
+    
+    session = SessionLocal()
+    try:
+        # Get all users who are members of this chat
+        result = session.execute(
+            select(XPLog.user_id, XPLog.meta)
+            .where(XPLog.source == 'message')
+        )
+        
+        # Filter and collect unique user_ids from this chat
+        user_ids = []
+        seen_user_ids = set()
+        
+        for row in result:
+            user_id, meta = row[0], row[1]
+            if meta and isinstance(meta, dict):
+                if meta.get('chat_id') == chat_id and user_id not in seen_user_ids:
+                    user_ids.append(user_id)
+                    seen_user_ids.add(user_id)
+        
+        # Send invitations to all users in this chat
+        from bot.services.group_event_system import send_event_invitation
+        import asyncio
+        
+        invitations_sent = 0
+        for user_id in user_ids:
+            try:
+                # Get user
+                user_result = session.execute(
+                    select(User).where(User.id == user_id)
+                )
+                user = user_result.scalar_one_or_none()
+                
+                if not user:
+                    continue
+                
+                # Send invitation
+                message_id = await send_event_invitation(
+                    bot,
+                    session,
+                    user,
+                    event_type,
+                    chat_id,
+                    event_state.event_id
+                )
+                
+                if message_id:
+                    invitations_sent += 1
+                    group_event_manager.add_message_to_delete(chat_id, message_id)
+                    
+            except Exception as e:
+                print(f"Error sending invitation to user {user_id}: {e}")
+                continue
+        
+        # Announce event in group
+        event = EVENTS.get(event_type, {})
+        await bot.send_message(
+            chat_id=chat_id,
+            text=(
+                f"🎪 <b>Начинается соревнование!</b>\n\n"
+                f"🎯 <b>{event['name']}</b>\n"
+                f"📝 {event.get('description', '')}\n\n"
+                f"⏱️ У вас есть <b>60 секунд</b> чтобы принять участие!"
+            ),
+            parse_mode="HTML"
+        )
+        
+        # Schedule finalization after 60 seconds
+        async def finalize_after_delay():
+            await asyncio.sleep(60)
+            from bot.services.group_event_system import finalize_group_event
+            
+            session = SessionLocal()
+            try:
+                results_text = await finalize_group_event(bot, session, chat_id)
+                if results_text:
+                    await bot.send_message(
+                        chat_id=chat_id,
+                        text=results_text,
+                        parse_mode="HTML"
+                    )
+            except Exception as e:
+                print(f"Error finalizing event in chat {chat_id}: {e}")
+            finally:
+                session.close()
+        
+        asyncio.create_task(finalize_after_delay())
+        
+        await callback.answer("✅ Событие запущено!")
+        await callback.message.edit_text(
+            f"🎯 <b>Событие запущено!</b>\n\n"
+            f"💬 Чат ID: {chat_id}\n"
+            f"🎪 Событие: {event['name']}\n"
+            f"📬 Приглашений отправлено: {invitations_sent}\n"
+            f"⏱️ Результаты через 60 секунд",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Назад", callback_data="debug_menu")]
+            ]),
+            parse_mode="HTML"
+        )
         
     except Exception as e:
         await callback.answer(f"Ошибка: {str(e)}")
