@@ -1791,20 +1791,27 @@ async function loadUpgradePage(container) {
 
 // Calculate XP progress for display
 function calculateXPProgress(currentXP, currentLevel) {
-    // Calculate XP needed for current level
+    // Global XP formula: arithmetic progression
+    // Level N requires: n * (2a + (n-1)d) / 2 total XP, where n = level - 1, a = 100, d = 50
+    // XP for level N: 100 + (N-2) * 50
+    
+    // Calculate total XP needed for current level
     let xpNeededForCurrent = 0;
-    for (let i = 1; i < currentLevel; i++) {
-        xpNeededForCurrent += Math.floor(100 * Math.pow(i, 1.1));
+    if (currentLevel > 1) {
+        const n = currentLevel - 1;
+        const a = 100;
+        const d = 50;
+        xpNeededForCurrent = n * (2 * a + (n - 1) * d) / 2;
     }
     
     // Calculate XP needed for next level
-    const xpForNextLevel = Math.floor(100 * Math.pow(currentLevel, 1.1));
+    const xpForNextLevel = currentLevel > 0 ? (100 + (currentLevel - 1) * 50) : 0;
     
     // XP in current level
     const xpInLevel = currentXP - xpNeededForCurrent;
     const xpNeeded = xpForNextLevel;
     
-    const percent = Math.min(100, (xpInLevel / xpNeeded) * 100);
+    const percent = Math.min(100, Math.max(0, (xpInLevel / xpNeeded) * 100));
     
     return {
         current: Math.floor(xpInLevel),
@@ -1877,23 +1884,27 @@ async function loadProfile() {
         const currentLevel = profileData.level || 1;
         document.getElementById('player-level').textContent = currentLevel;
         
-        // Calculate XP progress correctly
+        // Calculate XP progress correctly using global XP formula
         const currentXP = profileData.xp || 0;
         
-        // Calculate XP needed for current level
+        // Global XP formula: arithmetic progression
+        // Calculate total XP needed for current level
         let xpNeededForCurrent = 0;
-        for (let i = 1; i < currentLevel; i++) {
-            xpNeededForCurrent += Math.floor(100 * Math.pow(i, 1.1));
+        if (currentLevel > 1) {
+            const n = currentLevel - 1;
+            const a = 100;
+            const d = 50;
+            xpNeededForCurrent = n * (2 * a + (n - 1) * d) / 2;
         }
         
         // Calculate XP needed for next level
-        const xpForNextLevel = Math.floor(100 * Math.pow(currentLevel, 1.1));
+        const xpForNextLevel = currentLevel > 0 ? (100 + (currentLevel - 1) * 50) : 0;
         
         // XP in current level
         const xpInLevel = currentXP - xpNeededForCurrent;
         const xpNeeded = xpForNextLevel;
         
-        const xpPercent = Math.min(100, (xpInLevel / xpNeeded) * 100);
+        const xpPercent = Math.min(100, Math.max(0, (xpInLevel / xpNeeded) * 100));
         
         document.getElementById('xp-fill').style.width = xpPercent + '%';
         document.getElementById('xp-current').textContent = Math.floor(xpInLevel);
