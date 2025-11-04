@@ -2042,6 +2042,8 @@ async function loadActiveWaifu() {
     const activeWaifuCard = document.getElementById('active-waifu-card');
     
     if (!profileData.active_waifu) {
+        // Reset background to white when no active waifu
+        activeWaifuCard.style.background = 'white';
         activeWaifuCard.innerHTML = `
             <div onclick="openSelectActiveWaifuModal()" style="cursor: pointer; padding: 20px; text-align: center;">
                 <p style="color: #666; margin-bottom: 12px;">Нет активной вайфу</p>
@@ -2055,6 +2057,10 @@ async function loadActiveWaifu() {
     const power = calculatePower(waifu);
     const professionEmoji = getProfessionEmoji(waifu.profession);
     const flagEmoji = getFlagEmoji(waifu.nationality);
+    const rarityColors = getRarityColor(waifu.rarity);
+    
+    // Set background color on the card itself
+    activeWaifuCard.style.background = rarityColors.background;
     
     activeWaifuCard.innerHTML = `
         <div onclick="openSelectActiveWaifuModal()" style="cursor: pointer;">
