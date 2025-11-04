@@ -389,11 +389,11 @@ async def handle_random_event(callback: CallbackQuery) -> None:
         # Выбираем случайное событие
         event_type = get_random_event()
         
-        # Проверяем возможность участия
+        # Проверяем возможность участия (с учетом навыка endurance)
         can_participate, reason = can_participate_in_event({
             "dynamic": waifu.dynamic,
             "profession": waifu.profession
-        }, event_type)
+        }, event_type, user_id=user.id, session=session)
         
         if not can_participate:
             await callback.answer(f"Нельзя участвовать: {reason}")
@@ -408,14 +408,24 @@ async def handle_random_event(callback: CallbackQuery) -> None:
         
         rewards = get_event_rewards(score, event_type)
         
+        # Применяем навык endurance для расчета расхода энергии
+        from bot.services.energy_cost import calculate_energy_cost
+        energy_cost = calculate_energy_cost(20, user.id, session)
+        
+        # Применяем навык golden_hand для расчета золота
+        from bot.services.waifu_action_rewards import apply_waifu_gold_bonus
+        base_coins = rewards["coins"]
+        final_coins = apply_waifu_gold_bonus(base_coins, user.id, session)
+        
         # Обновляем вайфу
         waifu.xp += rewards["xp"]
-        waifu.dynamic["energy"] = max(0, waifu.dynamic["energy"] - 20)
+        current_energy = int(waifu.dynamic.get("energy", 100))
+        waifu.dynamic["energy"] = max(0, current_energy - energy_cost)
         waifu.dynamic["mood"] = min(100, waifu.dynamic["mood"] + 5)
         waifu.dynamic["loyalty"] = int(round(min(100, waifu.dynamic["loyalty"] + 2)))
         
-        # Обновляем пользователя
-        user.coins += rewards["coins"]
+        # Обновляем пользователя с учетом бонуса золота
+        user.coins += final_coins
         
         session.commit()
 

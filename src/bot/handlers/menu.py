@@ -728,11 +728,11 @@ async def handle_event_accept_callback(callback: CallbackQuery) -> None:
                 })
                 rarity_icon = get_rarity_color(waifu.rarity)
                 
-                # Проверяем возможность участия
+                # Проверяем возможность участия (с учетом навыка endurance)
                 can_participate, reason = can_participate_in_event({
                     "dynamic": waifu.dynamic,
                     "profession": waifu.profession
-                }, event_type)
+                }, event_type, user_id=user.id, session=session)
                 
                 button_text = f"{waifu.name} - Ур.{waifu.level} {rarity_icon} 💪{power}"
                 if not can_participate:
@@ -1061,11 +1061,11 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
                 await callback.answer("Вайфу не найдена!")
                 return
 
-            # Проверяем возможность участия
+            # Проверяем возможность участия (с учетом навыка endurance)
             can_participate, reason = can_participate_in_event({
                 "dynamic": waifu.dynamic,
                 "profession": waifu.profession
-            }, event_type)
+            }, event_type, user_id=user.id, session=session)
             
             if not can_participate:
                 await callback.answer(f"Нельзя участвовать: {reason}")
@@ -1123,6 +1123,15 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
                 logger.info(f"   Stat increased: {level_up_info['increased_stat']} "
                            f"({level_up_info['old_stat_value']} → {level_up_info['new_stat_value']})")
             
+            # Применяем навык endurance для расчета расхода энергии
+            from bot.services.energy_cost import calculate_energy_cost
+            energy_cost = calculate_energy_cost(20, user.id, session)
+            
+            # Применяем навык golden_hand для расчета золота
+            from bot.services.waifu_action_rewards import apply_waifu_gold_bonus
+            base_coins = rewards["coins"]
+            final_coins = apply_waifu_gold_bonus(base_coins, user.id, session)
+            
             # Преобразуем значения в int перед операциями
             current_energy = int(waifu.dynamic.get("energy", 100))
             current_mood = int(waifu.dynamic.get("mood", 50))
@@ -1131,7 +1140,7 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
             # Обновляем dynamic - создаем новый словарь для корректного отслеживания изменений
             waifu.dynamic = {
                 **waifu.dynamic,
-                "energy": max(0, current_energy - 20),
+                "energy": max(0, current_energy - energy_cost),
                 "mood": min(100, current_mood + 5),
                 "loyalty": int(round(min(100, current_loyalty + 2))),
                 "last_restore": datetime.now().isoformat()  # Update restoration timestamp
@@ -1147,8 +1156,8 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
             logger.info(f"   Dynamic: {waifu.dynamic}")
             logger.info(f"   flag_modified: dynamic and stats fields marked as modified")
             
-            # Обновляем пользователя
-            user.coins += rewards["coins"]
+            # Обновляем пользователя с учетом бонуса золота
+            user.coins += final_coins
             
             # Commit and explicitly flush to database
             logger.info(f"💾 Committing to database...")

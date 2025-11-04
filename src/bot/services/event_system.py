@@ -1,5 +1,5 @@
 import random
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional, Any
 from ..data_tables import EVENTS
 
 
@@ -132,15 +132,43 @@ def get_available_events() -> List[Dict]:
     return events
 
 
-def can_participate_in_event(waifu: Dict, event_type: str) -> Tuple[bool, str]:
-    """Проверяет, может ли вайфу участвовать в событии"""
+def can_participate_in_event(
+    waifu: Dict, 
+    event_type: str, 
+    user_id: Optional[int] = None, 
+    session: Optional[Any] = None
+) -> Tuple[bool, str]:
+    """
+    Проверяет, может ли вайфу участвовать в событии.
+    
+    Args:
+        waifu: Словарь с данными вайфу
+        event_type: Тип события
+        user_id: ID пользователя (опционально, для учета навыка endurance)
+        session: SQLAlchemy сессия (опционально, для учета навыка endurance)
+    
+    Returns:
+        Кортеж (может_участвовать: bool, причина: str)
+    """
     if event_type not in EVENTS:
         return False, "Неизвестное событие"
     
+    # Определяем минимальную требуемую энергию
+    min_energy_required = 20  # Базовая стоимость
+    
+    # Если передан user_id и session, учитываем навык endurance
+    if user_id is not None and session is not None:
+        try:
+            from bot.services.energy_cost import get_min_energy_required
+            min_energy_required = get_min_energy_required(user_id, session, base_cost=20)
+        except Exception:
+            # Если ошибка, используем базовую стоимость
+            pass
+    
     # Проверяем энергию
     energy = waifu.get("dynamic", {}).get("energy", 0)
-    if energy < 20:
-        return False, "Недостаточно энергии для участия"
+    if energy < min_energy_required:
+        return False, f"Недостаточно энергии для участия (требуется {min_energy_required})"
     
     # Проверяем настроение
     mood = waifu.get("dynamic", {}).get("mood", 0)

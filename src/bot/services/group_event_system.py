@@ -302,6 +302,15 @@ async def finalize_group_event(
             
             rewards = get_event_rewards(score, event_type)
             
+            # Применяем навык endurance для расчета расхода энергии
+            from bot.services.energy_cost import calculate_energy_cost
+            energy_cost = calculate_energy_cost(20, user.id, session)
+            
+            # Применяем навык golden_hand для расчета золота
+            from bot.services.waifu_action_rewards import apply_waifu_gold_bonus
+            base_coins = rewards["coins"]
+            final_coins = apply_waifu_gold_bonus(base_coins, user.id, session)
+            
             # Apply rewards
             waifu.xp += rewards["xp"]
             
@@ -312,14 +321,15 @@ async def finalize_group_event(
             
             waifu.dynamic = {
                 **waifu.dynamic,
-                "energy": max(0, current_energy - 20),
+                "energy": max(0, current_energy - energy_cost),
                 "mood": min(100, current_mood + 5),
                 "loyalty": int(round(min(100, current_loyalty + 2))),
                 "last_restore": datetime.utcnow().isoformat()
             }
             flag_modified(waifu, "dynamic")
             
-            user.coins += rewards["coins"]
+            # Обновляем пользователя с учетом бонуса золота
+            user.coins += final_coins
             
             # Get username display
             username_display = user.username or user.display_name or f"Игрок_{user.id}"
@@ -329,8 +339,11 @@ async def finalize_group_event(
                 "waifu_name": waifu.name,
                 "score": score,
                 "rewards": rewards,
+                "final_coins": final_coins,
+                "final_xp": rewards["xp"],
                 "user_id": user_id,
-                "waifu_id": waifu_id
+                "waifu_id": waifu_id,
+                "user": user  # Store user object for gem rewards
             })
             
             logger.info(f"Processed participant: user {user_id} ({username_display}), waifu {waifu_id} ({waifu.name}), score {score}")
@@ -345,15 +358,19 @@ async def finalize_group_event(
     # Sort by score and apply medal mood bonuses
     results.sort(key=lambda x: x["score"], reverse=True)
     
-    # Apply medal bonuses
+    # Apply medal bonuses and gem rewards
     for i, result in enumerate(results, 1):
         bonus_mood = 0
+        gem_reward = 0
         if i == 1:  # Gold
             bonus_mood = 15
+            gem_reward = 50
         elif i == 2:  # Silver
             bonus_mood = 10
+            gem_reward = 30
         elif i == 3:  # Bronze
             bonus_mood = 5
+            gem_reward = 20
         
         if bonus_mood > 0:
             # Get waifu again to update mood bonus
@@ -363,6 +380,12 @@ async def finalize_group_event(
                 current_mood = int(waifu.dynamic.get("mood", 50))
                 waifu.dynamic["mood"] = min(100, current_mood + bonus_mood)
                 flag_modified(waifu, "dynamic")
+        
+        # Award gems to top 3
+        if gem_reward > 0 and result.get("user"):
+            result["user"].gems += gem_reward
+            result["gem_reward"] = gem_reward
+            logger.info(f"Awarded {gem_reward} gems to user {result['user_id']} ({result['username']}) for {i} place")
     
     session.commit()
     
@@ -378,7 +401,14 @@ async def finalize_group_event(
             username_display = result['username']
             if not username_display.startswith('@'):
                 username_display = f"@{username_display}"
+            
+            # Build reward text
+            reward_text = f"💰{result.get('final_coins', 0)} ⭐{result.get('final_xp', 0)}"
+            if result.get('gem_reward', 0) > 0:
+                reward_text += f" 💎+{result['gem_reward']}"
+            
             text += f"{medal} {username_display} ({result['waifu_name']}) - {result['score']} очков\n"
+            text += f"   Награды: {reward_text}\n"
         
         if len(results) > 10:
             text += f"\n... и еще {len(results) - 10} участников"

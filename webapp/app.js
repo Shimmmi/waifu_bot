@@ -116,6 +116,13 @@ function navigateTo(view) {
         if (views[view]) {
             viewTitle.textContent = views[view].title;
             
+            // Hide/show back button based on view
+            const backBtn = document.querySelector('#other-views .back-btn');
+            if (backBtn) {
+                // Hide back button for upgrade page (it already has one in the content)
+                backBtn.style.display = view === 'upgrade' ? 'none' : 'block';
+            }
+            
             // Clear content first to prevent stale data
             viewContent.innerHTML = '<p class="loading">Загрузка...</p>';
             
@@ -1272,11 +1279,12 @@ async function openWaifuDetail(waifuId) {
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <button onclick="openUpgradeModal('${waifuId}')" style="
                                 background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-                                border: none; color: white; padding: 8px 12px; border-radius: 8px;
-                                font-size: 12px; font-weight: bold; cursor: pointer;
-                                transition: all 0.2s; display: flex; align-items: center; gap: 4px;
-                            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                                ⚡ Улучшить
+                                border: none; color: white; padding: 6px 10px; border-radius: 8px;
+                                font-size: 16px; font-weight: bold; cursor: pointer;
+                                transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+                                width: 32px; height: 32px; min-width: 32px;
+                            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" title="Улучшить">
+                                ↑
                             </button>
                             <button id="favorite-toggle-btn" onclick="toggleWaifuFavorite('${waifuId}')" style="
                                 background: ${waifu.is_favorite ? '#f5576c' : 'rgba(255,255,255,0.3)'};
@@ -1309,22 +1317,22 @@ async function openWaifuDetail(waifuId) {
                         <!-- Main Stats -->
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px;">
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">💪 Сила • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.power || 0}</span></div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px; white-space: nowrap;">💪 СИЛ • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.power || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">🍀 Удача • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.luck || 0}</span></div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px; white-space: nowrap;">🍀 УДЧ • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.luck || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">🧠 Интеллект • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.intellect || 0}</span></div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px; white-space: nowrap;">🧠 ИНТ • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.intellect || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">✨ Обаяние • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.charm || 0}</span></div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px; white-space: nowrap;">✨ ОБА • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.charm || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">🎯 Ловкость • <span style="font-weight: bold; font-size: 16px;">${waifu.dynamic.bond || 0}</span></div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px; white-space: nowrap;">🎯 ЛОВ • <span style="font-weight: bold; font-size: 16px;">${waifu.dynamic.bond || 0}</span></div>
                             </div>
                             <div style="background: rgba(255,255,255,0.1); padding: 12px; border-radius: 12px;">
-                                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">⚡ Скорость • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.speed || 0}</span></div>
+                                <div style="color: rgba(255,255,255,0.9); font-size: 14px; white-space: nowrap;">⚡ СКО • <span style="font-weight: bold; font-size: 16px;">${waifu.stats.speed || 0}</span></div>
                             </div>
                         </div>
                         
@@ -1413,95 +1421,77 @@ function getProfessionEmoji(profession) {
     return professionMap[profession] || '👤';
 }
 
-// Open avatar selection
-async function openAvatarSelection() {
-    try {
-        const response = await fetch('/api/avatars');
-        if (!response.ok) {
-            throw new Error('Failed to fetch avatars');
-        }
-        
-        const data = await response.json();
-        const avatars = data.avatars;
-        
-        // Create avatar selection modal
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.8); z-index: 1000; display: flex; 
-            align-items: center; justify-content: center;
-        `;
-        
-        modal.innerHTML = `
-            <div style="background: white; border-radius: 12px; padding: 20px; max-width: 90%; max-height: 80%; overflow-y: auto;">
-                <h3 style="margin: 0 0 16px 0; text-align: center;">Выберите аватар</h3>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
-                    ${avatars.map(avatar => `
-                        <div onclick="selectAvatar('${avatar.id}')" style="
-                            cursor: pointer; text-align: center; padding: 8px; 
-                            border-radius: 8px; border: 2px solid transparent;
-                            transition: all 0.2s;
-                        " onmouseover="this.style.borderColor='#4CAF50'" onmouseout="this.style.borderColor='transparent'">
-                            <img src="${avatar.url}" alt="${avatar.name}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;" 
-                                 onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%2760%27%20height=%2760%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E👤%3C/text%3E%3C/svg%3E'">
-                            <div style="font-size: 12px; margin-top: 4px;">${avatar.name}</div>
-                        </div>
-                    `).join('')}
-                </div>
-                <button onclick="closeAvatarModal()" style="
-                    width: 100%; padding: 8px; background: #f44336; color: white; 
-                    border: none; border-radius: 6px; cursor: pointer;
-                ">Отмена</button>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        
-    } catch (error) {
-        console.error('Error loading avatars:', error);
-        if (window.Telegram?.WebApp?.showAlert) {
-            window.Telegram.WebApp.showAlert('Ошибка загрузки аватаров');
-        }
-    }
+// Open avatar selection (now opens file upload)
+function openAvatarSelection() {
+    // Create hidden file input
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.style.display = 'none';
+    fileInput.onchange = handleAvatarUpload;
+    
+    document.body.appendChild(fileInput);
+    fileInput.click();
+    document.body.removeChild(fileInput);
 }
 
-// Select avatar
-async function selectAvatar(avatarId) {
-    try {
-        const initData = window.Telegram?.WebApp?.initData || '';
-        const response = await fetch(`/api/avatar/select?avatar_id=${avatarId}&${new URLSearchParams({ initData })}`, {
-            method: 'POST'
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to select avatar');
-        }
-        
-        const result = await response.json();
-        
-        if (window.Telegram?.WebApp?.showAlert) {
-            window.Telegram.WebApp.showAlert(result.message);
-        }
-        
-        closeAvatarModal();
-        
-        // Reload profile to show new avatar
-        await loadProfile();
-        
-    } catch (error) {
-        console.error('Error selecting avatar:', error);
-        if (window.Telegram?.WebApp?.showAlert) {
-            window.Telegram.WebApp.showAlert('Ошибка выбора аватара');
-        }
+// Handle avatar upload
+function handleAvatarUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+        window.Telegram?.WebApp?.showAlert?.('Пожалуйста, выберите изображение');
+        return;
     }
-}
-
-// Close avatar modal
-function closeAvatarModal() {
-    const modal = document.querySelector('div[style*="position: fixed"]');
-    if (modal) {
-        modal.remove();
+    
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        window.Telegram?.WebApp?.showAlert?.('Файл слишком большой (макс. 5МБ)');
+        return;
     }
+    
+    // Read file as base64
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const imageData = e.target.result;
+        
+        try {
+            const initData = window.Telegram?.WebApp?.initData || '';
+            const response = await fetch('/api/profile/upload-avatar?' + new URLSearchParams({ initData }), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image: imageData
+                })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Ошибка загрузки');
+            }
+            
+            const result = await response.json();
+            
+            window.Telegram?.WebApp?.showAlert?.('✅ Аватар загружен');
+            
+            // Reload profile to show new avatar
+            await loadProfile();
+            
+        } catch (error) {
+            console.error('Error uploading avatar:', error);
+            window.Telegram?.WebApp?.showAlert?.('❌ ' + error.message);
+        }
+    };
+    
+    reader.onerror = () => {
+        window.Telegram?.WebApp?.showAlert?.('Ошибка чтения файла');
+    };
+    
+    reader.readAsDataURL(file);
 }
 
 // Select waifu to make active
@@ -1905,14 +1895,23 @@ async function loadProfile() {
         document.getElementById('user-name').textContent = '@' + (profileData.username || 'Unknown');
         document.getElementById('user-id').textContent = `ID: ${profileData.user_id || '...'}`;
         
-        // Update avatar (use user's selected avatar or default)
-        const avatarNum = profileData.avatar || 1;
-        const avatarUrl = `https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/avatars/avatar_${avatarNum}.png`;
+        // Update avatar - use uploaded image if available, otherwise use default
         const avatarElement = document.getElementById('user-avatar');
-        avatarElement.style.backgroundImage = `url(${avatarUrl})`;
-        avatarElement.style.backgroundSize = 'cover';
-        avatarElement.style.backgroundPosition = 'center';
-        avatarElement.textContent = '';
+        if (profileData.avatar_image) {
+            // Use uploaded avatar
+            avatarElement.style.backgroundImage = `url(${profileData.avatar_image})`;
+            avatarElement.style.backgroundSize = 'cover';
+            avatarElement.style.backgroundPosition = 'center';
+            avatarElement.textContent = '';
+        } else {
+            // Use default avatar based on user ID
+            const avatarNum = ((profileData.user_id || 0) % 9) + 1;
+            const avatarUrl = `https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/avatars/avatar_${avatarNum}.png`;
+            avatarElement.style.backgroundImage = `url(${avatarUrl})`;
+            avatarElement.style.backgroundSize = 'cover';
+            avatarElement.style.backgroundPosition = 'center';
+            avatarElement.textContent = '';
+        }
         
         // Update currency
         document.getElementById('gold-value').textContent = profileData.gold || 0;

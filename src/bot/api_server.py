@@ -301,6 +301,12 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
         except Exception as e:
             logger.warning(f"⚠️ Error fetching skill effects for profile: {e}")
         
+        # Get avatar image from user_skills if available
+        avatar_image = None
+        user_skills_dict = getattr(user, 'user_skills', {}) or {}
+        if isinstance(user_skills_dict, dict):
+            avatar_image = user_skills_dict.get('avatar_image')
+        
         profile_data = {
             "username": user.username or "username",
             "user_id": user.tg_id,
@@ -311,7 +317,8 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
             "level": getattr(user, 'account_level', 1),
             "xp": getattr(user, 'global_xp', 0),
             "waifu_sort_preference": getattr(user, 'waifu_sort_preference', 'name'),
-            "active_waifu": active_waifu
+            "active_waifu": active_waifu,
+            "avatar_image": avatar_image  # Base64 image data or None
         }
         
         logger.info(f"✅ Profile data fetched")
@@ -1666,6 +1673,55 @@ async def select_avatar(request: Request, avatar_id: str, db: Session = Depends(
         raise
     except Exception as e:
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+@app.post("/api/profile/upload-avatar")
+async def upload_profile_avatar(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Upload profile avatar image"""
+    try:
+        logger.info(f"📡 API REQUEST: POST /api/profile/upload-avatar")
+        
+        # Get user
+        telegram_user_id = get_telegram_user_id(request)
+        if not telegram_user_id:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        user = db.query(User).filter(User.tg_id == telegram_user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Get request body
+        body = await request.json()
+        image_data = body.get('image')
+        
+        if not image_data:
+            raise HTTPException(status_code=400, detail="Изображение не предоставлено")
+        
+        # Validate image format
+        if not image_data.startswith('data:image'):
+            raise HTTPException(status_code=400, detail="Неверный формат изображения")
+        
+        # Update user_skills to store avatar image (using JSONB field)
+        from sqlalchemy.orm.attributes import flag_modified
+        
+        if user.user_skills is None:
+            user.user_skills = {}
+        
+        user.user_skills['avatar_image'] = image_data
+        flag_modified(user, 'user_skills')
+        db.commit()
+        
+        logger.info(f"✅ Profile avatar uploaded for user {user.id}")
+        return {
+            "success": True,
+            "message": "Аватар загружен"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        db.rollback()
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
 
 @app.get("/health")
