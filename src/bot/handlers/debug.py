@@ -226,7 +226,7 @@ async def handle_debug_add_xp_menu(callback: CallbackQuery, tg_user_id: int) -> 
         
     except Exception as e:
         await callback.answer(f"Ошибка: {str(e)}")
-        finally:
+    finally:
         session.close()
 
 
