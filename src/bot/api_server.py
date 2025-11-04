@@ -1509,10 +1509,37 @@ async def perform_upgrade(request: Request, db: Session = Depends(get_db)) -> Di
         old_xp = target_waifu.xp or 0
         target_waifu.xp = old_xp + total_xp
         
-        # Check for level up
-        new_level = calculate_level_from_xp(target_waifu.xp)
+        # Check for level up using LevelUpService
+        from bot.services.level_up import level_up_service
+        from sqlalchemy.orm.attributes import flag_modified
+        
+        should_level_up, new_level = level_up_service.check_level_up(target_waifu.xp, target_waifu.level)
         level_gained = new_level - old_level
-        target_waifu.level = new_level
+        
+        # Track stat increases for response
+        stat_increases = {}
+        old_stats = dict(target_waifu.stats) if target_waifu.stats else {}
+        
+        if should_level_up:
+            # Apply level up changes (including stat increases)
+            waifu_data = {
+                "level": target_waifu.level,
+                "xp": target_waifu.xp,
+                "stats": dict(target_waifu.stats) if target_waifu.stats else {}
+            }
+            
+            level_up_info = level_up_service.apply_level_up(waifu_data, new_level)
+            
+            # Update waifu with new level and stats
+            target_waifu.level = new_level
+            target_waifu.stats = level_up_info["updated_stats"]
+            stat_increases = level_up_info["increased_stats"]
+            flag_modified(target_waifu, "stats")
+            
+            logger.info(f"✅ Level up applied: {old_level} → {new_level}, stat increases: {stat_increases}")
+        else:
+            # No level up, just update level if it changed (shouldn't happen, but safety check)
+            target_waifu.level = new_level
         
         # Delete sacrifice waifus
         for waifu in sacrifice_waifus:
@@ -1529,7 +1556,9 @@ async def perform_upgrade(request: Request, db: Session = Depends(get_db)) -> Di
             "old_level": old_level,
             "new_level": new_level,
             "level_gained": level_gained,
-            "sacrificed_count": len(sacrifice_waifus)
+            "sacrificed_count": len(sacrifice_waifus),
+            "stat_increases": stat_increases,
+            "old_stats": old_stats
         }
         
     except HTTPException:

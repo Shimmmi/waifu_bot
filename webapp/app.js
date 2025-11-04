@@ -1044,6 +1044,11 @@ async function confirmUpgrade(targetWaifuId) {
             await loadUpgradePage(viewContent);
         }
         
+        // Reload waifus list if on waifus page
+        if (currentView === 'waifus') {
+            await loadWaifus();
+        }
+        
         // Reload profile to update active waifu if needed
         if (profileData) {
             await loadProfile();
@@ -1059,10 +1064,12 @@ async function confirmUpgrade(targetWaifuId) {
 
 // Close upgrade modal
 function closeUpgradeModal() {
-    const modal = document.querySelector('div[style*="position: fixed"]');
-    if (modal) {
-        modal.remove();
-    }
+    const modals = document.querySelectorAll('div[style*="position: fixed"]');
+    modals.forEach(modal => {
+        if (modal.style.zIndex === '10000') {
+            modal.remove();
+        }
+    });
 }
 
 // Show upgrade results modal
@@ -1081,6 +1088,39 @@ function showUpgradeResultsModal(result, targetWaifuId) {
     const levelGained = result.new_level - result.old_level;
     const levelText = levelGained > 0 ? `+${levelGained}` : '0';
     
+    // Stat names in Russian
+    const statNamesRu = {
+        'power': '💪 Сила',
+        'charm': '✨ Обаяние',
+        'luck': '🍀 Удача',
+        'affection': '❤️ Привязанность',
+        'intellect': '🧠 Интеллект',
+        'speed': '⚡ Скорость'
+    };
+    
+    // Build stat increases HTML
+    let statIncreasesHTML = '';
+    if (result.stat_increases && Object.keys(result.stat_increases).length > 0) {
+        const statLines = [];
+        for (const [statName, increaseAmount] of Object.entries(result.stat_increases)) {
+            const statNameRu = statNamesRu[statName] || statName;
+            const oldValue = result.old_stats[statName] || 0;
+            const newValue = (result.old_stats[statName] || 0) + increaseAmount;
+            statLines.push(`
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                    <span style="color: #666;">${statNameRu}:</span>
+                    <span style="font-weight: bold; color: #28a745;">${oldValue} → ${newValue} (+${increaseAmount})</span>
+                </div>
+            `);
+        }
+        statIncreasesHTML = `
+            <div style="border-top: 1px solid #dee2e6; padding-top: 12px; margin-top: 12px;">
+                <div style="font-weight: bold; color: #333; margin-bottom: 8px; font-size: 14px;">📊 Улучшенные характеристики:</div>
+                ${statLines.join('')}
+            </div>
+        `;
+    }
+    
     modal.innerHTML = `
         <div style="background: white; border-radius: 20px; max-width: 400px; width: 100%; padding: 24px; text-align: center;">
             <div style="font-size: 48px; margin-bottom: 16px;">⚡</div>
@@ -1095,13 +1135,14 @@ function showUpgradeResultsModal(result, targetWaifuId) {
                     <span style="color: #666;">💫 Получено XP:</span>
                     <span style="font-weight: bold; color: #17a2b8;">+${result.xp_added}</span>
                 </div>
-                <div style="display: flex; justify-content: space-between;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: ${result.stat_increases && Object.keys(result.stat_increases).length > 0 ? '0' : '0'};">
                     <span style="color: #666;">🔥 Пожертвовано:</span>
                     <span style="font-weight: bold; color: #dc3545;">${result.sacrificed_count} вайфу</span>
                 </div>
+                ${statIncreasesHTML}
             </div>
             
-            <button onclick="closeUpgradeModal()" style="
+            <button onclick="event.stopPropagation(); closeUpgradeModal()" style="
                 background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
                 color: white; border: none; padding: 14px; border-radius: 12px; 
                 font-size: 16px; font-weight: bold; cursor: pointer; width: 100%;
