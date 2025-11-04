@@ -565,9 +565,17 @@ async def handle_waifu_events_callback(callback: CallbackQuery) -> None:
     from aiogram.enums import ChatType
     is_group = callback.message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]
     
+    # Check if user is admin (for private chat event trigger)
+    ADMIN_ID = 305174198
+    is_admin = callback.from_user.id == ADMIN_ID
+    
     if is_group:
         # Group chat: show event selection menu
         await handle_group_events_menu(callback)
+    elif is_admin:
+        # Admin in private chat: show chat selection for event trigger
+        from bot.handlers.debug import handle_debug_trigger_event
+        await handle_debug_trigger_event(callback, ADMIN_ID)
     else:
         # Private chat: show regular events
         events = get_available_events()
