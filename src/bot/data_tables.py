@@ -261,34 +261,632 @@ TAGS = [
 
 # Events and their requirements
 EVENTS = {
+    # Legacy events (backward compatibility)
     "dance": {
         "base_stats": ["charm", "speed", "luck"], 
         "profession_bonus": "Dancer",
         "name": "Танцевальный конкурс",
-        "description": "Покажи свои танцевальные навыки!"
+        "description": "Покажи свои танцевальные навыки!",
+        "filter_type": "none",
+        "sort_by": "power"
     },
     "hunt": {
         "base_stats": ["power", "speed", "luck"], 
         "profession_bonus": "Warrior",
         "name": "Охота на монстров",
-        "description": "Сражайся с опасными существами!"
+        "description": "Сражайся с опасными существами!",
+        "filter_type": "none",
+        "sort_by": "power"
     },
     "quiz": {
         "base_stats": ["intellect", "charm", "luck"], 
         "profession_bonus": "Scholar",
         "name": "Интеллектуальная викторина",
-        "description": "Проверь свои знания!"
+        "description": "Проверь свои знания!",
+        "filter_type": "none",
+        "sort_by": "power"
     },
     "cooking": {
         "base_stats": ["intellect", "charm", "luck"], 
         "profession_bonus": "Chef",
         "name": "Кулинарный конкурс",
-        "description": "Приготовь самое вкусное блюдо!"
+        "description": "Приготовь самое вкусное блюдо!",
+        "filter_type": "none",
+        "sort_by": "power"
     },
     "singing": {
         "base_stats": ["charm", "intellect", "luck"], 
         "profession_bonus": "Singer",
         "name": "Вокальный конкурс",
-        "description": "Покажи свой голос!"
+        "description": "Покажи свой голос!",
+        "filter_type": "none",
+        "sort_by": "power"
+    },
+    
+    # Overall Power events
+    "power_arena": {
+        "base_stats": ["power", "charm", "intellect", "speed", "luck", "affection"],
+        "profession_bonus": None,
+        "name": "Арена силы",
+        "description": "Проверка общей мощи вайфу",
+        "filter_type": "none",
+        "sort_by": "power"
+    },
+    "total_combat": {
+        "base_stats": ["power", "charm", "intellect", "speed", "luck", "affection"],
+        "profession_bonus": None,
+        "name": "Общий бой",
+        "description": "Сражение с использованием всех навыков",
+        "filter_type": "none",
+        "sort_by": "power"
+    },
+    "grand_tournament": {
+        "base_stats": ["power", "charm", "intellect", "speed", "luck", "affection"],
+        "profession_bonus": None,
+        "name": "Большой турнир",
+        "description": "Турнир, требующий всесторонней подготовки",
+        "filter_type": "none",
+        "sort_by": "power"
+    },
+    "ultimate_challenge": {
+        "base_stats": ["power", "charm", "intellect", "speed", "luck", "affection"],
+        "profession_bonus": None,
+        "name": "Финальный вызов",
+        "description": "Испытание для самых сильных вайфу",
+        "filter_type": "none",
+        "sort_by": "power"
+    },
+    
+    # Race-specific events
+    "elf_magic_contest": {
+        "base_stats": ["intellect", "charm", "luck"],
+        "profession_bonus": "Mage",
+        "name": "Магический конкурс эльфов",
+        "description": "Демонстрация магических способностей эльфов",
+        "filter_type": "race",
+        "filter_value": "Elf",
+        "sort_by": "power"
+    },
+    "demon_dark_tournament": {
+        "base_stats": ["power", "intellect", "luck"],
+        "profession_bonus": "Warrior",
+        "name": "Темный турнир демонов",
+        "description": "Соревнование силы и темной магии",
+        "filter_type": "race",
+        "filter_value": "Demon",
+        "sort_by": "power"
+    },
+    "angel_divine_ceremony": {
+        "base_stats": ["charm", "intellect", "luck"],
+        "profession_bonus": "Healer",
+        "name": "Божественная церемония",
+        "description": "Проверка чистоты и силы ангелов",
+        "filter_type": "race",
+        "filter_value": "Angel",
+        "sort_by": "power"
+    },
+    "vampire_night_ball": {
+        "base_stats": ["charm", "speed", "luck"],
+        "profession_bonus": "Assassin",
+        "name": "Ночной бал вампиров",
+        "description": "Элегантное соревнование в ночи",
+        "filter_type": "race",
+        "filter_value": "Vampire",
+        "sort_by": "power"
+    },
+    "dragon_flight_race": {
+        "base_stats": ["power", "speed", "luck"],
+        "profession_bonus": "Warrior",
+        "name": "Гонка драконов",
+        "description": "Испытание скорости и силы драконов",
+        "filter_type": "race",
+        "filter_value": "Dragon",
+        "sort_by": "power"
+    },
+    "beast_wild_hunt": {
+        "base_stats": ["power", "speed", "luck"],
+        "profession_bonus": "Warrior",
+        "name": "Дикая охота",
+        "description": "Проверка инстинктов и силы зверей",
+        "filter_type": "race",
+        "filter_value": "Beast",
+        "sort_by": "power"
+    },
+    "fairy_enchantment_show": {
+        "base_stats": ["charm", "intellect", "luck"],
+        "profession_bonus": "Mage",
+        "name": "Шоу очарования фей",
+        "description": "Демонстрация магии и красоты фей",
+        "filter_type": "race",
+        "filter_value": "Fairy",
+        "sort_by": "power"
+    },
+    "human_worldly_skills": {
+        "base_stats": ["power", "charm", "intellect", "speed", "luck", "affection"],
+        "profession_bonus": None,
+        "name": "Мирские навыки",
+        "description": "Проверка разнообразия навыков людей",
+        "filter_type": "race",
+        "filter_value": "Human",
+        "sort_by": "power"
+    },
+    
+    # Profession-specific events
+    "warrior_melee_tournament": {
+        "base_stats": ["power", "speed", "luck"],
+        "profession_bonus": "Warrior",
+        "name": "Турнир ближнего боя",
+        "description": "Сражение на мечах и щитах",
+        "filter_type": "profession",
+        "filter_value": "Warrior",
+        "sort_by": "power"
+    },
+    "mage_spell_casting": {
+        "base_stats": ["intellect", "charm", "luck"],
+        "profession_bonus": "Mage",
+        "name": "Турнир заклинателей",
+        "description": "Соревнование в магических способностях",
+        "filter_type": "profession",
+        "filter_value": "Mage",
+        "sort_by": "power"
+    },
+    "assassin_shadow_contest": {
+        "base_stats": ["speed", "power", "luck"],
+        "profession_bonus": "Assassin",
+        "name": "Конкурс теней",
+        "description": "Испытание скрытности и ловкости",
+        "filter_type": "profession",
+        "filter_value": "Assassin",
+        "sort_by": "power"
+    },
+    "knight_honor_duel": {
+        "base_stats": ["power", "charm", "luck"],
+        "profession_bonus": "Knight",
+        "name": "Рыцарский поединок",
+        "description": "Поединок чести и доблести",
+        "filter_type": "profession",
+        "filter_value": "Knight",
+        "sort_by": "power"
+    },
+    "archer_precision_contest": {
+        "base_stats": ["speed", "power", "luck"],
+        "profession_bonus": "Archer",
+        "name": "Конкурс точности",
+        "description": "Проверка меткости и скорости",
+        "filter_type": "profession",
+        "filter_value": "Archer",
+        "sort_by": "power"
+    },
+    "healer_healing_competition": {
+        "base_stats": ["intellect", "charm", "luck"],
+        "profession_bonus": "Healer",
+        "name": "Соревнование целителей",
+        "description": "Проверка навыков исцеления",
+        "filter_type": "profession",
+        "filter_value": "Healer",
+        "sort_by": "power"
+    },
+    "merchant_trading_challenge": {
+        "base_stats": ["charm", "intellect", "luck"],
+        "profession_bonus": "Merchant",
+        "name": "Торговое испытание",
+        "description": "Проверка навыков торговли",
+        "filter_type": "profession",
+        "filter_value": "Merchant",
+        "sort_by": "power"
+    },
+    
+    # Nationality-specific events
+    "japanese_tradition_festival": {
+        "base_stats": ["charm", "intellect", "luck"],
+        "profession_bonus": None,
+        "name": "Фестиваль традиций",
+        "description": "Демонстрация японской культуры",
+        "filter_type": "nationality",
+        "filter_value": "JP",
+        "sort_by": "power"
+    },
+    "chinese_martial_arts": {
+        "base_stats": ["power", "speed", "luck"],
+        "profession_bonus": "Warrior",
+        "name": "Турнир боевых искусств",
+        "description": "Проверка навыков боевых искусств",
+        "filter_type": "nationality",
+        "filter_value": "CN",
+        "sort_by": "power"
+    },
+    "korean_kpop_showcase": {
+        "base_stats": ["charm", "speed", "luck"],
+        "profession_bonus": None,
+        "name": "K-pop шоукейс",
+        "description": "Соревнование в танцах и пении",
+        "filter_type": "nationality",
+        "filter_value": "KR",
+        "sort_by": "power"
+    },
+    "american_superhero_contest": {
+        "base_stats": ["power", "charm", "luck"],
+        "profession_bonus": None,
+        "name": "Конкурс супергероев",
+        "description": "Проверка силы и героизма",
+        "filter_type": "nationality",
+        "filter_value": "US",
+        "sort_by": "power"
+    },
+    "british_royal_gala": {
+        "base_stats": ["charm", "intellect", "luck"],
+        "profession_bonus": None,
+        "name": "Королевский гала",
+        "description": "Элегантное соревнование",
+        "filter_type": "nationality",
+        "filter_value": "GB",
+        "sort_by": "power"
+    },
+    "french_art_salon": {
+        "base_stats": ["charm", "intellect", "luck"],
+        "profession_bonus": None,
+        "name": "Салон искусств",
+        "description": "Демонстрация художественных талантов",
+        "filter_type": "nationality",
+        "filter_value": "FR",
+        "sort_by": "power"
+    },
+    "german_engineering_show": {
+        "base_stats": ["intellect", "power", "luck"],
+        "profession_bonus": None,
+        "name": "Выставка инженерии",
+        "description": "Проверка интеллекта и точности",
+        "filter_type": "nationality",
+        "filter_value": "DE",
+        "sort_by": "power"
+    },
+    "italian_culinary_master": {
+        "base_stats": ["intellect", "charm", "luck"],
+        "profession_bonus": None,
+        "name": "Кулинарный мастер",
+        "description": "Соревнование в кулинарии",
+        "filter_type": "nationality",
+        "filter_value": "IT",
+        "sort_by": "power"
+    },
+    "russian_winter_games": {
+        "base_stats": ["power", "speed", "luck"],
+        "profession_bonus": None,
+        "name": "Зимние игры",
+        "description": "Испытание силы и выносливости",
+        "filter_type": "nationality",
+        "filter_value": "RU",
+        "sort_by": "power"
+    },
+    "brazilian_carnival_dance": {
+        "base_stats": ["charm", "speed", "luck"],
+        "profession_bonus": None,
+        "name": "Карнавальный танец",
+        "description": "Проверка танцевальных навыков",
+        "filter_type": "nationality",
+        "filter_value": "BR",
+        "sort_by": "power"
+    },
+    "indian_spiritual_quest": {
+        "base_stats": ["intellect", "charm", "luck"],
+        "profession_bonus": None,
+        "name": "Духовный квест",
+        "description": "Проверка мудрости и духовности",
+        "filter_type": "nationality",
+        "filter_value": "IN",
+        "sort_by": "power"
+    },
+    "canadian_wilderness_race": {
+        "base_stats": ["power", "speed", "luck"],
+        "profession_bonus": None,
+        "name": "Гонка в дикой природе",
+        "description": "Испытание выживания и силы",
+        "filter_type": "nationality",
+        "filter_value": "CA",
+        "sort_by": "power"
+    },
+    
+    # Rarity-specific events
+    "common_rookie_arena": {
+        "base_stats": ["power", "charm", "intellect", "speed", "luck", "affection"],
+        "profession_bonus": None,
+        "name": "Арена новичков",
+        "description": "Событие для начинающих вайфу",
+        "filter_type": "rarity",
+        "filter_value": "Common",
+        "rarity_min": "Common",
+        "sort_by": "power"
+    },
+    "uncommon_rising_stars": {
+        "base_stats": ["power", "charm", "intellect", "speed", "luck", "affection"],
+        "profession_bonus": None,
+        "name": "Восходящие звезды",
+        "description": "Турнир для развивающихся вайфу",
+        "filter_type": "rarity",
+        "filter_value": "Uncommon",
+        "rarity_min": "Uncommon",
+        "sort_by": "power"
+    },
+    "rare_elite_tournament": {
+        "base_stats": ["power", "charm", "intellect", "speed", "luck", "affection"],
+        "profession_bonus": None,
+        "name": "Элитный турнир",
+        "description": "Соревнование для редких вайфу",
+        "filter_type": "rarity",
+        "filter_value": "Rare",
+        "rarity_min": "Rare",
+        "sort_by": "power"
+    },
+    "epic_legendary_battle": {
+        "base_stats": ["power", "charm", "intellect", "speed", "luck", "affection"],
+        "profession_bonus": None,
+        "name": "Легендарная битва",
+        "description": "Испытание для эпических вайфу",
+        "filter_type": "rarity",
+        "filter_value": "Epic",
+        "rarity_min": "Epic",
+        "sort_by": "power"
+    },
+    "legendary_ultimate_showdown": {
+        "base_stats": ["power", "charm", "intellect", "speed", "luck", "affection"],
+        "profession_bonus": None,
+        "name": "Финальная схватка",
+        "description": "Вызов только для легендарных вайфу",
+        "filter_type": "rarity",
+        "filter_value": "Legendary",
+        "rarity_min": "Legendary",
+        "sort_by": "power"
+    },
+    
+    # Primary Stat Challenges - Power
+    "strength_arena": {
+        "base_stats": ["power"],
+        "profession_bonus": "Warrior",
+        "name": "Арена силы",
+        "description": "Проверка физической силы",
+        "filter_type": "none",
+        "sort_by": "power_stat"
+    },
+    "power_lifting_contest": {
+        "base_stats": ["power"],
+        "profession_bonus": "Warrior",
+        "name": "Соревнование по тяжелой атлетике",
+        "description": "Поднятие тяжестей",
+        "filter_type": "none",
+        "sort_by": "power_stat"
+    },
+    "might_tournament": {
+        "base_stats": ["power"],
+        "profession_bonus": "Warrior",
+        "name": "Турнир могущества",
+        "description": "Испытание силы",
+        "filter_type": "none",
+        "sort_by": "power_stat"
+    },
+    "brute_force_challenge": {
+        "base_stats": ["power"],
+        "profession_bonus": "Warrior",
+        "name": "Вызов грубой силы",
+        "description": "Проверка физической мощи",
+        "filter_type": "none",
+        "sort_by": "power_stat"
+    },
+    "destruction_competition": {
+        "base_stats": ["power"],
+        "profession_bonus": "Warrior",
+        "name": "Соревнование разрушителей",
+        "description": "Испытание разрушающей силы",
+        "filter_type": "none",
+        "sort_by": "power_stat"
+    },
+    
+    # Primary Stat Challenges - Charm
+    "charm_contest": {
+        "base_stats": ["charm"],
+        "profession_bonus": None,
+        "name": "Конкурс очарования",
+        "description": "Проверка привлекательности",
+        "filter_type": "none",
+        "sort_by": "charm_stat"
+    },
+    "beauty_pageant": {
+        "base_stats": ["charm"],
+        "profession_bonus": None,
+        "name": "Конкурс красоты",
+        "description": "Соревнование красоты",
+        "filter_type": "none",
+        "sort_by": "charm_stat"
+    },
+    "charisma_show": {
+        "base_stats": ["charm"],
+        "profession_bonus": None,
+        "name": "Шоу харизмы",
+        "description": "Демонстрация обаяния",
+        "filter_type": "none",
+        "sort_by": "charm_stat"
+    },
+    "attraction_battle": {
+        "base_stats": ["charm"],
+        "profession_bonus": None,
+        "name": "Битва притягательности",
+        "description": "Проверка магнетизма",
+        "filter_type": "none",
+        "sort_by": "charm_stat"
+    },
+    "elegance_competition": {
+        "base_stats": ["charm"],
+        "profession_bonus": None,
+        "name": "Соревнование элегантности",
+        "description": "Испытание изящества",
+        "filter_type": "none",
+        "sort_by": "charm_stat"
+    },
+    
+    # Primary Stat Challenges - Intellect
+    "intellect_quiz": {
+        "base_stats": ["intellect"],
+        "profession_bonus": "Mage",
+        "name": "Интеллектуальная викторина",
+        "description": "Проверка знаний",
+        "filter_type": "none",
+        "sort_by": "intellect_stat"
+    },
+    "mind_puzzle_challenge": {
+        "base_stats": ["intellect"],
+        "profession_bonus": "Mage",
+        "name": "Головоломка разума",
+        "description": "Решение сложных задач",
+        "filter_type": "none",
+        "sort_by": "intellect_stat"
+    },
+    "strategy_tournament": {
+        "base_stats": ["intellect"],
+        "profession_bonus": "Mage",
+        "name": "Турнир стратегов",
+        "description": "Проверка стратегического мышления",
+        "filter_type": "none",
+        "sort_by": "intellect_stat"
+    },
+    "wisdom_contest": {
+        "base_stats": ["intellect"],
+        "profession_bonus": "Mage",
+        "name": "Конкурс мудрости",
+        "description": "Испытание мудрости",
+        "filter_type": "none",
+        "sort_by": "intellect_stat"
+    },
+    "brain_power_show": {
+        "base_stats": ["intellect"],
+        "profession_bonus": "Mage",
+        "name": "Шоу интеллекта",
+        "description": "Демонстрация умственных способностей",
+        "filter_type": "none",
+        "sort_by": "intellect_stat"
+    },
+    
+    # Primary Stat Challenges - Speed
+    "speed_race": {
+        "base_stats": ["speed"],
+        "profession_bonus": "Assassin",
+        "name": "Гонка скорости",
+        "description": "Проверка быстроты",
+        "filter_type": "none",
+        "sort_by": "speed_stat"
+    },
+    "agility_contest": {
+        "base_stats": ["speed"],
+        "profession_bonus": "Assassin",
+        "name": "Конкурс ловкости",
+        "description": "Испытание проворства",
+        "filter_type": "none",
+        "sort_by": "speed_stat"
+    },
+    "flash_challenge": {
+        "base_stats": ["speed"],
+        "profession_bonus": "Assassin",
+        "name": "Вызов молнии",
+        "description": "Проверка скорости реакции",
+        "filter_type": "none",
+        "sort_by": "speed_stat"
+    },
+    "rapid_tournament": {
+        "base_stats": ["speed"],
+        "profession_bonus": "Assassin",
+        "name": "Турнир скорости",
+        "description": "Соревнование в быстроте",
+        "filter_type": "none",
+        "sort_by": "speed_stat"
+    },
+    "lightning_strike_competition": {
+        "base_stats": ["speed"],
+        "profession_bonus": "Assassin",
+        "name": "Соревнование молний",
+        "description": "Испытание молниеносной скорости",
+        "filter_type": "none",
+        "sort_by": "speed_stat"
+    },
+    
+    # Primary Stat Challenges - Luck
+    "luck_roulette": {
+        "base_stats": ["luck"],
+        "profession_bonus": None,
+        "name": "Рулетка удачи",
+        "description": "Проверка везения",
+        "filter_type": "none",
+        "sort_by": "luck_stat"
+    },
+    "fortune_wheel": {
+        "base_stats": ["luck"],
+        "profession_bonus": None,
+        "name": "Колесо фортуны",
+        "description": "Испытание удачи",
+        "filter_type": "none",
+        "sort_by": "luck_stat"
+    },
+    "chance_competition": {
+        "base_stats": ["luck"],
+        "profession_bonus": None,
+        "name": "Соревнование шансов",
+        "description": "Проверка случайности",
+        "filter_type": "none",
+        "sort_by": "luck_stat"
+    },
+    "lucky_draw": {
+        "base_stats": ["luck"],
+        "profession_bonus": None,
+        "name": "Счастливая жеребьевка",
+        "description": "Испытание фортуны",
+        "filter_type": "none",
+        "sort_by": "luck_stat"
+    },
+    "fate_tournament": {
+        "base_stats": ["luck"],
+        "profession_bonus": None,
+        "name": "Турнир судьбы",
+        "description": "Проверка благосклонности судьбы",
+        "filter_type": "none",
+        "sort_by": "luck_stat"
+    },
+    
+    # Primary Stat Challenges - Affection
+    "affection_ceremony": {
+        "base_stats": ["affection"],
+        "profession_bonus": None,
+        "name": "Церемония привязанности",
+        "description": "Проверка близости",
+        "filter_type": "none",
+        "sort_by": "affection_stat"
+    },
+    "bond_challenge": {
+        "base_stats": ["affection"],
+        "profession_bonus": None,
+        "name": "Вызов связи",
+        "description": "Испытание привязанности",
+        "filter_type": "none",
+        "sort_by": "affection_stat"
+    },
+    "love_contest": {
+        "base_stats": ["affection"],
+        "profession_bonus": None,
+        "name": "Конкурс любви",
+        "description": "Соревнование в любви",
+        "filter_type": "none",
+        "sort_by": "affection_stat"
+    },
+    "devotion_tournament": {
+        "base_stats": ["affection"],
+        "profession_bonus": None,
+        "name": "Турнир преданности",
+        "description": "Проверка верности",
+        "filter_type": "none",
+        "sort_by": "affection_stat"
+    },
+    "connection_competition": {
+        "base_stats": ["affection"],
+        "profession_bonus": None,
+        "name": "Соревнование связи",
+        "description": "Испытание эмоциональной связи",
+        "filter_type": "none",
+        "sort_by": "affection_stat"
     }
 }

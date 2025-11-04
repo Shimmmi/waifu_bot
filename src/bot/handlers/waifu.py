@@ -403,8 +403,12 @@ async def handle_random_event(callback: CallbackQuery) -> None:
         score, event_name = calculate_event_score({
             "stats": waifu.stats,
             "profession": waifu.profession,
-            "dynamic": waifu.dynamic
-        }, event_type)
+            "dynamic": waifu.dynamic,
+            "race": waifu.race,
+            "nationality": waifu.nationality,
+            "rarity": waifu.rarity,
+            "level": waifu.level
+        }, event_type, user_id=user.id, session=session)
         
         rewards = get_event_rewards(score, event_type)
         

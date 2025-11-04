@@ -718,14 +718,57 @@ async def handle_event_accept_callback(callback: CallbackQuery) -> None:
 
             event = EVENTS.get(event_type, {})
             
+            # Применяем фильтрацию и сортировку
+            from bot.services.event_system import filter_waifus_for_event, sort_waifus_for_event
+            filtered_waifus = filter_waifus_for_event(waifus, event, user_id=user.id, session=session)
+            sorted_waifus = sort_waifus_for_event(filtered_waifus, event, user_id=user.id, session=session)
+            
+            # Получаем информацию о фильтре для отображения
+            filter_info = ""
+            filter_type = event.get("filter_type", "none")
+            if filter_type == "race":
+                filter_info = f"\n🔍 <b>Требование:</b> Раса: {event.get('filter_value', '')}\n"
+            elif filter_type == "profession":
+                filter_info = f"\n🔍 <b>Требование:</b> Профессия: {event.get('filter_value', '')}\n"
+            elif filter_type == "nationality":
+                filter_info = f"\n🔍 <b>Требование:</b> Национальность: {event.get('filter_value', '')}\n"
+            elif filter_type == "rarity":
+                filter_info = f"\n🔍 <b>Требование:</b> Редкость: {event.get('filter_value', '')} или выше\n"
+            
+            # Получаем информацию о сортировке
+            sort_by = event.get("sort_by", "power")
+            sort_info = ""
+            if sort_by == "power_stat":
+                sort_info = "💡 <b>Рекомендация:</b> Выберите вайфу с высокой силой\n"
+            elif sort_by == "charm_stat":
+                sort_info = "💡 <b>Рекомендация:</b> Выберите вайфу с высоким очарованием\n"
+            elif sort_by == "intellect_stat":
+                sort_info = "💡 <b>Рекомендация:</b> Выберите вайфу с высоким интеллектом\n"
+            elif sort_by == "speed_stat":
+                sort_info = "💡 <b>Рекомендация:</b> Выберите вайфу с высокой скоростью\n"
+            elif sort_by == "luck_stat":
+                sort_info = "💡 <b>Рекомендация:</b> Выберите вайфу с высокой удачей\n"
+            elif sort_by == "affection_stat":
+                sort_info = "💡 <b>Рекомендация:</b> Выберите вайфу с высокой привязанностью\n"
+            
+            if not sorted_waifus:
+                await callback.answer("У вас нет подходящих вайфу для этого события!")
+                return
+            
             # Создаем кнопки для выбора вайфу
             keyboard_buttons = []
-            for waifu in waifus:
+            recommended_waifu_id = sorted_waifus[0].id if sorted_waifus else None
+            
+            for waifu in sorted_waifus:
+                from bot.services.skill_effects import get_user_skill_effects
+                skill_effects = get_user_skill_effects(session, user.id)
+                
                 power = calculate_waifu_power({
                     "stats": waifu.stats,
                     "dynamic": waifu.dynamic,
-                    "level": waifu.level
-                })
+                    "level": waifu.level,
+                    "rarity": waifu.rarity
+                }, skill_effects)
                 rarity_icon = get_rarity_color(waifu.rarity)
                 
                 # Проверяем возможность участия (с учетом навыка endurance)
@@ -734,7 +777,9 @@ async def handle_event_accept_callback(callback: CallbackQuery) -> None:
                     "profession": waifu.profession
                 }, event_type, user_id=user.id, session=session)
                 
-                button_text = f"{waifu.name} - Ур.{waifu.level} {rarity_icon} 💪{power}"
+                # Подсветка рекомендованной вайфу
+                recommended_mark = "⭐ " if waifu.id == recommended_waifu_id and can_participate else ""
+                button_text = f"{recommended_mark}{waifu.name} - Ур.{waifu.level} {rarity_icon} 💪{power}"
                 if not can_participate:
                     button_text += f" ⛔ ({reason})"
                 
@@ -749,7 +794,9 @@ async def handle_event_accept_callback(callback: CallbackQuery) -> None:
 
             text = (
                 f"🎯 <b>{event.get('name', 'Событие')}</b>\n\n"
-                f"📝 {event.get('description', 'Описание отсутствует')}\n\n"
+                f"📝 {event.get('description', 'Описание отсутствует')}\n"
+                f"{filter_info}"
+                f"{sort_info}\n"
                 f"Выберите вайфу для участия:"
             )
 
@@ -1075,8 +1122,12 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
             score, event_name = calculate_event_score({
                 "stats": waifu.stats,
                 "profession": waifu.profession,
-                "dynamic": waifu.dynamic
-            }, event_type)
+                "dynamic": waifu.dynamic,
+                "race": waifu.race,
+                "nationality": waifu.nationality,
+                "rarity": waifu.rarity,
+                "level": waifu.level
+            }, event_type, user_id=user.id, session=session)
             
             rewards = get_event_rewards(score, event_type)
             
@@ -1835,26 +1886,78 @@ async def handle_group_event_yes_callback(callback: CallbackQuery) -> None:
             await callback.answer("Событие уже завершено")
             return
         
+        event_type = event_state.event_type
+        event = EVENTS.get(event_type, {})
+        
+        # Применяем фильтрацию и сортировку
+        from bot.services.event_system import filter_waifus_for_event, sort_waifus_for_event
+        filtered_waifus = filter_waifus_for_event(waifus, event, user_id=user.id, session=session)
+        sorted_waifus = sort_waifus_for_event(filtered_waifus, event, user_id=user.id, session=session)
+        
+        if not sorted_waifus:
+            await callback.answer("У вас нет подходящих вайфу для этого события!")
+            return
+        
+        # Получаем информацию о фильтре для отображения
+        filter_info = ""
+        filter_type = event.get("filter_type", "none")
+        if filter_type == "race":
+            filter_info = f"\n🔍 <b>Требование:</b> Раса: {event.get('filter_value', '')}\n"
+        elif filter_type == "profession":
+            filter_info = f"\n🔍 <b>Требование:</b> Профессия: {event.get('filter_value', '')}\n"
+        elif filter_type == "nationality":
+            filter_info = f"\n🔍 <b>Требование:</b> Национальность: {event.get('filter_value', '')}\n"
+        elif filter_type == "rarity":
+            filter_info = f"\n🔍 <b>Требование:</b> Редкость: {event.get('filter_value', '')} или выше\n"
+        
+        # Получаем информацию о сортировке
+        sort_by = event.get("sort_by", "power")
+        sort_info = ""
+        if sort_by == "power_stat":
+            sort_info = "💡 <b>Рекомендация:</b> Выберите вайфу с высокой силой\n"
+        elif sort_by == "charm_stat":
+            sort_info = "💡 <b>Рекомендация:</b> Выберите вайфу с высоким очарованием\n"
+        elif sort_by == "intellect_stat":
+            sort_info = "💡 <b>Рекомендация:</b> Выберите вайфу с высоким интеллектом\n"
+        elif sort_by == "speed_stat":
+            sort_info = "💡 <b>Рекомендация:</b> Выберите вайфу с высокой скоростью\n"
+        elif sort_by == "luck_stat":
+            sort_info = "💡 <b>Рекомендация:</b> Выберите вайфу с высокой удачей\n"
+        elif sort_by == "affection_stat":
+            sort_info = "💡 <b>Рекомендация:</b> Выберите вайфу с высокой привязанностью\n"
+        
         # Build waifu selection keyboard
         keyboard_buttons = []
-        for waifu in waifus:
+        recommended_waifu_id = sorted_waifus[0].id if sorted_waifus else None
+        
+        for waifu in sorted_waifus:
+            from bot.services.skill_effects import get_user_skill_effects
+            skill_effects = get_user_skill_effects(session, user.id)
+            
             power = calculate_waifu_power({
                 "stats": waifu.stats,
                 "dynamic": waifu.dynamic,
-                "level": waifu.level
-            })
+                "level": waifu.level,
+                "rarity": waifu.rarity
+            }, skill_effects)
             rarity_icon = get_rarity_color(waifu.rarity)
+            
+            # Подсветка рекомендованной вайфу
+            recommended_mark = "⭐ " if waifu.id == recommended_waifu_id else ""
+            button_text = f"{recommended_mark}{waifu.name} - Ур.{waifu.level} {rarity_icon} 💪{power}"
             
             keyboard_buttons.append([
                 InlineKeyboardButton(
-                    text=f"{waifu.name} - Ур.{waifu.level} {rarity_icon} 💪{power}",
+                    text=button_text,
                     callback_data=f"group_event_waifu_{event_id}_{waifu.id}"
                 )
             ])
         
-        event = EVENTS.get(event_state.event_type, {})
         text = (
             f"🎯 <b>{event.get('name', 'Событие')}</b>\n\n"
+            f"📝 {event.get('description', 'Описание отсутствует')}\n"
+            f"{filter_info}"
+            f"{sort_info}\n"
             f"Выберите вайфу для участия:"
         )
         

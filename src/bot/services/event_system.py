@@ -3,8 +3,8 @@ from typing import Dict, List, Tuple, Optional, Any
 from ..data_tables import EVENTS
 
 
-def calculate_event_score(waifu: Dict, event_type: str) -> Tuple[float, str]:
-    """Вычисляет очки вайфу в событии"""
+def calculate_event_score(waifu: Dict, event_type: str, user_id: Optional[int] = None, session: Optional[Any] = None) -> Tuple[float, str]:
+    """Вычисляет очки вайфу в событии с учетом всех факторов"""
     if event_type not in EVENTS:
         return 0.0, "Неизвестное событие"
     
@@ -22,20 +22,163 @@ def calculate_event_score(waifu: Dict, event_type: str) -> Tuple[float, str]:
     
     # Бонус за профессию
     profession_bonus = 1.0
-    if waifu.get("profession") == event["profession_bonus"]:
+    profession_bonus_name = event.get("profession_bonus")
+    if profession_bonus_name and waifu.get("profession") == profession_bonus_name:
         profession_bonus = 1.25
     
     # Бонусы от динамических характеристик
     mood_bonus = dynamic.get("mood", 50) / 100
     loyalty_bonus = dynamic.get("loyalty", 50) / 100
     
+    # Бонус за соответствие фильтру (для race/profession/nationality событий)
+    filter_bonus = 1.0
+    filter_type = event.get("filter_type", "none")
+    if filter_type == "race" and waifu.get("race") == event.get("filter_value"):
+        filter_bonus = 1.15  # +15% за правильную расу
+    elif filter_type == "profession" and waifu.get("profession") == event.get("filter_value"):
+        filter_bonus = 1.15  # +15% за правильную профессию
+    elif filter_type == "nationality" and waifu.get("nationality") == event.get("filter_value"):
+        filter_bonus = 1.15  # +15% за правильную национальность
+    elif filter_type == "rarity":
+        # Бонус за редкость: выше редкость = выше бонус
+        rarity_multipliers = {
+            "Common": 1.0,
+            "Uncommon": 1.1,
+            "Rare": 1.2,
+            "Epic": 1.3,
+            "Legendary": 1.5
+        }
+        filter_bonus = rarity_multipliers.get(waifu.get("rarity"), 1.0)
+    
+    # Бонус за уровень
+    level = waifu.get("level", 1)
+    level_bonus = 1.0 + (level - 1) * 0.02  # +2% за каждый уровень выше 1
+    
     # Итоговый счет
-    final_score = base_score * profession_bonus * (0.8 + mood_bonus * 0.2) * (0.9 + loyalty_bonus * 0.1)
+    final_score = (
+        base_score 
+        * profession_bonus 
+        * filter_bonus
+        * level_bonus
+        * (0.8 + mood_bonus * 0.2) 
+        * (0.9 + loyalty_bonus * 0.1)
+    )
     
     # Добавляем случайность для интереса
     final_score *= random.uniform(0.9, 1.1)
     
     return round(final_score, 2), event["name"]
+
+
+def filter_waifus_for_event(waifus: List[Any], event_config: Dict, user_id: Optional[int] = None, session: Optional[Any] = None) -> List[Any]:
+    """
+    Фильтрует список вайфу в соответствии с требованиями события
+    
+    Args:
+        waifus: Список всех вайфу игрока
+        event_config: Конфигурация события из EVENTS
+        user_id: ID пользователя (опционально, для расчета мощи)
+        session: SQLAlchemy сессия (опционально, для расчета мощи)
+        
+    Returns:
+        Отфильтрованный список вайфу
+    """
+    filtered = list(waifus)
+    
+    filter_type = event_config.get("filter_type", "none")
+    filter_value = event_config.get("filter_value")
+    
+    if filter_type == "race":
+        filtered = [w for w in filtered if w.race == filter_value]
+    elif filter_type == "profession":
+        filtered = [w for w in filtered if w.profession == filter_value]
+    elif filter_type == "nationality":
+        filtered = [w for w in filtered if w.nationality == filter_value]
+    elif filter_type == "rarity":
+        rarity_order = ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
+        min_rarity_index = rarity_order.index(filter_value) if filter_value in rarity_order else 0
+        filtered = [
+            w for w in filtered 
+            if w.rarity in rarity_order and rarity_order.index(w.rarity) >= min_rarity_index
+        ]
+    # filter_type == "none" или "primary_stat" - без фильтрации
+    
+    return filtered
+
+
+def sort_waifus_for_event(waifus: List[Any], event_config: Dict, user_id: Optional[int] = None, session: Optional[Any] = None) -> List[Any]:
+    """
+    Сортирует вайфу для отображения в порядке выбора
+    
+    Args:
+        waifus: Список отфильтрованных вайфу
+        event_config: Конфигурация события
+        user_id: ID пользователя (для расчета мощи)
+        session: SQLAlchemy сессия (для расчета мощи)
+        
+    Returns:
+        Отсортированный список вайфу (от лучшего к худшему)
+    """
+    sort_by = event_config.get("sort_by", "power")
+    
+    def get_sort_key(waifu: Any) -> float:
+        if sort_by == "power":
+            # Общая мощь вайфу
+            try:
+                from bot.services.waifu_generator import calculate_waifu_power
+                from bot.services.skill_effects import get_user_skill_effects
+                
+                skill_effects = {}
+                if user_id is not None and session is not None:
+                    try:
+                        skill_effects = get_user_skill_effects(session, user_id)
+                    except Exception:
+                        pass
+                
+                return calculate_waifu_power({
+                    "stats": waifu.stats,
+                    "dynamic": waifu.dynamic,
+                    "level": waifu.level,
+                    "rarity": waifu.rarity
+                }, skill_effects)
+            except Exception:
+                # Fallback: simple sum of stats
+                stats = waifu.stats if hasattr(waifu, 'stats') else {}
+                return sum(stats.values()) if isinstance(stats, dict) else 0
+        
+        elif sort_by == "power_stat":
+            stats = waifu.stats if hasattr(waifu, 'stats') else {}
+            return stats.get("power", 0) if isinstance(stats, dict) else 0
+        elif sort_by == "charm_stat":
+            stats = waifu.stats if hasattr(waifu, 'stats') else {}
+            return stats.get("charm", 0) if isinstance(stats, dict) else 0
+        elif sort_by == "intellect_stat":
+            stats = waifu.stats if hasattr(waifu, 'stats') else {}
+            return stats.get("intellect", 0) if isinstance(stats, dict) else 0
+        elif sort_by == "speed_stat":
+            stats = waifu.stats if hasattr(waifu, 'stats') else {}
+            return stats.get("speed", 0) if isinstance(stats, dict) else 0
+        elif sort_by == "luck_stat":
+            stats = waifu.stats if hasattr(waifu, 'stats') else {}
+            return stats.get("luck", 0) if isinstance(stats, dict) else 0
+        elif sort_by == "affection_stat":
+            stats = waifu.stats if hasattr(waifu, 'stats') else {}
+            return stats.get("affection", 0) if isinstance(stats, dict) else 0
+        else:
+            # По умолчанию по общей мощи
+            try:
+                from bot.services.waifu_generator import calculate_waifu_power
+                return calculate_waifu_power({
+                    "stats": waifu.stats,
+                    "dynamic": waifu.dynamic,
+                    "level": waifu.level,
+                    "rarity": waifu.rarity
+                }, {})
+            except Exception:
+                return 0
+    
+    sorted_waifus = sorted(waifus, key=get_sort_key, reverse=True)
+    return sorted_waifus
 
 
 def get_event_rewards(score: float, event_type: str) -> Dict:
