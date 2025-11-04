@@ -48,6 +48,7 @@ async def handle_debug_menu_callback(callback: CallbackQuery) -> None:
         [InlineKeyboardButton(text="🗑️ Удалить всех вайфу", callback_data="debug_wipe_confirm")],
         [InlineKeyboardButton(text="💥 ВАЙП АККАУНТА", callback_data="debug_wipe_all_confirm")],
         [InlineKeyboardButton(text="🎯 Запустить событие", callback_data="debug_trigger_event")],
+        [InlineKeyboardButton(text="⚔️ Убить рейд босса", callback_data="debug_kill_raid_boss")],
         [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu")]
     ])
     
@@ -96,6 +97,8 @@ async def handle_debug_action_callback(callback: CallbackQuery) -> None:
         await handle_debug_trigger_event(callback, tg_user_id)
     elif callback.data.startswith("debug_event_chat_"):
         await handle_debug_event_select_chat(callback, tg_user_id)
+    elif callback.data == "debug_kill_raid_boss":
+        await handle_debug_kill_raid_boss(callback, tg_user_id)
 
 
 async def handle_debug_restore_energy(callback: CallbackQuery, tg_user_id: int) -> None:
@@ -1028,6 +1031,99 @@ async def handle_debug_wipe_all_execute(callback: CallbackQuery, tg_user_id: int
         
     except Exception as e:
         logger.error(f"Error during account wipe: {e}", exc_info=True)
+        await callback.answer(f"Ошибка: {str(e)}")
+        session.rollback()
+    finally:
+        session.close()
+
+
+async def handle_debug_kill_raid_boss(callback: CallbackQuery, tg_user_id: int) -> None:
+    """Убить рейд босса и отправить результаты в групповой чат"""
+    # Check if admin
+    ADMIN_ID = 305174198
+    if tg_user_id != ADMIN_ID:
+        await callback.answer("❌ Нет прав")
+        return
+    
+    session = SessionLocal()
+    bot = callback.bot
+    
+    try:
+        # Получаем пользователя
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            await callback.answer("Пользователь не найден")
+            return
+        
+        # Проверяем, состоит ли пользователь в клане
+        from bot.models import ClanMember, ClanEvent
+        from sqlalchemy import and_
+        
+        member = session.query(ClanMember).filter(ClanMember.user_id == user.id).first()
+        if not member:
+            await callback.answer("❌ Вы не состоите в клане")
+            return
+        
+        # Ищем активный рейд для клана
+        raid_event = session.query(ClanEvent).filter(
+            and_(
+                ClanEvent.clan_id == member.clan_id,
+                ClanEvent.event_type == 'raid',
+                ClanEvent.status == 'active'
+            )
+        ).first()
+        
+        if not raid_event:
+            await callback.answer("❌ Нет активного рейда для вашего клана")
+            return
+        
+        # Устанавливаем HP босса в 0
+        from sqlalchemy.orm.attributes import flag_modified
+        event_data = raid_event.data or {}
+        event_data['boss_current_hp'] = 0
+        raid_event.data = event_data
+        flag_modified(raid_event, 'data')
+        session.commit()
+        
+        # Финализируем рейд
+        from bot.services.clan_raid import ClanRaidService, get_most_active_chat_for_raid
+        
+        raid_service = ClanRaidService()
+        results_text = await raid_service._finalize_raid(session, raid_event)
+        
+        # Находим чат с наибольшей активностью
+        chat_id = get_most_active_chat_for_raid(session, raid_event.id)
+        
+        if chat_id and results_text:
+            # Отправляем сообщение в групповой чат
+            try:
+                await bot.send_message(
+                    chat_id=chat_id,
+                    text=results_text,
+                    parse_mode="HTML"
+                )
+                logger.info(f"✅ Raid results sent to chat {chat_id}")
+            except Exception as e:
+                logger.error(f"❌ Error sending raid results to chat {chat_id}: {e}", exc_info=True)
+                await callback.answer(f"⚠️ Рейд завершен, но не удалось отправить сообщение в чат: {e}")
+                return
+        
+        await callback.answer("✅ Рейд босс убит!")
+        await callback.message.edit_text(
+            f"⚔️ <b>Рейд босс убит!</b>\n\n"
+            f"✅ Рейд завершен и награды распределены.\n"
+            f"{'✅ Результаты отправлены в групповой чат' if chat_id and results_text else '⚠️ Чат не найден для отправки результатов'}\n\n"
+            f"ID рейда: {raid_event.id}",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Назад", callback_data="debug_menu")]
+            ]),
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error killing raid boss: {e}", exc_info=True)
         await callback.answer(f"Ошибка: {str(e)}")
         session.rollback()
     finally:

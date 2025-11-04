@@ -41,7 +41,8 @@ class ClanRaidService:
         session: Session,
         user_id: int,
         chat_id: int,
-        message: Message
+        message: Message,
+        bot=None
     ) -> Optional[Dict]:
         """
         Обрабатывает сообщение для активного рейда клана.
@@ -154,7 +155,20 @@ class ClanRaidService:
             boss_defeated = False
             if new_hp <= 0:
                 boss_defeated = True
-                await self._finalize_raid(session, raid_event)
+                results_text = await self._finalize_raid(session, raid_event)
+                
+                # Отправляем результаты в групповой чат, если бот передан
+                if bot and results_text:
+                    try:
+                        # Используем текущий chat_id для отправки сообщения
+                        await bot.send_message(
+                            chat_id=chat_id,
+                            text=results_text,
+                            parse_mode="HTML"
+                        )
+                        logger.info(f"✅ Raid results sent to chat {chat_id}")
+                    except Exception as e:
+                        logger.error(f"❌ Error sending raid results to chat {chat_id}: {e}", exc_info=True)
             
             # 10. Обновляем событие
             raid_event.data = event_data
@@ -218,13 +232,16 @@ class ClanRaidService:
         self,
         session: Session,
         raid_event: ClanEvent
-    ) -> None:
+    ) -> str:
         """
         Завершает рейд, распределяет награды и отправляет уведомления.
         
         Args:
             session: SQLAlchemy сессия
             raid_event: Событие рейда
+            
+        Returns:
+            Строка с результатами битвы для отправки в групповой чат
         """
         try:
             # 1. Обновляем статус рейда
@@ -239,19 +256,32 @@ class ClanRaidService:
             if not participations:
                 session.commit()
                 logger.warning(f"⚠️ Raid {raid_event.id} completed with no participants")
-                return
+                return "⚠️ Рейд завершен, но не было участников."
             
             # 3. Вычисляем общий урон для расчета процентов
             total_damage = sum(p.score for p in participations)
             
-            # 4. Распределяем награды
+            # 4. Получаем данные босса
+            event_data = raid_event.data or {}
+            boss_name = event_data.get('boss_name', 'Дракон Клана')
+            
+            # 5. Распределяем награды
             base_rewards = {
                 'gold': 5000,  # Базовое золото за победу
                 'gems': 100,   # Базовые гемы
                 'skill_points': 50  # Базовые очки навыков
             }
             
-            # 5. Награждаем каждого участника
+            # Импорты для расчета силы вайфу
+            from bot.services.waifu_generator import calculate_waifu_power
+            from bot.services.skill_effects import get_user_skill_effects
+            
+            # 6. Награждаем каждого участника и собираем данные для сообщения
+            results_lines = []
+            results_lines.append(f"🎉 <b>Рейд завершен! {boss_name} побежден!</b>\n\n")
+            results_lines.append(f"💥 Общий урон: {total_damage}\n\n")
+            results_lines.append(f"🏆 <b>Результаты битвы:</b>\n\n")
+            
             for idx, participation in enumerate(participations):
                 user = session.query(User).filter(User.id == participation.user_id).first()
                 if not user:
@@ -259,6 +289,7 @@ class ClanRaidService:
                 
                 # Базовые награды пропорционально вкладу
                 contribution_rate = participation.score / total_damage if total_damage > 0 else 0
+                contribution_percent = contribution_rate * 100
                 
                 gold_reward = int(base_rewards['gold'] * contribution_rate)
                 gems_reward = int(base_rewards['gems'] * contribution_rate)
@@ -269,18 +300,24 @@ class ClanRaidService:
                     gold_reward += 5000
                     gems_reward += 200
                     skill_points_reward += 100
+                    place_icon = "🥇"
                 elif idx == 1:  # 2 место
                     gold_reward += 3000
                     gems_reward += 150
                     skill_points_reward += 75
+                    place_icon = "🥈"
                 elif idx == 2:  # 3 место
                     gold_reward += 2000
                     gems_reward += 100
                     skill_points_reward += 50
+                    place_icon = "🥉"
                 elif idx < 10:  # Топ-10
                     gold_reward += 1000
                     gems_reward += 50
                     skill_points_reward += 25
+                    place_icon = f"#{idx + 1}"
+                else:
+                    place_icon = f"#{idx + 1}"
                 
                 # Выдаем награды
                 user.coins += gold_reward
@@ -288,6 +325,37 @@ class ClanRaidService:
                 
                 # Обновляем очки навыков
                 user.skill_points += skill_points_reward
+                
+                # Получаем активную вайфу пользователя
+                active_waifu = session.query(Waifu).filter(
+                    and_(
+                        Waifu.owner_id == user.id,
+                        Waifu.is_active == True
+                    )
+                ).first()
+                
+                waifu_info = ""
+                if active_waifu:
+                    skill_effects = get_user_skill_effects(session, user.id)
+                    waifu_power = calculate_waifu_power({
+                        'stats': active_waifu.stats or {},
+                        'dynamic': active_waifu.dynamic or {},
+                        'level': active_waifu.level or 1,
+                        'rarity': active_waifu.rarity or 'Common'
+                    }, skill_effects)
+                    waifu_info = f"\n💙 {active_waifu.name} (Ур.{active_waifu.level}, Сила: {waifu_power})"
+                else:
+                    waifu_info = "\n💙 Активная вайфу: нет"
+                
+                # Формируем строку результатов
+                username_display = f"@{user.username}" if user.username else (user.display_name or f"ID{user.id}")
+                results_lines.append(
+                    f"{place_icon} <b>{username_display}</b>\n"
+                    f"   💥 Урон: {participation.score} ({contribution_percent:.1f}%)\n"
+                    f"   💰 +{gold_reward} золота\n"
+                    f"   💎 +{gems_reward} гемов\n"
+                    f"   🧬 +{skill_points_reward} очков навыков{waifu_info}\n\n"
+                )
                 
                 # Сохраняем награды в participation
                 contribution = participation.contribution.copy() if participation.contribution else {}
@@ -304,13 +372,14 @@ class ClanRaidService:
                     f"{gold_reward} gold, {gems_reward} gems, {skill_points_reward} skill points"
                 )
             
-            # 6. Обновляем опыт клана
+            # 7. Обновляем опыт клана
             clan = session.query(Clan).filter(Clan.id == raid_event.clan_id).first()
             if clan:
                 clan.experience += 500  # Бонус опыта за победу в рейде
+                results_lines.append(f"🏰 Клан получил +500 опыта!\n")
                 logger.info(f"✅ Clan {clan.id} received 500 experience for raid victory")
             
-            # 7. Сохраняем награды в событии
+            # 8. Сохраняем награды в событии
             raid_event.rewards = {
                 'distributed': True,
                 'total_participants': len(participations),
@@ -319,7 +388,10 @@ class ClanRaidService:
             
             session.commit()
             
+            results_text = "".join(results_lines)
             logger.info(f"✅ Raid {raid_event.id} completed! Total damage: {total_damage}, Participants: {len(participations)}")
+            
+            return results_text
             
         except Exception as e:
             logger.error(f"❌ Error finalizing raid: {e}", exc_info=True)
@@ -398,3 +470,39 @@ def calculate_boss_hp(clan: Clan, session: Session) -> int:
         logger.error(f"❌ Error calculating boss HP: {e}", exc_info=True)
         # Return minimum HP on error
         return 100000
+
+
+def get_most_active_chat_for_raid(session: Session, raid_event_id: int) -> Optional[int]:
+    """
+    Находит чат с наибольшей активностью для рейда.
+    
+    Args:
+        session: SQLAlchemy сессия
+        raid_event_id: ID события рейда
+        
+    Returns:
+        chat_id чата с наибольшей активностью или None, если активности нет
+    """
+    try:
+        from sqlalchemy import func
+        
+        # Группируем активность по chat_id и считаем общий урон
+        result = session.query(
+            ClanRaidActivity.chat_id,
+            func.sum(ClanRaidActivity.damage_dealt).label('total_damage'),
+            func.count(ClanRaidActivity.id).label('message_count')
+        ).filter(
+            ClanRaidActivity.event_id == raid_event_id
+        ).group_by(
+            ClanRaidActivity.chat_id
+        ).order_by(
+            func.sum(ClanRaidActivity.damage_dealt).desc()
+        ).first()
+        
+        if result:
+            return result[0]  # Возвращаем chat_id
+        
+        return None
+    except Exception as e:
+        logger.error(f"❌ Error finding most active chat for raid: {e}", exc_info=True)
+        return None

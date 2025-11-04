@@ -129,7 +129,8 @@ async def handle_group_message(message: Message) -> None:
                     session=session,
                     user_id=user.id,
                     chat_id=message.chat.id,
-                    message=message
+                    message=message,
+                    bot=message.bot
                 )
                 if raid_result and raid_result.get('boss_defeated'):
                     logger.info(f"🎉 Boss defeated in raid for user {user.id}!")
