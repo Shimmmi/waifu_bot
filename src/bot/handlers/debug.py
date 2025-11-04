@@ -3,6 +3,7 @@ Debug menu handlers for Waifu Bot
 Admin/debug commands for testing and troubleshooting
 """
 
+import logging
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram import Router
 from sqlalchemy import select, update
@@ -11,6 +12,8 @@ import random
 
 from bot.db import SessionLocal
 from bot.models import User, Waifu, XPLog
+
+logger = logging.getLogger(__name__)
 
 # Import skills models
 try:
@@ -235,6 +238,8 @@ async def handle_debug_trigger_event(callback: CallbackQuery, tg_user_id: int) -
         await callback.answer("❌ Нет прав")
         return
     
+    logger.info(f"🎯 Admin {tg_user_id} requested event trigger menu")
+    
     session = SessionLocal()
     try:
         # Get all unique chat_ids from XPLog where source is 'message'
@@ -313,6 +318,8 @@ async def handle_debug_event_select_chat(callback: CallbackQuery, tg_user_id: in
     # Extract chat_id from callback_data: debug_event_chat_{chat_id}
     chat_id = int(callback.data.replace("debug_event_chat_", ""))
     
+    logger.info(f"🎯 Admin {tg_user_id} selected chat {chat_id} for event trigger")
+    
     bot = callback.bot
     
     # Check if there's already an active event in this chat
@@ -326,6 +333,8 @@ async def handle_debug_event_select_chat(callback: CallbackQuery, tg_user_id: in
     # Select random event type
     from bot.data_tables import EVENTS
     event_type = random.choice(list(EVENTS.keys()))
+    
+    logger.info(f"🎪 Starting event '{event_type}' in chat {chat_id}")
     
     # Start the event
     event_state = group_event_manager.start_event(chat_id, event_type)
@@ -380,7 +389,7 @@ async def handle_debug_event_select_chat(callback: CallbackQuery, tg_user_id: in
                     group_event_manager.add_message_to_delete(chat_id, message_id)
                     
             except Exception as e:
-                print(f"Error sending invitation to user {user_id}: {e}")
+                logger.error(f"Error sending invitation to user {user_id}: {e}", exc_info=True)
                 continue
         
         # Announce event in group
@@ -411,11 +420,13 @@ async def handle_debug_event_select_chat(callback: CallbackQuery, tg_user_id: in
                         parse_mode="HTML"
                     )
             except Exception as e:
-                print(f"Error finalizing event in chat {chat_id}: {e}")
+                logger.error(f"Error finalizing event in chat {chat_id}: {e}", exc_info=True)
             finally:
                 session.close()
         
         asyncio.create_task(finalize_after_delay())
+        
+        logger.info(f"✅ Event '{event_type}' started in chat {chat_id} with {invitations_sent} invitations")
         
         await callback.answer("✅ Событие запущено!")
         await callback.message.edit_text(
