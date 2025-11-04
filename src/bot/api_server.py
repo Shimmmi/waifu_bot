@@ -406,6 +406,149 @@ async def update_preferences(request: Request, db: Session = Depends(get_db)) ->
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
 
+def format_currency(value: int) -> str:
+    """Форматирование валюты для отображения (округление)"""
+    if value < 1000:
+        return str(value)
+    elif value < 1000000:
+        # Округляем до одной значащей цифры после запятой для тысяч
+        formatted = f"{value / 1000:.1f}K"
+        # Убираем .0 если нет дробной части
+        if formatted.endswith('.0K'):
+            formatted = formatted.replace('.0K', 'K')
+        return formatted
+    else:
+        # Округляем до одной значащей цифры после запятой для миллионов
+        formatted = f"{value / 1000000:.1f}M"
+        # Убираем .0 если нет дробной части
+        if formatted.endswith('.0M'):
+            formatted = formatted.replace('.0M', 'M')
+        return formatted
+
+@app.get("/api/profile/view/{user_id}")
+async def view_player_profile(user_id: int, request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Получение публичных данных профиля другого игрока"""
+    try:
+        logger.info(f"📡 API REQUEST: GET /api/profile/view/{user_id}")
+        
+        if User is None:
+            raise HTTPException(status_code=500, detail="Database models not configured")
+        
+        # Проверка авторизации текущего пользователя
+        telegram_user_id = get_telegram_user_id(request)
+        if not telegram_user_id:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        
+        # Поиск целевого пользователя по user_id (это внутренний ID, не tg_id)
+        target_user = db.query(User).filter(User.id == user_id).first()
+        if not target_user:
+            logger.warning(f"⚠️ User not found: user_id={user_id}")
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Получение активной вайфу
+        active_waifu_data = None
+        active_waifu = db.query(Waifu).filter(
+            Waifu.owner_id == target_user.id,
+            Waifu.is_active == True
+        ).first()
+        
+        if active_waifu:
+            # Get skill effects for power calculation
+            skill_effects = {}
+            try:
+                from bot.services.skill_effects import get_user_skill_effects
+                skill_effects = get_user_skill_effects(db, target_user.id)
+                
+                # Calculate collection-based bonuses (synergy, harmony)
+                all_waifus = db.query(Waifu).filter(Waifu.owner_id == target_user.id).all()
+                favorite_count = sum(1 for w in all_waifus if w.is_favorite)
+                synergy_bonus = min(favorite_count * skill_effects.get('favorite_power_bonus', 0.0), 0.5)
+                
+                unique_rarities = len(set(w.rarity for w in all_waifus))
+                harmony_bonus = min(unique_rarities * skill_effects.get('rarity_bonus', 0.0), 0.25)
+                
+                # Add collection bonus to skill_effects
+                collection_bonus = synergy_bonus + harmony_bonus
+                if collection_bonus > 0:
+                    skill_effects['collection_power_bonus'] = collection_bonus
+            except Exception as e:
+                logger.warning(f"⚠️ Error fetching skill effects for profile view: {e}")
+            
+            # Calculate power with skill effects
+            power = calculate_waifu_power(active_waifu.__dict__, skill_effects)
+            
+            active_waifu_data = {
+                "id": active_waifu.id,
+                "name": active_waifu.name,
+                "level": active_waifu.level,
+                "power": power,
+                "rarity": active_waifu.rarity,
+                "race": active_waifu.race,
+                "profession": active_waifu.profession,
+                "nationality": active_waifu.nationality,
+                "image_url": active_waifu.image_url
+            }
+        
+        # Подсчет количества вайфу в коллекции
+        waifu_count = db.query(Waifu).filter(Waifu.owner_id == target_user.id).count()
+        
+        # Получение информации о клане
+        clan_data = None
+        try:
+            from bot.models import ClanMember, Clan
+            clan_member = db.query(ClanMember).filter(ClanMember.user_id == target_user.id).first()
+            if clan_member:
+                clan = db.query(Clan).filter(Clan.id == clan_member.clan_id).first()
+                if clan:
+                    clan_data = {
+                        "name": clan.name,
+                        "tag": clan.tag,
+                        "role": clan_member.role
+                    }
+        except Exception as e:
+            logger.warning(f"⚠️ Error fetching clan info for profile view: {e}")
+        
+        # Получение аватара (из user preferences или avatar field)
+        avatar_image = None
+        try:
+            # Try to get from user_skills (JSONB field)
+            user_skills_dict = getattr(target_user, 'user_skills', {}) or {}
+            if isinstance(user_skills_dict, dict):
+                avatar_image = user_skills_dict.get('avatar_image')
+        except Exception:
+            pass
+        
+        # Формирование профиля
+        profile_data = {
+            "success": True,
+            "profile": {
+                "user_id": target_user.id,
+                "username": target_user.username or "Unknown",
+                "display_name": target_user.display_name,
+                "account_level": getattr(target_user, 'account_level', 1),
+                "global_xp": getattr(target_user, 'global_xp', 0),
+                "avatar_image": avatar_image,
+                "coins": target_user.coins,
+                "coins_display": format_currency(target_user.coins),
+                "gems": target_user.gems,
+                "gems_display": format_currency(target_user.gems),
+                "skill_points": getattr(target_user, 'skill_points', 0),
+                "active_waifu": active_waifu_data,
+                "waifu_count": waifu_count,
+                "clan": clan_data,
+                "joined_at": target_user.created_at.isoformat() if hasattr(target_user, 'created_at') and target_user.created_at else None
+            }
+        }
+        
+        logger.info(f"✅ Profile view data fetched for user_id={user_id}")
+        return profile_data
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
 @app.get("/api/waifus")
 async def get_waifus(request: Request, db: Session = Depends(get_db)):
     """Получение списка всех вайфу пользователя"""

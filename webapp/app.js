@@ -2421,12 +2421,18 @@ function renderClanMembers(members) {
     };
     
     return members.map(m => `
-        <div style="display: flex; align-items: center; padding: 8px; border-bottom: 1px solid #f0f0f0;">
+        <div onclick="openPlayerProfileModal(${m.user_id})" style="
+            display: flex; align-items: center; padding: 8px; 
+            border-bottom: 1px solid #f0f0f0; cursor: pointer;
+            transition: background 0.2s;
+        " onmouseover="this.style.background='#f8f9fa'" 
+           onmouseout="this.style.background='white'">
             <div style="font-size: 24px; margin-right: 8px;">${roleEmojis[m.role]}</div>
             <div style="flex: 1;">
                 <div style="font-weight: bold; font-size: 14px; color: #333;">@${m.username}</div>
                 <div style="font-size: 12px; color: #666;">В клане с ${new Date(m.joined_at).toLocaleDateString('ru-RU')}</div>
             </div>
+            <div style="color: #999; font-size: 18px;">→</div>
         </div>
     `).join('');
 }
@@ -2907,6 +2913,155 @@ function openClanSkillsModal() {
 // Close clan skills modal
 function closeClanSkillsModal() {
     const modal = document.querySelector('div[style*="position: fixed"]');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Open player profile modal
+async function openPlayerProfileModal(userId) {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch(`/api/profile/view/${userId}?${new URLSearchParams({ initData })}`);
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            window.Telegram?.WebApp?.showAlert?.('Ошибка: ' + (errorData.detail || 'Пользователь не найден'));
+            return;
+        }
+        
+        const data = await response.json();
+        const profile = data.profile;
+        
+        // Создать модальное окно
+        const modal = document.createElement('div');
+        modal.id = 'player-profile-modal';
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8); display: flex; align-items: center;
+            justify-content: center; z-index: 10000; padding: 20px;
+        `;
+        
+        // Получить цвет редкости активной вайфу
+        const rarityColors = getRarityColor(profile.active_waifu?.rarity || 'Common');
+        
+        modal.innerHTML = `
+            <div style="background: white; border-radius: 20px; max-width: 400px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; position: relative;">
+                <button onclick="closePlayerProfileModal()" style="
+                    position: absolute; top: 16px; right: 16px; width: 32px; height: 32px;
+                    background: #dc3545; color: white; border: none; border-radius: 50%;
+                    font-size: 18px; font-weight: bold; cursor: pointer; display: flex;
+                    align-items: center; justify-content: center;
+                ">×</button>
+                
+                <!-- Avatar -->
+                <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 20px;">
+                    <div id="player-profile-avatar" style="
+                        width: 80px; height: 80px; border-radius: 50%;
+                        background-size: cover; background-position: center;
+                        margin-bottom: 12px; border: 3px solid #e0e0e0;
+                    "></div>
+                    <div style="font-weight: bold; font-size: 18px; color: #333; margin-bottom: 4px;">
+                        @${profile.username}
+                    </div>
+                    ${profile.display_name ? `<div style="font-size: 14px; color: #666; margin-bottom: 8px;">${profile.display_name}</div>` : ''}
+                </div>
+                
+                <!-- Level and Currency -->
+                <div style="display: flex; justify-content: space-around; margin-bottom: 24px; padding: 12px; background: #f8f9fa; border-radius: 12px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">⭐ Уровень</div>
+                        <div style="font-weight: bold; font-size: 16px; color: #333;">${profile.account_level}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">💰 Золото</div>
+                        <div style="font-weight: bold; font-size: 16px; color: #333;">${profile.coins_display}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">💎 Гемы</div>
+                        <div style="font-weight: bold; font-size: 16px; color: #333;">${profile.gems_display}</div>
+                    </div>
+                </div>
+                
+                <!-- Active Waifu -->
+                ${profile.active_waifu ? `
+                <div style="
+                    background: ${rarityColors.background};
+                    border: 3px solid ${rarityColors.border};
+                    border-radius: 16px; padding: 16px; margin-bottom: 20px;
+                    box-shadow: 0 2px 8px ${rarityColors.glow};
+                ">
+                    <div style="text-align: center; margin-bottom: 12px;">
+                        <img src="${profile.active_waifu.image_url}" alt="${profile.active_waifu.name}" 
+                             style="width: 120px; height: 120px; object-fit: cover; border-radius: 12px; border: 2px solid ${rarityColors.border};"
+                             onerror="this.src='data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27120%27%20height=%27120%27%3E%3Ctext%20x=%2750%25%27%20y=%2750%25%27%20font-size=%2712%27%20text-anchor=%27middle%27%20dy=%27.3em%27%3E🎭%3C/text%3E%3C/svg%3E'">
+                    </div>
+                    <div style="font-weight: bold; font-size: 18px; text-align: center; margin-bottom: 8px; color: #333;">
+                        ${profile.active_waifu.name}
+                    </div>
+                    <div style="text-align: center; font-size: 14px; color: #666; margin-bottom: 8px;">
+                        Уровень ${profile.active_waifu.level} • 💪${profile.active_waifu.power}
+                    </div>
+                    <div style="text-align: center; font-size: 12px; color: #999;">
+                        ${profile.active_waifu.rarity} • ${profile.active_waifu.race} • ${profile.active_waifu.profession} • ${getFlagEmoji(profile.active_waifu.nationality)}
+                    </div>
+                </div>
+                ` : `
+                <div style="text-align: center; padding: 24px; color: #999; font-size: 14px;">
+                    Активная вайфу не выбрана
+                </div>
+                `}
+                
+                <!-- Statistics -->
+                <div style="background: #f8f9fa; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 14px; color: #666;">📊 Коллекция:</span>
+                        <span style="font-weight: bold; font-size: 14px; color: #333;">${profile.waifu_count} вайфу</span>
+                    </div>
+                    ${profile.clan ? `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 14px; color: #666;">🏰 Клан:</span>
+                        <span style="font-weight: bold; font-size: 14px; color: #333;">${profile.clan.name} [${profile.clan.tag}]</span>
+                    </div>
+                    ` : ''}
+                </div>
+                
+                <!-- Back Button -->
+                <button onclick="closePlayerProfileModal()" style="
+                    width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white; border: none; padding: 14px; border-radius: 12px;
+                    font-size: 16px; font-weight: bold; cursor: pointer;
+                ">Назад</button>
+            </div>
+        `;
+        
+        // Установить аватар
+        const avatarElement = modal.querySelector('#player-profile-avatar');
+        if (profile.avatar_image) {
+            avatarElement.style.backgroundImage = `url(${profile.avatar_image})`;
+        } else {
+            const avatarNum = ((profile.user_id || 0) % 9) + 1;
+            const avatarUrl = `https://raw.githubusercontent.com/Shimmmi/waifu_bot/main/waifu-images/avatars/avatar_${avatarNum}.png`;
+            avatarElement.style.backgroundImage = `url(${avatarUrl})`;
+        }
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closePlayerProfileModal();
+            }
+        });
+        
+        document.body.appendChild(modal);
+        
+    } catch (error) {
+        console.error('Error loading player profile:', error);
+        window.Telegram?.WebApp?.showAlert?.('Ошибка загрузки профиля');
+    }
+}
+
+// Close player profile modal
+function closePlayerProfileModal() {
+    const modal = document.getElementById('player-profile-modal');
     if (modal) {
         modal.remove();
     }
