@@ -275,25 +275,43 @@ function renderWaifuList(container) {
             </button>
         </div>
         
-        <!-- Toolbar Row 2: Summon buttons -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; padding: 0 4px;">
+        <!-- Toolbar Row 2: Summon buttons (4 columns) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; margin-bottom: 16px; padding: 0 4px;">
             <button onclick="summonWaifu(1)" style="
                 background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
-                color: white; border: none; padding: 12px 8px; border-radius: 12px; 
-                font-size: 13px; font-weight: bold; cursor: pointer; display: flex; 
-                flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+                color: white; border: none; padding: 10px 6px; border-radius: 12px; 
+                font-size: 11px; font-weight: bold; cursor: pointer; display: flex; 
+                flex-direction: column; align-items: center; justify-content: center; gap: 3px;
             ">
-                <div style="font-size: 14px;">✨ Призыв</div>
-                <div style="font-size: 12px; opacity: 0.9;">(${summonCosts.single}💰)</div>
+                <div style="font-size: 12px;">✨ Призыв</div>
+                <div style="font-size: 10px; opacity: 0.9;">${summonCosts.single}💰</div>
             </button>
             <button onclick="summonWaifu(10)" style="
                 background: linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 90%, #2BFF88 100%); 
-                color: white; border: none; padding: 12px 8px; border-radius: 12px; 
-                font-size: 13px; font-weight: bold; cursor: pointer; display: flex; 
-                flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+                color: white; border: none; padding: 10px 6px; border-radius: 12px; 
+                font-size: 11px; font-weight: bold; cursor: pointer; display: flex; 
+                flex-direction: column; align-items: center; justify-content: center; gap: 3px;
             ">
-                <div style="font-size: 14px;">✨ Призыв x10</div>
-                <div style="font-size: 12px; opacity: 0.9;">(${summonCosts.multi}💰)</div>
+                <div style="font-size: 12px;">✨ x10</div>
+                <div style="font-size: 10px; opacity: 0.9;">${summonCosts.multi}💰</div>
+            </button>
+            <button onclick="summonPremiumWaifu(1)" style="
+                background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); 
+                color: white; border: none; padding: 10px 6px; border-radius: 12px; 
+                font-size: 11px; font-weight: bold; cursor: pointer; display: flex; 
+                flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+            ">
+                <div style="font-size: 12px;">💎 Премиум</div>
+                <div style="font-size: 10px; opacity: 0.9;">100💎</div>
+            </button>
+            <button onclick="summonPremiumWaifu(10)" style="
+                background: linear-gradient(135deg, #FF6B6B 0%, #FFE66D 100%); 
+                color: white; border: none; padding: 10px 6px; border-radius: 12px; 
+                font-size: 11px; font-weight: bold; cursor: pointer; display: flex; 
+                flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+            ">
+                <div style="font-size: 12px;">💎 x10</div>
+                <div style="font-size: 10px; opacity: 0.9;">1000💎</div>
             </button>
         </div>
         
@@ -660,7 +678,7 @@ async function summonWaifu(count) {
         const data = await response.json();
         
         // Show summoned waifus in modal
-        showSummonedWaifusModal(data.summoned, data.remaining_coins);
+        showSummonedWaifusModal(data.summoned, data.remaining_coins, null, false);
         
         // Reload waifu list
         const viewContent = document.getElementById('view-content');
@@ -685,8 +703,64 @@ async function summonWaifu(count) {
     }
 }
 
+// Premium summon waifu(s) with gems
+async function summonPremiumWaifu(count) {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        
+        const response = await fetch(`/api/summon-premium?${new URLSearchParams({ initData })}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                count: count
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            if (window.Telegram?.WebApp?.showAlert) {
+                window.Telegram.WebApp.showAlert('❌ Ошибка: ' + (errorData.detail || 'Неизвестная ошибка'));
+            }
+            return;
+        }
+        
+        const data = await response.json();
+        
+        // Show summoned waifus in modal (with gems info)
+        showSummonedWaifusModal(data.summoned, data.remaining_coins, data.remaining_gems, true);
+        
+        // Reload waifu list
+        const viewContent = document.getElementById('view-content');
+        if (viewContent && currentView === 'waifus') {
+            await loadWaifuList(viewContent);
+        }
+        
+        // Reload profile to update gems
+        if (profileData) {
+            profileData.gems = data.remaining_gems;
+            profileData.gold = data.remaining_coins;
+            const gemsElement = document.querySelector('.currency-item:nth-child(2) .currency-value');
+            const coinsElement = document.querySelector('.currency-item:nth-child(1) .currency-value');
+            if (gemsElement) {
+                gemsElement.textContent = data.remaining_gems;
+            }
+            if (coinsElement) {
+                coinsElement.textContent = data.remaining_coins;
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error summoning premium waifu:', error);
+        if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert('❌ Ошибка: ' + error.message);
+        }
+    }
+}
+
 // Show summoned waifus modal
-function showSummonedWaifusModal(waifus, remainingCoins) {
+function showSummonedWaifusModal(waifus, remainingCoins, remainingGems = null, isPremium = false) {
     const modal = document.createElement('div');
     modal.style.cssText = `
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -774,10 +848,11 @@ function showSummonedWaifusModal(waifus, remainingCoins) {
     modal.innerHTML = `
         <div style="background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 24px; margin: auto;">
             <div style="text-align: center; margin-bottom: 20px;">
-                <div style="font-size: 48px; margin-bottom: 12px;">✨</div>
-                <h2 style="margin: 0 0 8px 0; font-size: 24px; color: #333;">Призыв завершен!</h2>
+                <div style="font-size: 48px; margin-bottom: 12px;">${isPremium ? '💎' : '✨'}</div>
+                <h2 style="margin: 0 0 8px 0; font-size: 24px; color: #333;">${isPremium ? 'Премиум призыв завершен!' : 'Призыв завершен!'}</h2>
                 <p style="margin: 0; color: #666; font-size: 14px;">Призвано вайфу: ${waifus.length}</p>
-                <p style="margin: 8px 0 0 0; color: #FF9800; font-size: 16px; font-weight: bold;">Осталось монет: ${remainingCoins} 💰</p>
+                ${!isPremium ? `<p style="margin: 8px 0 0 0; color: #FF9800; font-size: 16px; font-weight: bold;">Осталось монет: ${remainingCoins} 💰</p>` : ''}
+                ${isPremium && remainingGems !== null ? `<p style="margin: 8px 0 0 0; color: #FFD700; font-size: 16px; font-weight: bold;">Осталось гемов: ${remainingGems} 💎</p>` : ''}
             </div>
             
             ${contentHTML}
@@ -1283,7 +1358,7 @@ async function openWaifuDetail(waifuId) {
                                 font-size: 16px; font-weight: bold; cursor: pointer;
                                 transition: all 0.2s; display: flex; align-items: center; justify-content: center;
                                 width: 32px; height: 32px; min-width: 32px;
-                            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" title="Улучшить">
+                            " onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)" title="Улучшить">
                                 ↑
                             </button>
                             <button id="favorite-toggle-btn" onclick="toggleWaifuFavorite('${waifuId}')" style="

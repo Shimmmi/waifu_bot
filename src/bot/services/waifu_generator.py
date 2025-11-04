@@ -213,6 +213,109 @@ def generate_waifu(card_number: int, owner_id: int = None, skill_effects: Dict =
     }
 
 
+def generate_premium_waifu(card_number: int, owner_id: int = None, skill_effects: Dict = None) -> Dict:
+    """Генерирует премиум вайфу с гарантированной редкостью Rare, Epic или Legendary
+    
+    Args:
+        card_number: Unique card number
+        owner_id: User ID who owns this waifu
+        skill_effects: Dictionary of skill effects to apply (for stat bonuses)
+    """
+    if skill_effects is None:
+        skill_effects = {}
+    
+    # Premium rarity weights: Rare 50%, Epic 35%, Legendary 15%
+    # Only Rare, Epic, Legendary (no Common/Uncommon)
+    premium_rarities = ['Rare', 'Epic', 'Legendary']
+    premium_weights = [50, 35, 15]
+    
+    # Apply rarity bonuses from skills (but keep premium rarities)
+    rare_chance = skill_effects.get('rare_chance', 0.0)
+    epic_chance = skill_effects.get('epic_chance', 0.0)
+    legendary_chance = skill_effects.get('legendary_chance', 0.0)
+    
+    # Adjust weights if skills are present
+    if rare_chance > 0 or epic_chance > 0 or legendary_chance > 0:
+        # Increase weights for Epic and Legendary based on skill bonuses
+        premium_weights[1] = min(50, int(premium_weights[1] * (1 + epic_chance * 10)))  # Epic
+        premium_weights[2] = min(30, int(premium_weights[2] * (1 + legendary_chance * 20)))  # Legendary
+        # Decrease Rare proportionally
+        premium_weights[0] = 100 - premium_weights[1] - premium_weights[2]
+        logger.debug(f"💎 Premium rarity weights adjusted: {premium_weights} (rare: {premium_weights[0]}%, epic: {premium_weights[1]}%, legend: {premium_weights[2]}%)")
+    
+    # Выбираем редкость из премиум пула
+    rarity = random.choices(premium_rarities, weights=premium_weights)[0]
+    
+    # Выбираем расу, профессию и национальность
+    race = random.choice(list(RACES.keys()))
+    profession = random.choice(list(PROFESSIONS.keys()))
+    nationality = random.choice(list(NATIONALITIES.keys()))
+    
+    # Генерируем характеристики на основе редкости
+    base_stats = STATS_DISTRIBUTION[rarity]
+    stats = {}
+    for stat_name, (min_val, max_val) in base_stats.items():
+        stats[stat_name] = random.randint(min_val, max_val)
+    
+    # Calculate base max energy
+    base_max_energy = 100
+    
+    # Apply battery skill bonus for max energy
+    if 'max_energy' in skill_effects:
+        base_max_energy += int(skill_effects['max_energy'])
+    
+    # Генерируем динамические характеристики
+    dynamic = {
+        "mood": random.randint(70, 100),
+        "loyalty": 0,  # Лояльность должна быть 0 у новых вайфу
+        "bond": 0,  # Будет установлена на основе редкости
+        "energy": random.randint(80, base_max_energy),
+        "favor": 0
+    }
+    
+    # Устанавливаем ловкость (bond) на основе редкости
+    dexterity_ranges = {
+        'Rare': (15, 20),
+        'Epic': (20, 25),
+        'Legendary': (25, 30)
+    }
+    min_dex, max_dex = dexterity_ranges.get(rarity, (15, 20))
+    dynamic["bond"] = random.randint(min_dex, max_dex)
+    
+    # Выбираем имя на основе национальности
+    name = random.choice(NAMES_BY_NATIONALITY[nationality])
+    
+    # Генерируем теги (2-4 случайных тега)
+    num_tags = random.randint(2, 4)
+    tags = random.sample(TAGS, num_tags)
+    
+    # Создаем уникальный ID
+    waifu_id = f"wf_{uuid.uuid4().hex[:8]}"
+    
+    # Get anime image based on waifu characteristics
+    image_url = get_waifu_image(race=race, profession=profession, nationality=nationality)
+    
+    return {
+        "id": waifu_id,
+        "card_number": card_number,
+        "name": name,
+        "rarity": rarity,
+        "race": race,
+        "profession": profession,
+        "nationality": nationality,
+        "image_url": image_url,
+        "owner_id": owner_id,
+        "level": 1,
+        "xp": 0,
+        "stats": stats,
+        "dynamic": dynamic,
+        "tags": tags,
+        "created_at": datetime.datetime.utcnow(),
+        "is_active": False,
+        "is_favorite": False
+    }
+
+
 def generate_waifu_name(nationality: str = None) -> str:
     """Генерирует имя для вайфу"""
     if nationality and nationality in NAMES_BY_NATIONALITY:
