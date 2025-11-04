@@ -336,6 +336,29 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
         if isinstance(user_skills_dict, dict):
             avatar_image = user_skills_dict.get('avatar_image')
         
+        # Check free summon availability
+        free_summon_available = False
+        free_summon_cooldown_seconds = 0
+        try:
+            from datetime import datetime, timedelta, timezone
+            last_free_summon = getattr(user, 'last_free_summon', None)
+            if last_free_summon:
+                # Ensure we're comparing timezone-aware datetimes
+                if last_free_summon.tzinfo is None:
+                    last_free_summon = last_free_summon.replace(tzinfo=timezone.utc)
+                time_since_last = datetime.now(timezone.utc) - last_free_summon
+                if time_since_last >= timedelta(hours=24):
+                    free_summon_available = True
+                else:
+                    # Calculate cooldown remaining
+                    time_remaining = timedelta(hours=24) - time_since_last
+                    free_summon_cooldown_seconds = int(time_remaining.total_seconds())
+            else:
+                # If never summoned, allow free summon
+                free_summon_available = True
+        except Exception as e:
+            logger.warning(f"⚠️ Error checking free summon status: {e}")
+        
         profile_data = {
             "username": user.username or "username",
             "user_id": user.tg_id,
@@ -347,7 +370,9 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
             "xp": getattr(user, 'global_xp', 0),
             "waifu_sort_preference": getattr(user, 'waifu_sort_preference', 'name'),
             "active_waifu": active_waifu,
-            "avatar_image": avatar_image  # Base64 image data or None
+            "avatar_image": avatar_image,  # Base64 image data or None
+            "free_summon_available": free_summon_available,
+            "free_summon_cooldown_seconds": free_summon_cooldown_seconds
         }
         
         logger.info(f"✅ Profile data fetched")
@@ -755,22 +780,44 @@ async def summon_waifus(request: Request, db: Session = Depends(get_db)) -> Dict
         if not user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
         
-        # Apply skill discount (bargain_hunter)
-        try:
-            from bot.services.skill_effects import get_user_skill_effects, apply_skill_discount
-            skill_effects = get_user_skill_effects(db, user.id)
-            summon_discount = skill_effects.get('summon_discount', 0.0)
-            cost = apply_skill_discount(base_cost, summon_discount)
-            # Round down to integer
-            cost = int(cost)
-            logger.info(f"💰 Summon cost: {base_cost} -> {cost} (discount: {summon_discount*100:.0f}%)")
-        except Exception as e:
-            logger.warning(f"⚠️ Error applying summon discount: {e}")
-            cost = base_cost
+        # Check for free summon (only for count == 1)
+        is_free = False
+        if count == 1:
+            from datetime import datetime, timedelta, timezone
+            # Check if 24 hours have passed since last free summon
+            last_free_summon = user.last_free_summon if hasattr(user, 'last_free_summon') else None
+            if last_free_summon:
+                # Ensure we're comparing timezone-aware datetimes
+                if last_free_summon.tzinfo is None:
+                    last_free_summon = last_free_summon.replace(tzinfo=timezone.utc)
+                time_since_last = datetime.now(timezone.utc) - last_free_summon
+                if time_since_last >= timedelta(hours=24):
+                    is_free = True
+            else:
+                # If never summoned, allow free summon
+                is_free = True
         
-        # Check if user has enough coins
-        if user.coins < cost:
-            raise HTTPException(status_code=400, detail=f"Недостаточно монет! Нужно {cost} монет.")
+        # Calculate cost
+        if is_free:
+            cost = 0
+            logger.info(f"🎁 Free summon available for user {user.id}")
+        else:
+            # Apply skill discount (bargain_hunter)
+            try:
+                from bot.services.skill_effects import get_user_skill_effects, apply_skill_discount
+                skill_effects = get_user_skill_effects(db, user.id)
+                summon_discount = skill_effects.get('summon_discount', 0.0)
+                cost = apply_skill_discount(base_cost, summon_discount)
+                # Round down to integer
+                cost = int(cost)
+                logger.info(f"💰 Summon cost: {base_cost} -> {cost} (discount: {summon_discount*100:.0f}%)")
+            except Exception as e:
+                logger.warning(f"⚠️ Error applying summon discount: {e}")
+                cost = base_cost
+            
+            # Check if user has enough coins
+            if user.coins < cost:
+                raise HTTPException(status_code=400, detail=f"Недостаточно монет! Нужно {cost} монет.")
         
         # Import waifu generator
         from bot.services.waifu_generator import generate_waifu, calculate_waifu_power
@@ -802,17 +849,24 @@ async def summon_waifus(request: Request, db: Session = Depends(get_db)) -> Dict
                 "image_url": waifu.image_url
             })
         
-        # Deduct coins
-        user.coins -= cost
+        # Deduct coins (if not free)
+        if not is_free:
+            user.coins -= cost
+        
+        # Update last_free_summon if free summon was used
+        if is_free:
+            from datetime import datetime, timezone
+            user.last_free_summon = datetime.now(timezone.utc)
         
         # Commit transaction
         db.commit()
         
-        logger.info(f"✅ Summoned {count} waifu(s) for user {user.id}, cost: {cost} coins")
+        logger.info(f"✅ Summoned {count} waifu(s) for user {user.id}, cost: {cost} coins{' (FREE)' if is_free else ''}")
         return {
             "success": True,
             "summoned": summoned_waifus,
-            "remaining_coins": user.coins
+            "remaining_coins": user.coins,
+            "is_free": is_free
         }
         
     except HTTPException:

@@ -42,6 +42,10 @@ class User(Base):
     last_gold_reset: Mapped[datetime] = mapped_column(
         nullable=False, server_default=text("now()")
     )
+    # Free summon tracking (1 per 24 hours)
+    last_free_summon: Mapped[datetime] = mapped_column(
+        nullable=False, server_default=text("TIMESTAMPTZ '1970-01-01'")
+    )
     # Tokens (special currency for rare purchases)
     tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
     # User skills (passive upgrades)

@@ -150,6 +150,18 @@ function navigateTo(view) {
     }
 }
 
+// Format cooldown time (seconds to "Xч Yм" format)
+function formatCooldown(seconds) {
+    if (seconds <= 0) return '';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) {
+        return `${hours}ч ${minutes}м`;
+    } else {
+        return `${minutes}м`;
+    }
+}
+
 // Load waifu list (My Waifus - 1xN list with WebApp links)
 async function loadWaifuList(container) {
     console.log('🎴 Loading My Waifus page');
@@ -157,6 +169,13 @@ async function loadWaifuList(container) {
 
     try {
         const initData = window.Telegram?.WebApp?.initData || '';
+        
+        // Load profile to get free summon status (always load to get current cooldown)
+        const profileResponse = await fetch('/api/profile?' + new URLSearchParams({ initData }));
+        if (profileResponse.ok) {
+            profileData = await profileResponse.json();
+        }
+        
         const response = await fetch('/api/waifus?' + new URLSearchParams({ initData }));
 
         if (!response.ok) {
@@ -165,11 +184,6 @@ async function loadWaifuList(container) {
 
         waifuList = await response.json();
         console.log('🎴 Fetched waifus for My Waifus:', waifuList.length);
-
-        if (waifuList.length === 0) {
-            container.innerHTML = '<p style="padding: 20px; color: #666;">У вас пока нет вайфу</p>';
-            return;
-        }
 
         // Fetch skill effects to calculate summon costs
         summonCosts = await calculateSummonCosts();
@@ -306,15 +320,23 @@ function renderWaifuList(container) {
         
         <!-- Toolbar Row 2: Summon buttons (4 columns, compact) -->
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px; margin-bottom: 12px; padding: 0 4px;">
-            <button onclick="summonWaifu(1)" style="
-                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
-                color: white; border: none; padding: 6px 4px; border-radius: 8px; 
-                font-size: 9px; font-weight: bold; cursor: pointer; display: flex; 
-                flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-            ">
-                <div style="font-size: 10px;">✨</div>
-                <div style="font-size: 8px; opacity: 0.95;">${summonCosts.single}💰</div>
-            </button>
+            ${(() => {
+                const isFreeAvailable = profileData?.free_summon_available === true;
+                const cooldownSeconds = profileData?.free_summon_cooldown_seconds || 0;
+                const cooldownText = cooldownSeconds > 0 ? formatCooldown(cooldownSeconds) : '';
+                const displayText = isFreeAvailable ? 'БЕСПЛАТНО' : (cooldownText || `${summonCosts.single}💰`);
+                return `
+                <button onclick="summonWaifu(1)" style="
+                    background: ${isFreeAvailable ? 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}; 
+                    color: white; border: none; padding: 6px 4px; border-radius: 8px; 
+                    font-size: 9px; font-weight: bold; cursor: pointer; display: flex; 
+                    flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+                ">
+                    <div style="font-size: 10px;">${isFreeAvailable ? '🎁' : '✨'}</div>
+                    <div style="font-size: 8px; opacity: 0.95;">${displayText}</div>
+                </button>
+                `;
+            })()}
             <button onclick="summonWaifu(10)" style="
                 background: linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 90%, #2BFF88 100%); 
                 color: white; border: none; padding: 6px 4px; border-radius: 8px; 
@@ -709,19 +731,13 @@ async function summonWaifu(count) {
         // Show summoned waifus in modal
         showSummonedWaifusModal(data.summoned, data.remaining_coins, null, false);
         
-        // Reload waifu list
+        // Reload profile to update coins and free summon status
+        await loadProfile();
+        
+        // Reload waifu list (this will use updated profileData with free summon status)
         const viewContent = document.getElementById('view-content');
         if (viewContent && currentView === 'waifus') {
             await loadWaifuList(viewContent);
-        }
-        
-        // Reload profile to update coins
-        if (profileData) {
-            profileData.gold = data.remaining_coins;
-            const coinsElement = document.querySelector('.currency-item:nth-child(1) .currency-value');
-            if (coinsElement) {
-                coinsElement.textContent = data.remaining_coins;
-            }
         }
         
     } catch (error) {
