@@ -242,11 +242,19 @@ async def finalize_group_event(
     event_state = group_event_manager.get_event(chat_id)
     
     if not event_state:
+        logger.warning(f"No event found for chat {chat_id}")
         return None
     
     if not event_state.is_expired():
         # Event not expired yet
+        logger.info(f"Event {event_state.event_id} not expired yet")
         return None
+    
+    # Save participants before removing from active events
+    participants = event_state.participants.copy()
+    event_type = event_state.event_type
+    
+    logger.info(f"Finalizing event {event_state.event_id} in chat {chat_id} with {len(participants)} participants")
     
     # Remove from active events
     group_event_manager.end_event(chat_id)
@@ -261,91 +269,121 @@ async def finalize_group_event(
             pass
     
     # Calculate results
-    if not event_state.participants:
-        return "🎪 <b>Групповое событие завершено!</b>\n\n❌ Никто не принял участие."
+    if len(participants) == 0:
+        event = EVENTS.get(event_type, {})
+        return f"🎪 <b>Групповое событие завершено!</b>\n\n🎯 <b>{event.get('name', 'Событие')}</b>\n\n❌ Никто не принял участие."
     
     results = []
-    for user_id, waifu_id in event_state.participants.items():
-        # Get user
-        result = session.execute(select(User).where(User.id == user_id))
-        user = result.scalar_one_or_none()
-        
-        if not user:
+    for user_id, waifu_id in participants.items():
+        try:
+            # Get user
+            result = session.execute(select(User).where(User.id == user_id))
+            user = result.scalar_one_or_none()
+            
+            if not user:
+                logger.warning(f"User {user_id} not found for event finalization")
+                continue
+            
+            # Get waifu
+            waifu_result = session.execute(select(Waifu).where(Waifu.id == waifu_id))
+            waifu = waifu_result.scalar_one_or_none()
+            
+            if not waifu:
+                logger.warning(f"Waifu {waifu_id} not found for user {user_id} in event finalization")
+                continue
+            
+            # Calculate score
+            from bot.services.event_system import calculate_event_score, get_event_rewards
+            score, event_name = calculate_event_score({
+                "stats": waifu.stats,
+                "profession": waifu.profession,
+                "dynamic": waifu.dynamic
+            }, event_type)
+            
+            rewards = get_event_rewards(score, event_type)
+            
+            # Apply rewards
+            waifu.xp += rewards["xp"]
+            
+            # Update dynamic stats properly
+            current_energy = int(waifu.dynamic.get("energy", 100))
+            current_mood = int(waifu.dynamic.get("mood", 50))
+            current_loyalty = int(waifu.dynamic.get("loyalty", 50))
+            
+            waifu.dynamic = {
+                **waifu.dynamic,
+                "energy": max(0, current_energy - 20),
+                "mood": min(100, current_mood + 5),
+                "loyalty": min(100, current_loyalty + 2),
+                "last_restore": datetime.utcnow().isoformat()
+            }
+            flag_modified(waifu, "dynamic")
+            
+            user.coins += rewards["coins"]
+            
+            # Get username display
+            username_display = user.username or user.display_name or f"Игрок_{user.id}"
+            
+            results.append({
+                "username": username_display,
+                "waifu_name": waifu.name,
+                "score": score,
+                "rewards": rewards,
+                "user_id": user_id,
+                "waifu_id": waifu_id
+            })
+            
+            logger.info(f"Processed participant: user {user_id} ({username_display}), waifu {waifu_id} ({waifu.name}), score {score}")
+        except Exception as e:
+            logger.error(f"Error processing participant {user_id}/{waifu_id}: {e}", exc_info=True)
             continue
-        
-        # Get waifu
-        waifu_result = session.execute(select(Waifu).where(Waifu.id == waifu_id))
-        waifu = waifu_result.scalar_one_or_none()
-        
-        if not waifu:
-            continue
-        
-        # Calculate score
-        from bot.services.event_system import calculate_event_score, get_event_rewards
-        score, event_name = calculate_event_score({
-            "stats": waifu.stats,
-            "profession": waifu.profession,
-            "dynamic": waifu.dynamic
-        }, event_state.event_type)
-        
-        rewards = get_event_rewards(score, event_state.event_type)
-        
-        # Apply rewards
-        waifu.xp += rewards["xp"]
-        
-        # Update dynamic stats properly
-        waifu.dynamic = {
-            **waifu.dynamic,
-            "energy": max(0, waifu.dynamic.get("energy", 0) - 20),
-            "mood": min(100, waifu.dynamic.get("mood", 50)),
-            "loyalty": min(100, waifu.dynamic.get("loyalty", 50))
-        }
-        flag_modified(waifu, "dynamic")
-        
-        user.coins += rewards["coins"]
-        
-        results.append({
-            "username": user.username or "User",
-            "waifu_name": waifu.name,
-            "score": score,
-            "rewards": rewards,
-            "user_id": user_id
-        })
+    
+    if len(results) == 0:
+        event = EVENTS.get(event_type, {})
+        return f"🎪 <b>Групповое событие завершено!</b>\n\n🎯 <b>{event.get('name', 'Событие')}</b>\n\n❌ Не удалось обработать результаты участников."
     
     # Sort by score and apply medal mood bonuses
     results.sort(key=lambda x: x["score"], reverse=True)
     
     # Apply medal bonuses
     for i, result in enumerate(results, 1):
+        bonus_mood = 0
         if i == 1:  # Gold
             bonus_mood = 15
         elif i == 2:  # Silver
             bonus_mood = 10
         elif i == 3:  # Bronze
             bonus_mood = 5
-        else:
-            bonus_mood = 0
         
         if bonus_mood > 0:
             # Get waifu again to update mood bonus
-            waifu_result = session.execute(select(Waifu).where(Waifu.id == event_state.participants[result["user_id"]]))
+            waifu_result = session.execute(select(Waifu).where(Waifu.id == result["waifu_id"]))
             waifu = waifu_result.scalar_one_or_none()
             if waifu:
-                waifu.dynamic["mood"] = min(100, waifu.dynamic.get("mood", 50) + bonus_mood)
+                current_mood = int(waifu.dynamic.get("mood", 50))
+                waifu.dynamic["mood"] = min(100, current_mood + bonus_mood)
                 flag_modified(waifu, "dynamic")
     
     session.commit()
     
     # Format results
-    event = EVENTS.get(event_state.event_type, {})
+    event = EVENTS.get(event_type, {})
     text = f"🎪 <b>Групповое событие завершено!</b>\n\n"
     text += f"🎯 <b>{event.get('name', 'Событие')}</b>\n\n"
     
-    for i, result in enumerate(results[:10], 1):  # Show top 10
-        medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-        text += f"{medal} @{result['username']} ({result['waifu_name']}) - {result['score']} очков\n"
+    if len(results) > 0:
+        text += "<b>🏆 Результаты:</b>\n\n"
+        for i, result in enumerate(results[:10], 1):  # Show top 10
+            medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+            username_display = result['username']
+            if not username_display.startswith('@'):
+                username_display = f"@{username_display}"
+            text += f"{medal} {username_display} ({result['waifu_name']}) - {result['score']} очков\n"
+        
+        if len(results) > 10:
+            text += f"\n... и еще {len(results) - 10} участников"
+    else:
+        text += "❌ Не удалось обработать результаты."
     
-    if len(results) > 10:
-        text += f"\n... и еще {len(results) - 10} участников"
-    
+    logger.info(f"Event finalization complete: {len(results)} results formatted")
     return text

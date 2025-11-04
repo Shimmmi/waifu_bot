@@ -1874,13 +1874,34 @@ async def handle_group_event_waifu_callback(callback: CallbackQuery) -> None:
         return
     
     # Extract event_id and waifu_id from callback_data: group_event_waifu_{event_id}_{waifu_id}
+    # event_id format: {chat_id}_{timestamp}
+    # waifu_id format: wf_{hash} (contains underscores)
+    # We need to split carefully - event_id has 2 parts, waifu_id has 2 parts
+    # So: group_event_waifu_{chat_id}_{timestamp}_{wf}_{hash}
+    # parts[0] = "group"
+    # parts[1] = "event"
+    # parts[2] = "waifu"
+    # parts[3] = chat_id (first part of event_id)
+    # parts[4] = timestamp (second part of event_id)
+    # parts[5] = "wf" (first part of waifu_id)
+    # parts[6:] = hash parts of waifu_id
+    
+    import logging
+    logger = logging.getLogger(__name__)
+    
     parts = callback.data.split("_")
-    if len(parts) < 6:
-        await callback.answer("Ошибка обработки")
+    logger.info(f"Group event waifu callback: {callback.data}, parts: {parts}")
+    
+    if len(parts) < 7:  # Minimum: group_event_waifu_chatid_timestamp_wf_hash
+        await callback.answer("Ошибка обработки: недостаточно частей")
         return
     
-    waifu_id = parts[-1]  # Last part is waifu_id
-    event_id = "_".join(parts[3:-1])  # Everything between group_event_waifu and waifu_id
+    # Reconstruct waifu_id (parts[5:] which is "wf" + hash parts)
+    waifu_id = "_".join(parts[5:])
+    # Reconstruct event_id (parts[3:5] which is chat_id + timestamp)
+    event_id = "_".join(parts[3:5])
+    
+    logger.info(f"Extracted event_id: {event_id}, waifu_id: {waifu_id}")
     
     tg_user_id = callback.from_user.id
     session = SessionLocal()
@@ -1894,18 +1915,35 @@ async def handle_group_event_waifu_callback(callback: CallbackQuery) -> None:
             await callback.answer("Пользователь не найден")
             return
         
+        # Verify waifu belongs to user
+        waifu_result = session.execute(
+            select(Waifu).where(Waifu.id == waifu_id, Waifu.owner_id == user.id)
+        )
+        waifu = waifu_result.scalar_one_or_none()
+        
+        if not waifu:
+            logger.warning(f"Waifu {waifu_id} not found or doesn't belong to user {user.id}")
+            await callback.answer("Вайфу не найдена")
+            return
+        
         # Add participant
         chat_id_str = event_id.split("_")[0]
         from bot.services.group_event_system import group_event_manager
-        group_event_manager.add_participant(int(chat_id_str), user.id, waifu_id)
+        success = group_event_manager.add_participant(int(chat_id_str), user.id, waifu_id)
         
-        await callback.message.edit_text(
-            "✅ Ты успешно зарегистрирован на событие!\n\n⏱️ Ожидай результатов через 60 секунд.",
-            reply_markup=None
-        )
-        await callback.answer("Регистрация подтверждена!")
+        if success:
+            logger.info(f"Successfully added participant: user {user.id}, waifu {waifu_id} to chat {chat_id_str}")
+            await callback.message.edit_text(
+                "✅ Ты успешно зарегистрирован на событие!\n\n⏱️ Ожидай результатов через 60 секунд.",
+                reply_markup=None
+            )
+            await callback.answer("Регистрация подтверждена!")
+        else:
+            logger.warning(f"Failed to add participant: event may have expired")
+            await callback.answer("⚠️ Событие уже завершено или не найдено")
         
     except Exception as e:
+        logger.error(f"Error in handle_group_event_waifu_callback: {e}", exc_info=True)
         await callback.answer(f"Ошибка: {str(e)}")
     finally:
         session.close()
