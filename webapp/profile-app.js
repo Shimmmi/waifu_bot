@@ -1035,12 +1035,29 @@ async function confirmUpgrade(targetWaifuId) {
         // Reload upgrade page
         const viewContent = document.getElementById('view-content');
         if (viewContent && currentView === 'upgrade') {
-            await loadUpgradePage(viewContent);
+            try {
+                await loadUpgradePage(viewContent);
+            } catch (e) {
+                console.error('Error reloading upgrade page:', e);
+            }
+        }
+        
+        // Reload waifus list if on waifus page
+        if (viewContent && currentView === 'waifus' && typeof loadWaifuList === 'function') {
+            try {
+                await loadWaifuList(viewContent);
+            } catch (e) {
+                console.error('Error reloading waifu list:', e);
+            }
         }
         
         // Reload profile to update active waifu if needed
         if (profileData) {
-            await loadProfile();
+            try {
+                await loadProfile();
+            } catch (e) {
+                console.error('Error reloading profile:', e);
+            }
         }
         
     } catch (error) {
@@ -1820,24 +1837,28 @@ async function loadUpgradePage(container) {
 
 // Calculate XP progress for display
 function calculateXPProgress(currentXP, currentLevel) {
-    // Calculate XP needed for current level
-    let xpNeededForCurrent = 0;
-    for (let i = 1; i < currentLevel; i++) {
-        xpNeededForCurrent += Math.floor(100 * Math.pow(i, 1.1));
-    }
+    // Waifu XP formula: total XP for level N = 50 * N * (N - 1)
+    // XP needed for next level = currentLevel * 100
     
-    // Calculate XP needed for next level
-    const xpForNextLevel = Math.floor(100 * Math.pow(currentLevel, 1.1));
+    const getTotalXPForLevel = (level) => {
+        if (level <= 1) return 0;
+        return 50 * level * (level - 1);
+    };
     
-    // XP in current level
-    const xpInLevel = currentXP - xpNeededForCurrent;
-    const xpNeeded = xpForNextLevel;
+    // Calculate total XP needed for current level
+    const xpNeededForCurrent = getTotalXPForLevel(currentLevel);
     
-    const percent = Math.min(100, (xpInLevel / xpNeeded) * 100);
+    // Calculate XP needed for next level (linear: level * 100)
+    const xpForNextLevel = currentLevel > 0 ? currentLevel * 100 : 100;
+    
+    // XP in current level (how much XP above the threshold for current level)
+    const xpInLevel = Math.max(0, currentXP - xpNeededForCurrent);
+    
+    const percent = Math.min(100, Math.max(0, (xpInLevel / xpForNextLevel) * 100));
     
     return {
         current: Math.floor(xpInLevel),
-        next: Math.floor(xpNeeded),
+        next: Math.floor(xpForNextLevel),
         percent: percent
     };
 }

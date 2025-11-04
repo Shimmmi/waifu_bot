@@ -1168,17 +1168,29 @@ async function confirmUpgrade(targetWaifuId) {
         // Reload upgrade page
         const viewContent = document.getElementById('view-content');
         if (viewContent && currentView === 'upgrade') {
-            await loadUpgradePage(viewContent);
+            try {
+                await loadUpgradePage(viewContent);
+            } catch (e) {
+                console.error('Error reloading upgrade page:', e);
+            }
         }
         
         // Reload waifus list if on waifus page
-        if (currentView === 'waifus') {
-            await loadWaifuList(viewContent);
+        if (viewContent && currentView === 'waifus' && typeof loadWaifuList === 'function') {
+            try {
+                await loadWaifuList(viewContent);
+            } catch (e) {
+                console.error('Error reloading waifu list:', e);
+            }
         }
         
         // Reload profile to update active waifu if needed
         if (profileData) {
-            await loadProfile();
+            try {
+                await loadProfile();
+            } catch (e) {
+                console.error('Error reloading profile:', e);
+            }
         }
         
     } catch (error) {
