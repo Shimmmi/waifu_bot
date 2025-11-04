@@ -344,10 +344,10 @@ async def handle_back_to_menu(callback: CallbackQuery) -> None:
         # Private chat - full menu
         keyboard_buttons.append([InlineKeyboardButton(text="🎮 В игру", web_app=WebAppInfo(url=f"{webapp_url}/webapp/profile.html"))])
         keyboard_buttons.extend([
-            [InlineKeyboardButton(text="🎁 Ежедневный бонус", callback_data="daily")],
-            [InlineKeyboardButton(text="🎭 Вайфу", callback_data="waifu_menu")],
-            [InlineKeyboardButton(text="🎯 События", callback_data="events_menu")],
-            [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")],
+            # [InlineKeyboardButton(text="🎁 Ежедневный бонус", callback_data="daily")],
+            # [InlineKeyboardButton(text="🎭 Вайфу", callback_data="waifu_menu")],
+            # [InlineKeyboardButton(text="🎯 События", callback_data="events_menu")],
+            # [InlineKeyboardButton(text="📊 Статистика", callback_data="stats")],
             [InlineKeyboardButton(text="🔧 Debug", callback_data="debug_menu")]
         ])
     else:

@@ -6,12 +6,13 @@ Admin/debug commands for testing and troubleshooting
 import logging
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram import Router
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from datetime import datetime
 import random
 
 from bot.db import SessionLocal
 from bot.models import User, Waifu, XPLog
+from bot.services.waifu_generator import generate_waifu
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,9 @@ async def handle_debug_menu_callback(callback: CallbackQuery) -> None:
         return
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🎰 Призвать вайфу", callback_data="debug_summon_waifu")],
         [InlineKeyboardButton(text="⚡ Восстановить энергию всем вайфу", callback_data="debug_restore_energy")],
+        [InlineKeyboardButton(text="🔋 Убрать всю энергию у вайфу", callback_data="debug_drain_energy")],
         [InlineKeyboardButton(text="💰 +10000 монет и +100 гемов", callback_data="debug_add_currency")],
         [InlineKeyboardButton(text="✨ +1000 XP для вайфу", callback_data="debug_add_xp_menu")],
         [InlineKeyboardButton(text="🧬 +100 очков прокачки", callback_data="debug_add_skill_points")],
@@ -65,8 +68,12 @@ async def handle_debug_action_callback(callback: CallbackQuery) -> None:
     
     tg_user_id = callback.from_user.id
     
-    if callback.data == "debug_restore_energy":
+    if callback.data == "debug_summon_waifu":
+        await handle_debug_summon_waifu(callback, tg_user_id)
+    elif callback.data == "debug_restore_energy":
         await handle_debug_restore_energy(callback, tg_user_id)
+    elif callback.data == "debug_drain_energy":
+        await handle_debug_drain_energy(callback, tg_user_id)
     elif callback.data == "debug_add_currency":
         await handle_debug_add_currency(callback, tg_user_id)
     elif callback.data == "debug_add_xp_menu":
@@ -141,6 +148,107 @@ async def handle_debug_restore_energy(callback: CallbackQuery, tg_user_id: int) 
         )
         
     except Exception as e:
+        await callback.answer(f"Ошибка: {str(e)}")
+    finally:
+        session.close()
+
+
+async def handle_debug_summon_waifu(callback: CallbackQuery, tg_user_id: int) -> None:
+    """Призыв случайной вайфу"""
+    session = SessionLocal()
+    try:
+        # Получаем пользователя
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            await callback.answer("Пользователь не найден")
+            return
+        
+        # Получаем следующий номер карты
+        max_card = session.execute(select(func.max(Waifu.card_number))).scalar() or 0
+        
+        # Генерируем новую вайфу
+        new_waifu_data = generate_waifu(max_card + 1, user.id)
+        
+        # Создаем вайфу в базе
+        waifu = Waifu(**new_waifu_data)
+        session.add(waifu)
+        session.commit()
+        
+        await callback.answer("✅ Вайфу успешно призвана!")
+        await callback.message.edit_text(
+            f"🎰 <b>Вайфу призвана</b>\n\n"
+            f"✨ Имя: {waifu.name}\n"
+            f"⭐ Редкость: {waifu.rarity}\n"
+            f"🏷️ Раса: {waifu.race}\n"
+            f"💼 Профессия: {waifu.profession}\n"
+            f"🌍 Национальность: {waifu.nationality}\n"
+            f"📊 Уровень: {waifu.level}\n\n"
+            f"Вайфу добавлена на ваш аккаунт!",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Назад", callback_data="debug_menu")]
+            ]),
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in handle_debug_summon_waifu: {e}", exc_info=True)
+        await callback.answer(f"Ошибка: {str(e)}")
+    finally:
+        session.close()
+
+
+async def handle_debug_drain_energy(callback: CallbackQuery, tg_user_id: int) -> None:
+    """Убрать всю энергию у всех вайфу"""
+    session = SessionLocal()
+    try:
+        # Получаем пользователя
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            await callback.answer("Пользователь не найден")
+            return
+        
+        # Получаем всех вайфу пользователя
+        waifus_result = session.execute(
+            select(Waifu).where(Waifu.owner_id == user.id)
+        )
+        waifus = waifus_result.scalars().all()
+        
+        if not waifus:
+            await callback.answer("❌ У вас нет вайфу")
+            return
+        
+        # Убираем энергию у всех
+        from sqlalchemy.orm.attributes import flag_modified
+        
+        count = 0
+        for waifu in waifus:
+            if waifu.dynamic:
+                waifu.dynamic = {
+                    **waifu.dynamic,
+                    "energy": 0,
+                    "last_restore": datetime.now().isoformat()
+                }
+                flag_modified(waifu, "dynamic")
+                count += 1
+        
+        session.commit()
+        
+        await callback.answer(f"✅ Энергия убрана у {count} вайфу!")
+        await callback.message.edit_text(
+            f"🔋 <b>Энергия убрана</b>\n\n"
+            f"Энергия установлена на 0% для {count} вайфу",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Назад", callback_data="debug_menu")]
+            ]),
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in handle_debug_drain_energy: {e}", exc_info=True)
         await callback.answer(f"Ошибка: {str(e)}")
     finally:
         session.close()
