@@ -780,6 +780,10 @@ async def summon_waifus(request: Request, db: Session = Depends(get_db)) -> Dict
         if not user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
         
+        # Get skill effects (needed for waifu generation regardless of cost)
+        from bot.services.skill_effects import get_user_skill_effects, apply_skill_discount
+        skill_effects = get_user_skill_effects(db, user.id)
+        
         # Check for free summon (only for count == 1)
         is_free = False
         if count == 1:
@@ -804,8 +808,6 @@ async def summon_waifus(request: Request, db: Session = Depends(get_db)) -> Dict
         else:
             # Apply skill discount (bargain_hunter)
             try:
-                from bot.services.skill_effects import get_user_skill_effects, apply_skill_discount
-                skill_effects = get_user_skill_effects(db, user.id)
                 summon_discount = skill_effects.get('summon_discount', 0.0)
                 cost = apply_skill_discount(base_cost, summon_discount)
                 # Round down to integer
