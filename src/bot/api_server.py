@@ -1629,6 +1629,15 @@ async def get_sacrifice_candidates(request: Request, target_waifu_id: str, db: S
         if not user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
         
+        # Validate that target waifu exists and belongs to user
+        target_waifu = db.query(Waifu).filter(
+            Waifu.id == target_waifu_id,
+            Waifu.owner_id == user.id
+        ).first()
+        
+        if not target_waifu:
+            raise HTTPException(status_code=404, detail=f"Целевая вайфу не найдена (ID: {target_waifu_id})")
+        
         # Get all waifus except the target one (ID is string in database)
         waifus = db.query(Waifu).filter(
             Waifu.owner_id == user.id,

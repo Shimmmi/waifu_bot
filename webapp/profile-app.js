@@ -814,14 +814,16 @@ async function openUpgradeModal(targetWaifuId) {
         if (!targetWaifu) {
             console.log('Waifu not found in all waifus, trying direct fetch...');
             console.log('Target waifu ID:', targetWaifuId, 'Type:', typeof targetWaifuId);
-            const directResponse = await fetch(`/api/waifu/${targetWaifuId}`);
+            const directResponse = await fetch(`/api/waifu/${targetWaifuId}?${new URLSearchParams({ initData })}`);
             console.log('Direct fetch response status:', directResponse.status);
             if (directResponse.ok) {
                 targetWaifu = await directResponse.json();
                 console.log('Found waifu via direct fetch:', targetWaifu.name, 'ID:', targetWaifu.id);
             } else {
-                const errorText = await directResponse.text();
-                console.error('Direct fetch failed:', errorText);
+                const errorData = await directResponse.json().catch(() => ({}));
+                const errorMessage = errorData.detail || 'Вайфу не найдена';
+                console.error('Direct fetch failed:', errorMessage);
+                throw new Error(errorMessage);
             }
         }
         
@@ -1023,8 +1025,9 @@ async function confirmUpgrade(targetWaifuId) {
         });
         
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || 'Failed to perform upgrade');
+            const errorData = await response.json().catch(() => ({}));
+            const errorMessage = errorData.detail || errorData.message || 'Failed to perform upgrade';
+            throw new Error(errorMessage);
         }
         
         const result = await response.json();
@@ -1063,7 +1066,8 @@ async function confirmUpgrade(targetWaifuId) {
     } catch (error) {
         console.error('Error confirming upgrade:', error);
         if (window.Telegram?.WebApp?.showAlert) {
-            window.Telegram.WebApp.showAlert('❌ Ошибка: ' + error.message);
+            const errorMessage = error?.message || String(error) || 'Неизвестная ошибка';
+            window.Telegram.WebApp.showAlert('❌ Ошибка: ' + errorMessage);
         }
     }
 }
