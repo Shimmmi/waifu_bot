@@ -5,6 +5,7 @@ Clan events API endpoints (raid, quests, etc.)
 import logging
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException
+from starlette.requests import Request
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 from datetime import datetime, timedelta
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def get_telegram_user_id(request) -> Optional[int]:
+def get_telegram_user_id(request: Request) -> Optional[int]:
     """Extract user_id from Telegram WebApp initData"""
     try:
         from urllib.parse import parse_qs, unquote
@@ -43,7 +44,7 @@ def get_telegram_user_id(request) -> Optional[int]:
         return None
 
 
-def get_user_from_request(request, db: Session) -> User:
+def get_user_from_request(request: Request, db: Session) -> User:
     """Get user from request initData"""
     telegram_user_id = get_telegram_user_id(request)
     if telegram_user_id:
@@ -58,7 +59,7 @@ def get_user_from_request(request, db: Session) -> User:
 
 
 @router.get("/api/clans/events")
-async def get_clan_events(request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_clan_events(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Get clan events"""
     try:
         user = get_user_from_request(request, db)
@@ -99,7 +100,7 @@ async def get_clan_events(request, db: Session = Depends(get_db)) -> Dict[str, A
 
 
 @router.post("/api/clans/raid/attack")
-async def attack_raid_boss(request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def attack_raid_boss(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Attack raid boss"""
     try:
         user = get_user_from_request(request, db)
@@ -207,7 +208,7 @@ async def attack_raid_boss(request, db: Session = Depends(get_db)) -> Dict[str, 
 
 
 @router.post("/api/clans/raid/start")
-async def start_raid_event(request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def start_raid_event(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Start a new clan raid event"""
     try:
         user = get_user_from_request(request, db)
@@ -283,7 +284,7 @@ async def start_raid_event(request, db: Session = Depends(get_db)) -> Dict[str, 
 
 
 @router.get("/api/clans/raid/status")
-async def get_raid_status(request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_raid_status(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Получить статус активного рейда"""
     try:
         user = get_user_from_request(request, db)
@@ -342,7 +343,7 @@ async def get_raid_status(request, db: Session = Depends(get_db)) -> Dict[str, A
 
 
 @router.get("/api/clans/raid/my-contribution")
-async def get_my_contribution(request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_my_contribution(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Получить свой вклад в активный рейд"""
     try:
         user = get_user_from_request(request, db)

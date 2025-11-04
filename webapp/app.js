@@ -3492,22 +3492,25 @@ async function startRaid() {
         
         // Parse response if there's content
         const contentType = response.headers.get('content-type');
+        let raidData = null;
         if (contentType && contentType.includes('application/json')) {
             try {
                 const result = await response.json();
                 console.log('Raid started successfully:', result);
+                raidData = result;
             } catch (e) {
                 console.warn('Could not parse raid start response:', e);
             }
         }
         
-        window.Telegram?.WebApp?.showAlert?.('Рейд запущен!');
-        
-        // Reload clan data to get updated role
+        // Reload clan data immediately to show raid UI (without alert)
         const container = document.getElementById('view-content');
         if (container) {
             await loadClanInfo(container);
         }
+        
+        // Show success message after UI is updated
+        window.Telegram?.WebApp?.showAlert?.('Рейд запущен!');
         
     } catch (error) {
         console.error('Error starting raid:', error);
