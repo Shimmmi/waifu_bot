@@ -322,9 +322,7 @@ function renderWaifuList(container) {
         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px; margin-bottom: 12px; padding: 0 4px;">
             ${(() => {
                 const isFreeAvailable = profileData?.free_summon_available === true;
-                const cooldownSeconds = profileData?.free_summon_cooldown_seconds || 0;
-                const cooldownText = cooldownSeconds > 0 ? formatCooldown(cooldownSeconds) : '';
-                const displayText = isFreeAvailable ? 'БЕСПЛАТНО' : (cooldownText || `${summonCosts.single}💰`);
+                // Always show the cost, change icon only when free summon is available
                 return `
                 <button onclick="summonWaifu(1)" style="
                     background: ${isFreeAvailable ? 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'}; 
@@ -333,7 +331,7 @@ function renderWaifuList(container) {
                     flex-direction: column; align-items: center; justify-content: center; gap: 2px;
                 ">
                     <div style="font-size: 10px;">${isFreeAvailable ? '🎁' : '✨'}</div>
-                    <div style="font-size: 8px; opacity: 0.95;">${displayText}</div>
+                    <div style="font-size: 8px; opacity: 0.95;">${summonCosts.single}💰</div>
                 </button>
                 `;
             })()}

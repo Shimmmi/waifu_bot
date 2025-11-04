@@ -690,6 +690,14 @@ async def set_active_waifu(waifu_id: str, request: Request, db: Session = Depend
         
         # Set this waifu to active
         waifu.is_active = True
+        
+        # Update clan power if user is in a clan
+        try:
+            from bot.api_clans import update_clan_power_for_user
+            update_clan_power_for_user(db, user.id)
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to update clan power: {e}")
+        
         db.commit()
         
         logger.info(f"✅ Waifu {waifu_id} set as active for user {user.id}")
@@ -1808,6 +1816,13 @@ async def perform_upgrade(request: Request, db: Session = Depends(get_db)) -> Di
         # Delete sacrifice waifus
         for waifu in sacrifice_waifus:
             db.delete(waifu)
+        
+        # Update clan power if user is in a clan (after level/stat changes)
+        try:
+            from bot.api_clans import update_clan_power_for_user
+            update_clan_power_for_user(db, user.id)
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to update clan power: {e}")
         
         db.commit()
         

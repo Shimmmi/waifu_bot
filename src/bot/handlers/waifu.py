@@ -431,6 +431,13 @@ async def handle_random_event(callback: CallbackQuery) -> None:
         # Обновляем пользователя с учетом бонуса золота
         user.coins += final_coins
         
+        # Update clan power if user is in a clan (after mood/loyalty changes)
+        try:
+            from bot.api_clans import update_clan_power_for_user
+            update_clan_power_for_user(session, user.id)
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to update clan power: {e}")
+        
         session.commit()
 
         # Формируем результат

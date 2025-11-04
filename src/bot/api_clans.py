@@ -95,6 +95,28 @@ def calculate_total_power(db: Session, clan_id: int) -> int:
     return total
 
 
+def update_clan_power_for_user(db: Session, user_id: int) -> None:
+    """Update clan power if user is in a clan"""
+    try:
+        # Check if user is in a clan
+        member = db.query(ClanMember).filter(ClanMember.user_id == user_id).first()
+        if not member:
+            return
+        
+        # Get clan
+        clan = db.query(Clan).filter(Clan.id == member.clan_id).first()
+        if not clan:
+            return
+        
+        # Recalculate and update clan power
+        new_power = calculate_total_power(db, clan.id)
+        clan.total_power = new_power
+        
+        logger.debug(f"✅ Updated clan {clan.id} power: {new_power} (triggered by user {user_id})")
+    except Exception as e:
+        logger.error(f"❌ Error updating clan power for user {user_id}: {e}")
+
+
 @router.post("/api/clans/create")
 async def create_clan(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Create a new clan"""

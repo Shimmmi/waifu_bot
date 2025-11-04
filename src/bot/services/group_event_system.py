@@ -391,6 +391,18 @@ async def finalize_group_event(
             result["gem_reward"] = gem_reward
             logger.info(f"Awarded {gem_reward} gems to user {result['user_id']} ({result['username']}) for {i} place")
     
+    # Update clan power for all participants (after mood/loyalty/level changes)
+    processed_user_ids = set()
+    for result in results:
+        user_id = result["user_id"]
+        if user_id not in processed_user_ids:
+            try:
+                from bot.api_clans import update_clan_power_for_user
+                update_clan_power_for_user(session, user_id)
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to update clan power for user {user_id}: {e}")
+            processed_user_ids.add(user_id)
+    
     session.commit()
     
     # Format results

@@ -1210,6 +1210,13 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
             # Обновляем пользователя с учетом бонуса золота
             user.coins += final_coins
             
+            # Update clan power if user is in a clan (after mood/loyalty/level changes)
+            try:
+                from bot.api_clans import update_clan_power_for_user
+                update_clan_power_for_user(session, user.id)
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to update clan power: {e}")
+            
             # Commit and explicitly flush to database
             logger.info(f"💾 Committing to database...")
             session.commit()
