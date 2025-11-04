@@ -1810,8 +1810,18 @@ async def summon_premium_waifus(request: Request, db: Session = Depends(get_db))
         if not user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
         
-        # Premium summon uses gems, no discount applied
-        cost = base_cost
+        # Apply skill discount (bargain_hunter) - same as regular summons
+        try:
+            from bot.services.skill_effects import get_user_skill_effects, apply_skill_discount
+            skill_effects = get_user_skill_effects(db, user.id)
+            summon_discount = skill_effects.get('summon_discount', 0.0)
+            cost = apply_skill_discount(base_cost, summon_discount)
+            # Round down to integer
+            cost = int(cost)
+            logger.info(f"💎 Premium summon cost: {base_cost} -> {cost} (discount: {summon_discount*100:.0f}%)")
+        except Exception as e:
+            logger.warning(f"⚠️ Error applying premium summon discount: {e}")
+            cost = base_cost
         
         # Check if user has enough gems
         if user.gems < cost:

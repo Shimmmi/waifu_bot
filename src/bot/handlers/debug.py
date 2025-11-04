@@ -43,6 +43,7 @@ async def handle_debug_menu_callback(callback: CallbackQuery) -> None:
         [InlineKeyboardButton(text="🧬 +100 очков прокачки", callback_data="debug_add_skill_points")],
         [InlineKeyboardButton(text="🗑️ Убрать все очки прокачки", callback_data="debug_wipe_skill_points")],
         [InlineKeyboardButton(text="🗑️ Удалить всех вайфу", callback_data="debug_wipe_confirm")],
+        [InlineKeyboardButton(text="💥 ВАЙП АККАУНТА", callback_data="debug_wipe_all_confirm")],
         [InlineKeyboardButton(text="🎯 Запустить событие", callback_data="debug_trigger_event")],
         [InlineKeyboardButton(text="🔙 Назад в меню", callback_data="back_to_menu")]
     ])
@@ -78,6 +79,10 @@ async def handle_debug_action_callback(callback: CallbackQuery) -> None:
         await handle_debug_wipe_confirm(callback, tg_user_id)
     elif callback.data == "debug_wipe_execute":
         await handle_debug_wipe_execute(callback, tg_user_id)
+    elif callback.data == "debug_wipe_all_confirm":
+        await handle_debug_wipe_all_confirm(callback, tg_user_id)
+    elif callback.data == "debug_wipe_all_execute":
+        await handle_debug_wipe_all_execute(callback, tg_user_id)
     elif callback.data.startswith("debug_add_xp_"):
         await handle_debug_add_xp_to_waifu(callback, tg_user_id)
     elif callback.data == "debug_trigger_event":
@@ -737,5 +742,185 @@ async def handle_debug_wipe_skill_points(callback: CallbackQuery, tg_user_id: in
         
     except Exception as e:
         await callback.answer(f"Ошибка: {str(e)}")
+    finally:
+        session.close()
+
+
+async def handle_debug_wipe_all_confirm(callback: CallbackQuery, tg_user_id: int) -> None:
+    """Подтверждение полного вайпа аккаунта"""
+    # Check if admin
+    ADMIN_ID = 305174198
+    if tg_user_id != ADMIN_ID:
+        await callback.answer("❌ Нет прав")
+        return
+    
+    session = SessionLocal()
+    try:
+        # Получаем пользователя
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            await callback.answer("Пользователь не найден")
+            return
+        
+        # Подсчитываем статистику для подтверждения
+        waifus_result = session.execute(
+            select(Waifu).where(Waifu.owner_id == user.id)
+        )
+        waifus = waifus_result.scalars().all()
+        waifus_count = len(waifus)
+        
+        skills_count = 0
+        skill_levels_count = 0
+        if SKILLS_ENABLED:
+            user_skills_result = session.execute(
+                select(UserSkills).where(UserSkills.user_id == user.id)
+            )
+            user_skills = user_skills_result.scalar_one_or_none()
+            if user_skills:
+                skill_levels_result = session.execute(
+                    select(UserSkillLevel).where(UserSkillLevel.user_id == user.id)
+                )
+                skill_levels = skill_levels_result.scalars().all()
+                skill_levels_count = len(skill_levels)
+                skills_count = 1
+        
+        # Показываем подтверждение
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💥 ДА, ВАЙПИТЬ ВСЁ", callback_data="debug_wipe_all_execute")],
+            [InlineKeyboardButton(text="✅ Нет, отменить", callback_data="debug_menu")]
+        ])
+        
+        stats_text = (
+            f"📊 <b>Текущие данные:</b>\n"
+            f"🗑️ Вайфу: {waifus_count}\n"
+            f"⭐ Уровень: {user.account_level} (XP: {user.global_xp})\n"
+            f"💰 Монеты: {user.coins}\n"
+            f"💎 Гемы: {user.gems}\n"
+            f"🧬 Очки навыков: {user.skill_points}\n"
+        )
+        
+        if skill_levels_count > 0:
+            stats_text += f"🔧 Уровней навыков: {skill_levels_count}\n"
+        
+        await callback.message.edit_text(
+            f"💥 <b>ПОЛНЫЙ ВАЙП АККАУНТА</b>\n\n"
+            f"⚠️ <b>КРИТИЧЕСКОЕ ВНИМАНИЕ!</b>\n\n"
+            f"Это действие <b>НЕОБРАТИМО</b> и удалит:\n\n"
+            f"❌ Всех вайфу ({waifus_count})\n"
+            f"❌ Все уровни аккаунта (сбросит на уровень 1)\n"
+            f"❌ Весь опыт (сбросит на 0)\n"
+            f"❌ Все валюты (монеты и гемы → 0)\n"
+            f"❌ Все очки навыков (сбросит на 0)\n"
+            f"❌ Все уровни навыков ({skill_levels_count})\n\n"
+            f"{stats_text}\n"
+            f"<b>Вы уверены?</b>",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        await callback.answer()
+        
+    except Exception as e:
+        await callback.answer(f"Ошибка: {str(e)}")
+    finally:
+        session.close()
+
+
+async def handle_debug_wipe_all_execute(callback: CallbackQuery, tg_user_id: int) -> None:
+    """Выполнение полного вайпа аккаунта"""
+    # Check if admin
+    ADMIN_ID = 305174198
+    if tg_user_id != ADMIN_ID:
+        await callback.answer("❌ Нет прав")
+        return
+    
+    session = SessionLocal()
+    try:
+        # Получаем пользователя
+        result = session.execute(select(User).where(User.tg_id == tg_user_id))
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            await callback.answer("Пользователь не найден")
+            return
+        
+        # Сохраняем старые значения для отчета
+        old_waifus_count = session.execute(
+            select(Waifu).where(Waifu.owner_id == user.id)
+        ).scalars().all()
+        old_waifus_count = len(old_waifus_count)
+        
+        old_level = user.account_level
+        old_xp = user.global_xp
+        old_coins = user.coins
+        old_gems = user.gems
+        old_skill_points = user.skill_points
+        
+        # 1. Удаляем всех вайфу
+        waifus_result = session.execute(
+            select(Waifu).where(Waifu.owner_id == user.id)
+        )
+        waifus = waifus_result.scalars().all()
+        for waifu in waifus:
+            session.delete(waifu)
+        
+        # 2. Сбрасываем уровень и опыт
+        user.account_level = 1
+        user.global_xp = 0
+        
+        # 3. Сбрасываем валюты
+        user.coins = 0
+        user.gems = 0
+        
+        # 4. Сбрасываем очки навыков
+        user.skill_points = 0
+        
+        # 5. Удаляем все уровни навыков
+        skill_levels_count = 0
+        if SKILLS_ENABLED:
+            skill_levels_result = session.execute(
+                select(UserSkillLevel).where(UserSkillLevel.user_id == user.id)
+            )
+            skill_levels = skill_levels_result.scalars().all()
+            skill_levels_count = len(skill_levels)
+            for skill_level in skill_levels:
+                session.delete(skill_level)
+            
+            # Сбрасываем UserSkills
+            user_skills_result = session.execute(
+                select(UserSkills).where(UserSkills.user_id == user.id)
+            )
+            user_skills = user_skills_result.scalar_one_or_none()
+            if user_skills:
+                user_skills.skill_points = 0
+                user_skills.total_earned_points = 0
+        
+        session.commit()
+        
+        await callback.answer("💥 Вайп выполнен!")
+        await callback.message.edit_text(
+            f"💥 <b>ПОЛНЫЙ ВАЙП ВЫПОЛНЕН</b>\n\n"
+            f"✅ <b>Удалено:</b>\n"
+            f"🗑️ Вайфу: {old_waifus_count}\n"
+            f"🔧 Уровней навыков: {skill_levels_count}\n\n"
+            f"📊 <b>Сброшено:</b>\n"
+            f"⭐ Уровень: {old_level} → 1\n"
+            f"📈 XP: {old_xp} → 0\n"
+            f"💰 Монеты: {old_coins} → 0\n"
+            f"💎 Гемы: {old_gems} → 0\n"
+            f"🧬 Очки навыков: {old_skill_points} → 0\n\n"
+            f"🎮 <b>Аккаунт полностью сброшен!</b>\n"
+            f"Теперь вы можете начать заново.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔙 Назад", callback_data="debug_menu")]
+            ]),
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error during account wipe: {e}", exc_info=True)
+        await callback.answer(f"Ошибка: {str(e)}")
+        session.rollback()
     finally:
         session.close()

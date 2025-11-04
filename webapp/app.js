@@ -173,6 +173,7 @@ async function loadWaifuList(container) {
 
         // Fetch skill effects to calculate summon costs
         summonCosts = await calculateSummonCosts();
+        premiumCosts = await calculatePremiumSummonCosts();
         renderWaifuList(container);
 
     } catch (error) {
@@ -183,6 +184,7 @@ async function loadWaifuList(container) {
 
 // Global variable to store summon costs
 let summonCosts = { single: 100, multi: 1000 };
+let premiumCosts = { single: 100, multi: 1000 };
 
 // Calculate summon costs with skill discounts
 async function calculateSummonCosts() {
@@ -207,6 +209,33 @@ async function calculateSummonCosts() {
         
     } catch (error) {
         console.error('Error calculating summon costs:', error);
+        return { single: 100, multi: 1000 };
+    }
+}
+
+// Calculate premium summon costs with skill discounts
+async function calculatePremiumSummonCosts() {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch('/api/skills/effects?' + new URLSearchParams({ initData }));
+        
+        if (!response.ok) {
+            return { single: 100, multi: 1000 };
+        }
+        
+        const data = await response.json();
+        const effects = data.effects || {};
+        
+        // Apply summon_discount (same as regular summons)
+        const discount = effects.summon_discount || 0.0;
+        const singleCost = Math.floor(100 * (1 - discount));
+        const multiCost = Math.floor(1000 * (1 - discount));
+        
+        console.log(`💎 Premium summon costs calculated: ${singleCost} (${multiCost}) with ${discount*100}% discount`);
+        return { single: singleCost, multi: multiCost };
+        
+    } catch (error) {
+        console.error('Error calculating premium summon costs:', error);
         return { single: 100, multi: 1000 };
     }
 }
@@ -275,43 +304,43 @@ function renderWaifuList(container) {
             </button>
         </div>
         
-        <!-- Toolbar Row 2: Summon buttons (4 columns) -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; margin-bottom: 16px; padding: 0 4px;">
+        <!-- Toolbar Row 2: Summon buttons (4 columns, compact) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px; margin-bottom: 12px; padding: 0 4px;">
             <button onclick="summonWaifu(1)" style="
                 background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); 
-                color: white; border: none; padding: 10px 6px; border-radius: 12px; 
-                font-size: 11px; font-weight: bold; cursor: pointer; display: flex; 
-                flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+                color: white; border: none; padding: 6px 4px; border-radius: 8px; 
+                font-size: 9px; font-weight: bold; cursor: pointer; display: flex; 
+                flex-direction: column; align-items: center; justify-content: center; gap: 2px;
             ">
-                <div style="font-size: 12px;">✨ Призыв</div>
-                <div style="font-size: 10px; opacity: 0.9;">${summonCosts.single}💰</div>
+                <div style="font-size: 10px;">✨</div>
+                <div style="font-size: 8px; opacity: 0.95;">${summonCosts.single}💰</div>
             </button>
             <button onclick="summonWaifu(10)" style="
                 background: linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 90%, #2BFF88 100%); 
-                color: white; border: none; padding: 10px 6px; border-radius: 12px; 
-                font-size: 11px; font-weight: bold; cursor: pointer; display: flex; 
-                flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+                color: white; border: none; padding: 6px 4px; border-radius: 8px; 
+                font-size: 9px; font-weight: bold; cursor: pointer; display: flex; 
+                flex-direction: column; align-items: center; justify-content: center; gap: 2px;
             ">
-                <div style="font-size: 12px;">✨ x10</div>
-                <div style="font-size: 10px; opacity: 0.9;">${summonCosts.multi}💰</div>
+                <div style="font-size: 10px;">✨x10</div>
+                <div style="font-size: 8px; opacity: 0.95;">${summonCosts.multi}💰</div>
             </button>
             <button onclick="summonPremiumWaifu(1)" style="
                 background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); 
-                color: white; border: none; padding: 10px 6px; border-radius: 12px; 
-                font-size: 11px; font-weight: bold; cursor: pointer; display: flex; 
-                flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+                color: white; border: none; padding: 6px 4px; border-radius: 8px; 
+                font-size: 9px; font-weight: bold; cursor: pointer; display: flex; 
+                flex-direction: column; align-items: center; justify-content: center; gap: 2px;
             ">
-                <div style="font-size: 12px;">💎 Премиум</div>
-                <div style="font-size: 10px; opacity: 0.9;">100💎</div>
+                <div style="font-size: 10px;">💎</div>
+                <div style="font-size: 8px; opacity: 0.95;">${premiumCosts?.single || 100}💎</div>
             </button>
             <button onclick="summonPremiumWaifu(10)" style="
                 background: linear-gradient(135deg, #FF6B6B 0%, #FFE66D 100%); 
-                color: white; border: none; padding: 10px 6px; border-radius: 12px; 
-                font-size: 11px; font-weight: bold; cursor: pointer; display: flex; 
-                flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+                color: white; border: none; padding: 6px 4px; border-radius: 8px; 
+                font-size: 9px; font-weight: bold; cursor: pointer; display: flex; 
+                flex-direction: column; align-items: center; justify-content: center; gap: 2px;
             ">
-                <div style="font-size: 12px;">💎 x10</div>
-                <div style="font-size: 10px; opacity: 0.9;">1000💎</div>
+                <div style="font-size: 10px;">💎x10</div>
+                <div style="font-size: 8px; opacity: 0.95;">${premiumCosts?.multi || 1000}💎</div>
             </button>
         </div>
         
