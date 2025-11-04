@@ -412,7 +412,7 @@ async def handle_random_event(callback: CallbackQuery) -> None:
         waifu.xp += rewards["xp"]
         waifu.dynamic["energy"] = max(0, waifu.dynamic["energy"] - 20)
         waifu.dynamic["mood"] = min(100, waifu.dynamic["mood"] + 5)
-        waifu.dynamic["loyalty"] = min(100, waifu.dynamic["loyalty"] + 2)
+        waifu.dynamic["loyalty"] = int(round(min(100, waifu.dynamic["loyalty"] + 2)))
         
         # Обновляем пользователя
         user.coins += rewards["coins"]

@@ -184,7 +184,7 @@ class StatRestorationService:
                 **waifu.dynamic,
                 "energy": int(min(current_energy + energy_to_restore, max_energy)),
                 "mood": float(min(current_mood + mood_to_restore, self.MAX_MOOD)),
-                "loyalty": float(min(current_loyalty + loyalty_to_restore, self.MAX_LOYALTY)),
+                "loyalty": int(round(min(current_loyalty + loyalty_to_restore, self.MAX_LOYALTY))),
                 "last_restore": now.isoformat()
             }
             flag_modified(waifu, "dynamic")

@@ -314,7 +314,7 @@ async def finalize_group_event(
                 **waifu.dynamic,
                 "energy": max(0, current_energy - 20),
                 "mood": min(100, current_mood + 5),
-                "loyalty": min(100, current_loyalty + 2),
+                "loyalty": int(round(min(100, current_loyalty + 2))),
                 "last_restore": datetime.utcnow().isoformat()
             }
             flag_modified(waifu, "dynamic")

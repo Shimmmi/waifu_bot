@@ -1133,7 +1133,7 @@ async def handle_event_waifu_select_callback(callback: CallbackQuery) -> None:
                 **waifu.dynamic,
                 "energy": max(0, current_energy - 20),
                 "mood": min(100, current_mood + 5),
-                "loyalty": min(100, current_loyalty + 2),
+                "loyalty": int(round(min(100, current_loyalty + 2))),
                 "last_restore": datetime.now().isoformat()  # Update restoration timestamp
             }
             
