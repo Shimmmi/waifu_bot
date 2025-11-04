@@ -32,6 +32,7 @@ if __name__ == "__main__":
     from bot.handlers.waifu import router as waifu_router
     from bot.handlers.debug import router as debug_router
     from bot.handlers.webapp import router as webapp_router
+    from bot.handlers.commands import setup_bot_commands, setup_bot_menu_button
     from bot.services.stat_restoration import start_restoration_service, stop_restoration_service
     from bot.services.auto_event_service import start_auto_event_service, stop_auto_event_service
 
@@ -97,6 +98,17 @@ if __name__ == "__main__":
         dp.include_router(webapp_router)
 
         logger.info("✅ All routers included")
+        
+        # Set up bot commands in Telegram
+        await setup_bot_commands(bot)
+        logger.info("✅ Bot commands registered in Telegram")
+
+        # Set up bot menu button (appears in bot info window)
+        menu_button_set = await setup_bot_menu_button(bot)
+        if menu_button_set:
+            logger.info("✅ Bot menu button set successfully")
+        else:
+            logger.warning("⚠️ Failed to set bot menu button")
         
         # Start stat restoration service
         logger.info("🔄 Starting stat restoration service...")

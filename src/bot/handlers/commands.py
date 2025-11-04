@@ -1,8 +1,12 @@
 from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import BotCommand, Message
+from aiogram.types import BotCommand, Message, MenuButtonWebApp, WebAppInfo
+import os
 
 router = Router()
+
+# Get WebApp URL from environment
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://waifu-bot-webapp.onrender.com")
 
 # Define bot commands for Telegram command menu
 BOT_COMMANDS = [
@@ -32,3 +36,20 @@ async def cmd_help(message: Message) -> None:
 async def setup_bot_commands(bot):
     """Set up bot commands in Telegram"""
     await bot.set_my_commands(BOT_COMMANDS)
+
+
+async def setup_bot_menu_button(bot):
+    """Set up bot menu button (appears in bot info window)"""
+    try:
+        menu_button = MenuButtonWebApp(
+            text="📱 Открыть приложение",
+            web_app=WebAppInfo(url=f"{WEBAPP_URL}/webapp/profile.html")
+        )
+        await bot.set_chat_menu_button(menu_button=menu_button)
+        return True
+    except Exception as e:
+        # Log error but don't fail bot startup
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"⚠️ Failed to set bot menu button: {e}")
+        return False
