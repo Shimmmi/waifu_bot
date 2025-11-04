@@ -378,10 +378,10 @@ async function openSelectActiveWaifuModal() {
             return;
         }
         
-        // Sort by power (descending)
+        // Sort by power (descending) - use power from API
         waifuList.sort((a, b) => {
-            const powerA = calculatePower(a);
-            const powerB = calculatePower(b);
+            const powerA = a.power || calculatePower(a);  // Use API power if available
+            const powerB = b.power || calculatePower(b);
             return powerB - powerA;
         });
         
@@ -405,7 +405,7 @@ async function openSelectActiveWaifuModal() {
             <div style="background: white; border-radius: 20px; max-width: 600px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 24px;">
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
                     ${waifuList.map(waifu => {
-                        const power = calculatePower(waifu);
+                        const power = waifu.power || calculatePower(waifu);  // Use API power if available
                         return `
                         <div onclick="selectActiveWaifuFromModal('${waifu.id}')" style="cursor: pointer; position: relative; border: ${waifu.is_active ? '3px solid #4CAF50' : '2px solid #e0e0e0'}; border-radius: 12px; padding: 8px; transition: transform 0.2s; display: flex; flex-direction: column;">
                             ${waifu.is_active ? '<div style="position: absolute; top: 4px; right: 4px; background: #4CAF50; color: white; padding: 2px 4px; border-radius: 6px; font-size: 10px; z-index: 1;">✓</div>' : ''}
@@ -830,7 +830,7 @@ async function openUpgradeModal(targetWaifuId) {
             throw new Error('Вайфу не найдена');
         }
         
-        // Calculate power for display
+        // Use power from API if available (includes skill effects), otherwise calculate
         if (!targetWaifu.power) {
             targetWaifu.power = calculatePower(targetWaifu);
         }
@@ -1187,8 +1187,8 @@ async function openWaifuDetail(waifuId) {
         // Get flag emoji
         const flagEmoji = getFlagEmoji(waifu.nationality);
         
-        // Calculate total power using the same formula as backend
-        const power = calculatePower(waifu);
+        // Use power from API (already includes skill effects)
+        const power = waifu.power || calculatePower(waifu);  // Fallback if API doesn't return power
         
         // Get rarity colors for modal background
         const rarityColors = getRarityColor(waifu.rarity);
@@ -2026,7 +2026,7 @@ async function loadActiveWaifu() {
     }
     
     const waifu = profileData.active_waifu;
-    const power = calculatePower(waifu);
+    const power = waifu.power || calculatePower(waifu);  // Use API power if available (includes skill effects)
     const professionEmoji = getProfessionEmoji(waifu.profession);
     const flagEmoji = getFlagEmoji(waifu.nationality);
     

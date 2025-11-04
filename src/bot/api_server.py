@@ -156,6 +156,34 @@ async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[s
         logger.info(f"   Dynamic: {waifu.dynamic}")
         logger.info(f"   Nationality: {waifu.nationality}")
         
+        # Get user for skill effects calculation
+        user = db.query(User).filter(User.id == waifu.owner_id).first()
+        
+        # Get skill effects for power calculation
+        skill_effects = {}
+        if user:
+            try:
+                from bot.services.skill_effects import get_user_skill_effects
+                skill_effects = get_user_skill_effects(db, user.id)
+                
+                # Calculate collection-based bonuses (synergy, harmony)
+                all_waifus = db.query(Waifu).filter(Waifu.owner_id == user.id).all()
+                favorite_count = sum(1 for w in all_waifus if w.is_favorite)
+                synergy_bonus = min(favorite_count * skill_effects.get('favorite_power_bonus', 0.0), 0.5)
+                
+                unique_rarities = len(set(w.rarity for w in all_waifus))
+                harmony_bonus = min(unique_rarities * skill_effects.get('rarity_bonus', 0.0), 0.25)
+                
+                # Add collection bonus to skill_effects
+                collection_bonus = synergy_bonus + harmony_bonus
+                if collection_bonus > 0:
+                    skill_effects['collection_power_bonus'] = collection_bonus
+            except Exception as e:
+                logger.warning(f"⚠️ Error fetching skill effects for waifu detail: {e}")
+        
+        # Calculate power with skill effects
+        power = calculate_waifu_power(waifu.__dict__, skill_effects)
+        
         # Формируем ответ
         waifu_data = {
             "id": waifu.id,
@@ -167,6 +195,7 @@ async def get_waifu_card(waifu_id: str, db: Session = Depends(get_db)) -> Dict[s
             "image_url": waifu.image_url,  # Include image URL
             "level": waifu.level,
             "xp": waifu.xp,
+            "power": power,  # Include power with skill effects
             "stats": waifu.stats,
             "dynamic": waifu.dynamic,
             "tags": waifu.tags,
@@ -1409,18 +1438,38 @@ async def get_sacrifice_candidates(request: Request, target_waifu_id: str, db: S
             Waifu.id != target_waifu_id
         ).all()
         
+        # Get skill effects for power calculation
+        skill_effects = {}
+        try:
+            from bot.services.skill_effects import get_user_skill_effects
+            skill_effects = get_user_skill_effects(db, user.id)
+            
+            # Calculate collection-based bonuses (synergy, harmony)
+            favorite_count = sum(1 for w in waifus if w.is_favorite)
+            synergy_bonus = min(favorite_count * skill_effects.get('favorite_power_bonus', 0.0), 0.5)
+            
+            unique_rarities = len(set(w.rarity for w in waifus))
+            harmony_bonus = min(unique_rarities * skill_effects.get('rarity_bonus', 0.0), 0.25)
+            
+            # Add collection bonus to skill_effects
+            collection_bonus = synergy_bonus + harmony_bonus
+            if collection_bonus > 0:
+                skill_effects['collection_power_bonus'] = collection_bonus
+        except Exception as e:
+            logger.warning(f"⚠️ Error fetching skill effects for sacrifice candidates: {e}")
+        
         candidates = []
         for waifu in waifus:
             # Calculate XP value (based on level and rarity)
             xp_value = calculate_sacrifice_xp(waifu)
             
-            # Calculate power for display
+            # Calculate power with skill effects
             from bot.services.waifu_generator import calculate_waifu_power
             power = calculate_waifu_power({
                 'stats': waifu.stats or {},
                 'dynamic': waifu.dynamic or {},
                 'level': waifu.level
-            })
+            }, skill_effects)
             
             candidates.append({
                 "id": waifu.id,
