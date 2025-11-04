@@ -120,6 +120,22 @@ async def handle_group_message(message: Message) -> None:
         else:
             logger.info("   No XP awarded (amount = 0)")
         
+        # Проверяем активные рейды клана
+        if user:
+            try:
+                from bot.services.clan_raid import ClanRaidService
+                raid_service = ClanRaidService()
+                raid_result = await raid_service.process_message_for_raid(
+                    session=session,
+                    user_id=user.id,
+                    chat_id=message.chat.id,
+                    message=message
+                )
+                if raid_result and raid_result.get('boss_defeated'):
+                    logger.info(f"🎉 Boss defeated in raid for user {user.id}!")
+            except Exception as e:
+                logger.error(f"❌ Error processing raid message: {e}", exc_info=True)
+        
     except Exception as e:
         logger.error(f"❌ Error in message handler: {e}", exc_info=True)
     finally:

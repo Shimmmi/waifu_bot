@@ -334,3 +334,17 @@ class ClanChatMessage(Base):
     created_at = mapped_column(DateTime, nullable=False, server_default=text("now()"))
     is_deleted = mapped_column(Boolean, nullable=False, default=False)
 
+
+class ClanRaidActivity(Base):
+    """Clan raid activity tracking"""
+    __tablename__ = "clan_raid_activity"
+    
+    id = mapped_column(Integer, primary_key=True, index=True)
+    event_id = mapped_column(Integer, ForeignKey("clan_events.id", ondelete="CASCADE"), nullable=False)
+    user_id = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    chat_id = mapped_column(BigInteger, nullable=False)  # Telegram chat ID
+    message_type = mapped_column(String(20), nullable=False)  # 'text', 'sticker', 'photo', 'video', 'voice', 'link', 'document', 'animation'
+    damage_dealt = mapped_column(Integer, nullable=False, default=0)
+    message_id = mapped_column(BigInteger, nullable=True)  # Telegram message ID
+    created_at = mapped_column(DateTime, nullable=False, server_default=text("now()"))
+

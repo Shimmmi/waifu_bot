@@ -6,7 +6,7 @@ import logging
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 from datetime import datetime, timedelta
 import random
 
@@ -236,34 +236,42 @@ async def start_raid_event(request, db: Session = Depends(get_db)) -> Dict[str, 
                 raise HTTPException(status_code=400, detail=f"Рейд можно запустить через {3 - days_since} дней")
         
         clan = db.query(Clan).filter(Clan.id == member.clan_id).first()
-        members = db.query(ClanMember).filter(ClanMember.clan_id == clan.id).all()
         
-        total_power = 0
-        for m in members:
-            waifu = db.query(Waifu).filter(and_(Waifu.owner_id == m.user_id, Waifu.is_active == True)).first()
-            if waifu:
-                from bot.services.waifu_generator import calculate_waifu_power
-                total_power += calculate_waifu_power({'stats': waifu.stats or {}, 'dynamic': waifu.dynamic or {}, 'level': waifu.level})
-        
-        average_power = total_power // len(members) if members else 1000
-        boss_max_hp = average_power * 10
+        # Используем функцию расчета HP босса из сервиса
+        from bot.services.clan_raid import calculate_boss_hp
+        boss_max_hp = calculate_boss_hp(clan, db)
         
         raid_event = ClanEvent(
             clan_id=clan.id,
             event_type='raid',
             status='active',
             started_at=datetime.now(),
-            ends_at=datetime.now() + timedelta(days=1),
-            data={'boss_name': 'Дракон Клана', 'boss_max_hp': boss_max_hp, 'boss_hp': boss_max_hp, 'started_by': user.id}
+            ends_at=datetime.now() + timedelta(days=3),  # 3 дня на рейд
+            data={
+                'boss_name': 'Дракон Клана',
+                'boss_max_hp': boss_max_hp,
+                'boss_current_hp': boss_max_hp,
+                'boss_hp': boss_max_hp,  # Для совместимости со старым кодом
+                'damage_dealt': 0,
+                'participant_count': 0,
+                'activity_tracking': True,  # Включаем отслеживание активности
+                'started_by': user.id
+            }
         )
         db.add(raid_event)
         db.commit()
         
-        logger.info(f"✅ Raid started for clan {clan.name}")
+        logger.info(f"✅ Raid started for clan {clan.name} with {boss_max_hp} HP")
         
         return {
             "success": True,
-            "event": {"id": raid_event.id, "boss_name": "Дракон Клана", "boss_max_hp": boss_max_hp, "boss_hp": boss_max_hp}
+            "event": {
+                "id": raid_event.id,
+                "boss_name": "Дракон Клана",
+                "boss_max_hp": boss_max_hp,
+                "boss_current_hp": boss_max_hp,
+                "boss_hp": boss_max_hp
+            }
         }
         
     except HTTPException:
@@ -271,5 +279,121 @@ async def start_raid_event(request, db: Session = Depends(get_db)) -> Dict[str, 
     except Exception as e:
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
         db.rollback()
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+
+@router.get("/api/clans/raid/status")
+async def get_raid_status(request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Получить статус активного рейда"""
+    try:
+        user = get_user_from_request(request, db)
+        member = db.query(ClanMember).filter(ClanMember.user_id == user.id).first()
+        
+        if not member:
+            raise HTTPException(status_code=403, detail="Вы не состоите в клане")
+        
+        raid_event = db.query(ClanEvent).filter(
+            and_(
+                ClanEvent.clan_id == member.clan_id,
+                ClanEvent.event_type == 'raid',
+                ClanEvent.status == 'active'
+            )
+        ).first()
+        
+        if not raid_event:
+            return {"active": False}
+        
+        event_data = raid_event.data or {}
+        
+        # Получаем статистику участников
+        participations = db.query(ClanEventParticipation).filter(
+            ClanEventParticipation.event_id == raid_event.id
+        ).order_by(ClanEventParticipation.score.desc()).limit(10).all()
+        
+        leaderboard = []
+        for p in participations:
+            participant_user = db.query(User).filter(User.id == p.user_id).first()
+            if participant_user:
+                leaderboard.append({
+                    'username': participant_user.display_name or participant_user.username or f"User {p.user_id}",
+                    'damage': p.score,
+                    'contribution': p.contribution or {}
+                })
+        
+        boss_current_hp = event_data.get('boss_current_hp', event_data.get('boss_hp', 0))
+        boss_max_hp = event_data.get('boss_max_hp', 0)
+        
+        return {
+            "active": True,
+            "boss_name": event_data.get('boss_name', 'Дракон Клана'),
+            "boss_max_hp": boss_max_hp,
+            "boss_current_hp": boss_current_hp,
+            "damage_dealt": event_data.get('damage_dealt', 0),
+            "hp_percentage": (boss_current_hp / boss_max_hp * 100) if boss_max_hp > 0 else 0,
+            "leaderboard": leaderboard,
+            "ends_at": raid_event.ends_at.isoformat() if raid_event.ends_at else None
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+
+
+@router.get("/api/clans/raid/my-contribution")
+async def get_my_contribution(request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Получить свой вклад в активный рейд"""
+    try:
+        user = get_user_from_request(request, db)
+        member = db.query(ClanMember).filter(ClanMember.user_id == user.id).first()
+        
+        if not member:
+            raise HTTPException(status_code=403, detail="Вы не состоите в клане")
+        
+        raid_event = db.query(ClanEvent).filter(
+            and_(
+                ClanEvent.clan_id == member.clan_id,
+                ClanEvent.event_type == 'raid',
+                ClanEvent.status == 'active'
+            )
+        ).first()
+        
+        if not raid_event:
+            return {"participating": False}
+        
+        participation = db.query(ClanEventParticipation).filter(
+            and_(
+                ClanEventParticipation.event_id == raid_event.id,
+                ClanEventParticipation.user_id == user.id
+            )
+        ).first()
+        
+        if not participation:
+            return {"participating": False, "damage": 0}
+        
+        # Получаем общий урон клана
+        total_damage = db.query(
+            func.sum(ClanEventParticipation.score)
+        ).filter(
+            ClanEventParticipation.event_id == raid_event.id
+        ).scalar() or 0
+        
+        contribution_rate = (participation.score / total_damage * 100) if total_damage > 0 else 0
+        
+        contribution = participation.contribution or {}
+        
+        return {
+            "participating": True,
+            "damage": participation.score,
+            "contribution_percentage": round(contribution_rate, 2),
+            "message_count": contribution.get('message_count', 0),
+            "damage_by_type": contribution.get('damage_by_type', {})
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
 

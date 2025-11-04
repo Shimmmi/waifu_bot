@@ -5,6 +5,7 @@ let currentView = 'profile';
 let waifuSortBy = 'name'; // Default sort: name, rarity, level, power, race, profession, nationality
 let showOnlyFavorites = false; // Filter toggle
 let currentSkillCategory = 'account'; // Track active skill category
+let raidStatusInterval = null; // Auto-refresh interval for raid status
 
 // Initialize WebApp
 if (window.Telegram && window.Telegram.WebApp) {
@@ -92,6 +93,7 @@ function navigateTo(view) {
         document.getElementById('profile-view').classList.remove('hidden');
         document.getElementById('other-views').classList.add('hidden');
         currentView = 'profile';
+        stopRaidStatusAutoRefresh(); // Stop auto-refresh when leaving clan page
     } else {
         // Set currentView BEFORE loading content
         currentView = view;
@@ -137,14 +139,19 @@ function navigateTo(view) {
                 loadSkills(viewContent);
             } else if (view === 'quests') {
                 loadQuests(viewContent);
+                stopRaidStatusAutoRefresh(); // Stop when leaving clan
             } else if (view === 'clan') {
                 loadClanInfo(viewContent);
+                startRaidStatusAutoRefresh(); // Start auto-refresh when viewing clan
             } else if (view === 'settings') {
                 loadSettings(viewContent);
+                stopRaidStatusAutoRefresh(); // Stop when leaving clan
             } else if (view === 'upgrade') {
                 loadUpgradePage(viewContent);
+                stopRaidStatusAutoRefresh(); // Stop when leaving clan
             } else {
                 viewContent.textContent = views[view].content;
+                stopRaidStatusAutoRefresh(); // Stop when leaving clan
             }
         }
     }
@@ -3233,70 +3240,181 @@ function handleClanImageUpload(event) {
 }
 
 // Load active raid
+// Загрузка статуса рейда
+async function loadRaidStatus() {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch(`/api/clans/raid/status?${new URLSearchParams({ initData })}`);
+        
+        if (!response.ok) {
+            return null;
+        }
+        
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error loading raid status:', error);
+        return null;
+    }
+}
+
+// Отображение рейда в UI клана
 async function loadActiveRaid(myRole) {
     const section = document.getElementById('active-raid-section');
     if (!section) return;
     
     try {
-        const initData = window.Telegram?.WebApp?.initData || '';
-        const response = await fetch('/api/clans/events?' + new URLSearchParams({ initData }));
+        const raidStatus = await loadRaidStatus();
         
-        if (!response.ok) {
-            section.innerHTML = '';
-            return;
-        }
-        
-        const data = await response.json();
-        const activeRaids = data.active.filter(e => e.type === 'raid');
-        
-        if (activeRaids.length === 0) {
-            // No active raid - show start button for leaders/officers
+        if (!raidStatus || !raidStatus.active) {
+            // Нет активного рейда
             if (myRole === 'leader' || myRole === 'officer') {
                 section.innerHTML = `
-                    <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); 
-                                color: white; padding: 16px; border-radius: 12px; margin-bottom: 16px; text-align: center;">
-                        <h3 style="margin: 0 0 8px 0; font-size: 18px;">🐉 Clan Raid</h3>
-                        <p style="margin: 0 0 12px 0; font-size: 14px; opacity: 0.9;">Начните новый рейд!</p>
-                        <button onclick="startRaid()" style="
-                            background: white; color: #ff6b6b; border: none; padding: 10px 20px;
-                            border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer;
-                        ">Запустить рейд</button>
+                    <div style="padding: 16px; text-align: center; background: #f5f5f5; border-radius: 8px;">
+                        <h3 style="margin: 0 0 8px 0;">🐉 Клановый рейд</h3>
+                        <p style="margin: 0 0 16px 0; color: #666;">Активных рейдов нет</p>
+                        <button onclick="startRaid()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Начать рейд
+                        </button>
                     </div>
                 `;
             } else {
                 section.innerHTML = '';
             }
-        } else {
-            // Active raid
-            const raid = activeRaids[0];
-            const boss_hp = raid.data.boss_hp || 0;
-            const boss_max_hp = raid.data.boss_max_hp || 1;
-            const hp_percent = Math.round((boss_hp / boss_max_hp) * 100);
-            
-            section.innerHTML = `
-                <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); 
-                            color: white; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
-                    <h3 style="margin: 0 0 12px 0; font-size: 18px;">🐉 ${raid.data.boss_name || 'Clan Raid'}</h3>
-                    <div style="margin-bottom: 12px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px;">
-                            <span>HP Босса</span>
-                            <span>${hp_percent}%</span>
-                        </div>
-                        <div style="background: rgba(255,255,255,0.3); border-radius: 8px; height: 24px; overflow: hidden;">
-                            <div style="background: white; height: 100%; width: ${hp_percent}%; transition: width 0.3s;"></div>
-                        </div>
-                    </div>
-                    <button onclick="attackRaidBoss()" style="
-                        width: 100%; background: white; color: #ff6b6b; border: none;
-                        padding: 12px; border-radius: 8px; font-size: 14px; font-weight: bold;
-                        cursor: pointer;
-                    ">⚔️ Атаковать</button>
-                </div>
-            `;
+            return;
         }
+        
+        const hpPercent = raidStatus.hp_percentage.toFixed(1);
+        const hpBarColor = hpPercent > 50 ? '#4ade80' : hpPercent > 25 ? '#fbbf24' : '#ef4444';
+        
+        section.innerHTML = `
+            <div style="padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white; margin-bottom: 16px;">
+                <h3 style="margin: 0 0 12px 0; font-size: 20px;">🐉 ${raidStatus.boss_name}</h3>
+                
+                <!-- Прогресс HP -->
+                <div style="margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px;">
+                        <span>HP: ${raidStatus.boss_current_hp.toLocaleString()} / ${raidStatus.boss_max_hp.toLocaleString()}</span>
+                        <span>${hpPercent}%</span>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.2); border-radius: 4px; height: 20px; overflow: hidden;">
+                        <div style="background: ${hpBarColor}; height: 100%; width: ${hpPercent}%; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+                
+                <!-- Урон -->
+                <div style="margin-bottom: 12px; font-size: 14px;">
+                    💥 Нанесено урона: <strong>${raidStatus.damage_dealt.toLocaleString()}</strong>
+                </div>
+                
+                <!-- Мой вклад -->
+                <div id="my-raid-contribution" style="margin-bottom: 16px; padding: 12px; background: rgba(255,255,255,0.1); border-radius: 4px; font-size: 14px;">
+                    Загрузка...
+                </div>
+                
+                <!-- Лидерборд -->
+                <div>
+                    <h4 style="margin: 0 0 8px 0; font-size: 16px;">🏆 Топ участников:</h4>
+                    <div style="max-height: 200px; overflow-y: auto;">
+                        ${raidStatus.leaderboard.length > 0 ? raidStatus.leaderboard.map((entry, idx) => `
+                            <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 13px;">
+                                <span>${idx + 1}. ${entry.username}</span>
+                                <span>💥 ${entry.damage.toLocaleString()}</span>
+                            </div>
+                        `).join('') : '<div style="font-size: 13px; opacity: 0.8;">Нет участников</div>'}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Загружаем мой вклад
+        loadMyContribution();
+        
     } catch (error) {
         console.error('Error loading raid:', error);
         section.innerHTML = '';
+    }
+}
+
+// Загрузка моего вклада
+async function loadMyContribution() {
+    try {
+        const initData = window.Telegram?.WebApp?.initData || '';
+        const response = await fetch(`/api/clans/raid/my-contribution?${new URLSearchParams({ initData })}`);
+        
+        if (!response.ok) {
+            return;
+        }
+        
+        const data = await response.json();
+        const container = document.getElementById('my-raid-contribution');
+        
+        if (!container) return;
+        
+        if (!data.participating) {
+            container.innerHTML = `
+                <div style="text-align: center; color: rgba(255,255,255,0.8);">
+                    📝 Напишите что-нибудь в групповом чате, чтобы нанести урон боссу!
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = `
+            <div>
+                <div style="font-weight: bold; margin-bottom: 6px;">Ваш вклад:</div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span>💥 Урон:</span>
+                    <span><strong>${data.damage.toLocaleString()}</strong></span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span>📝 Сообщений:</span>
+                    <span><strong>${data.message_count}</strong></span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>📊 Вклад:</span>
+                    <span><strong>${data.contribution_percentage}%</strong></span>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading my contribution:', error);
+    }
+}
+
+// Автообновление статуса рейда (каждые 5 секунд)
+function startRaidStatusAutoRefresh() {
+    if (raidStatusInterval) {
+        clearInterval(raidStatusInterval);
+    }
+    
+    raidStatusInterval = setInterval(async () => {
+        if (currentView === 'clan') {
+            const section = document.getElementById('active-raid-section');
+            if (section) {
+                // Reload raid status if we're on the clan page
+                const container = document.getElementById('view-content');
+                if (container) {
+                    try {
+                        const initData = window.Telegram?.WebApp?.initData || '';
+                        const clanResponse = await fetch('/api/clans/my-clan?' + new URLSearchParams({ initData }));
+                        if (clanResponse.ok) {
+                            const clanData = await clanResponse.json();
+                            await loadActiveRaid(clanData.my_role);
+                        }
+                    } catch (error) {
+                        console.error('Error auto-refreshing raid:', error);
+                    }
+                }
+            }
+        }
+    }, 5000);
+}
+
+function stopRaidStatusAutoRefresh() {
+    if (raidStatusInterval) {
+        clearInterval(raidStatusInterval);
+        raidStatusInterval = null;
     }
 }
 
@@ -3348,7 +3466,12 @@ async function startRaid() {
         }
         
         window.Telegram?.WebApp?.showAlert?.('Рейд запущен!');
-        loadActiveRaid(clanData.my_role);
+        
+        // Reload clan data to get updated role
+        const container = document.getElementById('view-content');
+        if (container) {
+            await loadClanInfo(container);
+        }
         
     } catch (error) {
         console.error('Error starting raid:', error);
