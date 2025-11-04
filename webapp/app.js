@@ -3454,15 +3454,51 @@ async function attackRaidBoss() {
 async function startRaid() {
     try {
         const initData = window.Telegram?.WebApp?.initData || '';
+        console.log('🚀 Starting raid...');
         const response = await fetch('/api/clans/raid/start?' + new URLSearchParams({ initData }), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });
         
+        console.log('📡 Response status:', response.status, response.statusText);
+        
         if (!response.ok) {
-            const error = await response.json();
-            window.Telegram?.WebApp?.showAlert?.(error.detail || 'Ошибка запуска рейда');
+            let errorMessage = 'Ошибка запуска рейда';
+            try {
+                const error = await response.json();
+                console.error('❌ Error response:', error);
+                // Handle different error formats
+                if (typeof error.detail === 'string') {
+                    errorMessage = error.detail;
+                } else if (typeof error.message === 'string') {
+                    errorMessage = error.message;
+                } else if (typeof error.detail === 'object' && error.detail !== null) {
+                    // If detail is an object, try to stringify it
+                    errorMessage = JSON.stringify(error.detail);
+                } else if (typeof error === 'string') {
+                    errorMessage = error;
+                } else {
+                    errorMessage = `Ошибка ${response.status}: ${response.statusText}`;
+                }
+            } catch (parseError) {
+                console.error('❌ Error parsing response:', parseError);
+                // If JSON parsing fails, use status text
+                errorMessage = `Ошибка ${response.status}: ${response.statusText || 'Неизвестная ошибка'}`;
+            }
+            console.log('📢 Showing error:', errorMessage);
+            window.Telegram?.WebApp?.showAlert?.(String(errorMessage));
             return;
+        }
+        
+        // Parse response if there's content
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            try {
+                const result = await response.json();
+                console.log('Raid started successfully:', result);
+            } catch (e) {
+                console.warn('Could not parse raid start response:', e);
+            }
         }
         
         window.Telegram?.WebApp?.showAlert?.('Рейд запущен!');
@@ -3475,7 +3511,8 @@ async function startRaid() {
         
     } catch (error) {
         console.error('Error starting raid:', error);
-        window.Telegram?.WebApp?.showAlert?.('Ошибка запуска рейда');
+        const errorMessage = error?.message || error?.toString() || 'Ошибка запуска рейда';
+        window.Telegram?.WebApp?.showAlert?.(errorMessage);
     }
 }
 

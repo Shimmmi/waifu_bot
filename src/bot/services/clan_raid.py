@@ -346,45 +346,55 @@ def calculate_boss_hp(clan: Clan, session: Session) -> int:
     Returns:
         Максимальное HP босса
     """
-    # Получаем всех участников
-    members = session.query(ClanMember).filter(
-        ClanMember.clan_id == clan.id
-    ).all()
-    
-    total_power = 0
-    for member in members:
-        waifu = session.query(Waifu).filter(
-            and_(
-                Waifu.owner_id == member.user_id,
-                Waifu.is_active == True
-            )
-        ).first()
+    try:
+        # Получаем всех участников
+        members = session.query(ClanMember).filter(
+            ClanMember.clan_id == clan.id
+        ).all()
         
-        if waifu:
-            from bot.services.waifu_generator import calculate_waifu_power
-            from bot.services.skill_effects import get_user_skill_effects
-            
-            skill_effects = get_user_skill_effects(session, member.user_id)
-            power = calculate_waifu_power({
-                'stats': waifu.stats or {},
-                'dynamic': waifu.dynamic or {},
-                'level': waifu.level,
-                'rarity': waifu.rarity
-            }, skill_effects)
-            
-            total_power += power
-    
-    # Базовая сложность
-    BASE_DIFFICULTY = 100
-    
-    # Множитель уровня клана
-    level_multiplier = 1 + (clan.level * 0.1)
-    
-    # Рассчитываем HP
-    boss_hp = int(total_power * BASE_DIFFICULTY * level_multiplier)
-    
-    # Минимальное HP (для маленьких кланов)
-    min_hp = 100000
-    boss_hp = max(boss_hp, min_hp)
-    
-    return boss_hp
+        total_power = 0
+        for member in members:
+            try:
+                waifu = session.query(Waifu).filter(
+                    and_(
+                        Waifu.owner_id == member.user_id,
+                        Waifu.is_active == True
+                    )
+                ).first()
+                
+                if waifu:
+                    from bot.services.waifu_generator import calculate_waifu_power
+                    from bot.services.skill_effects import get_user_skill_effects
+                    
+                    skill_effects = get_user_skill_effects(session, member.user_id)
+                    power = calculate_waifu_power({
+                        'stats': waifu.stats or {},
+                        'dynamic': waifu.dynamic or {},
+                        'level': waifu.level or 1,
+                        'rarity': waifu.rarity or 'Common'
+                    }, skill_effects)
+                    
+                    total_power += power
+            except Exception as e:
+                logger.warning(f"⚠️ Error calculating power for member {member.user_id}: {e}")
+                continue
+        
+        # Базовая сложность
+        BASE_DIFFICULTY = 100
+        
+        # Множитель уровня клана
+        clan_level = getattr(clan, 'level', 1) or 1
+        level_multiplier = 1 + (clan_level * 0.1)
+        
+        # Рассчитываем HP
+        boss_hp = int(total_power * BASE_DIFFICULTY * level_multiplier)
+        
+        # Минимальное HP (для маленьких кланов)
+        min_hp = 100000
+        boss_hp = max(boss_hp, min_hp)
+        
+        return boss_hp
+    except Exception as e:
+        logger.error(f"❌ Error calculating boss HP: {e}", exc_info=True)
+        # Return minimum HP on error
+        return 100000
