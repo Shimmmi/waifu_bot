@@ -26,7 +26,7 @@ ssh rocketcloud-vps
 **Если не подключается:**
 - Проверьте правильность IP адреса в `~/.ssh/config`
 - Проверьте, что SSH ключ правильно настроен
-- Убедитесь, что сервер доступен: `ping 45.156.21.220`
+- Убедитесь, что сервер доступен: `ping 45.156.21.149`
 
 ### Шаг 2: Проверка системных ресурсов на сервере
 
@@ -103,7 +103,7 @@ mkdir -p /home/developer/.ssh
 chmod 700 /home/developer/.ssh
 
 # Скопируйте ваш публичный ключ (с локальной машины выполните):
-# ssh-copy-id developer@45.156.21.220
+# ssh-copy-id developer@45.156.21.149
 
 # Или вручную на сервере:
 # nano /home/developer/.ssh/authorized_keys
@@ -116,7 +116,7 @@ chown -R developer:developer /home/developer/.ssh
 
 ```
 Host rocketcloud-vps
-    HostName 45.156.21.220
+    HostName 45.156.21.149
     User developer
     IdentityFile ~/.ssh/id_ed25519
     ServerAliveInterval 60
@@ -145,18 +145,18 @@ yum clean all  # для CentOS/RHEL
 
 1. **Проверьте ping:**
    ```powershell
-   ping 45.156.21.220
+   ping 45.156.21.149
    ```
 
 2. **Проверьте задержку:**
    ```powershell
-   Test-NetConnection -ComputerName 45.156.21.220 -Port 22
+   Test-NetConnection -ComputerName 45.156.21.149 -Port 22
    ```
 
 3. **Добавьте параметры в SSH config:**
    ```
    Host rocketcloud-vps
-       HostName 45.156.21.220
+       HostName 45.156.21.149
        User root
        IdentityFile ~/.ssh/id_ed25519
        ServerAliveInterval 30
@@ -218,7 +218,7 @@ ufw allow 22/tcp
 1. Обновите `~/.ssh/config`:
    ```
    Host rocketcloud-vps
-       HostName 45.156.21.220
+       HostName 45.156.21.149
        User root
        IdentityFile ~/.ssh/id_ed25519
        LocalForward 62217 localhost:62217

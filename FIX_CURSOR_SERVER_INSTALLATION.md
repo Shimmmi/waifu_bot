@@ -187,7 +187,7 @@ ssh rocketcloud-vps "swapon --show"
 
 ```powershell
 # Проверка ping
-ping 45.156.21.220
+ping 45.156.21.149
 
 # Проверка SSH
 ssh -v rocketcloud-vps "echo 'test'"

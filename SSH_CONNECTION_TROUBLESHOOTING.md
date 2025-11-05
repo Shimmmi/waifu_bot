@@ -16,10 +16,10 @@ kex_exchange_identification: read: Connection reset
 
 ```powershell
 # Проверка ping
-ping 45.156.21.220
+ping 45.156.21.149
 
 # Проверка порта 22
-Test-NetConnection -ComputerName 45.156.21.220 -Port 22
+Test-NetConnection -ComputerName 45.156.21.149 -Port 22
 ```
 
 ### Шаг 2: Проверка SSH подключения с детальными логами
@@ -69,14 +69,14 @@ systemctl enable ssh
 
 ```powershell
 # Удаление записи для этого хоста
-ssh-keygen -R 45.156.21.220
+ssh-keygen -R 45.156.21.149
 ssh-keygen -R rocketcloud-vps
 ```
 
 ### Решение 3: Попробуйте прямое подключение
 
 ```powershell
-ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@45.156.21.220
+ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@45.156.21.149
 ```
 
 ### Решение 4: Проверка через другой порт
@@ -85,7 +85,7 @@ ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@45.156.21.2
 
 ```powershell
 # Попробуйте подключиться с указанием порта
-ssh -p 22 root@45.156.21.220
+ssh -p 22 root@45.156.21.149
 ```
 
 ### Решение 5: Использование пароля вместо ключа
@@ -93,7 +93,7 @@ ssh -p 22 root@45.156.21.220
 Если ключ не работает, попробуйте пароль:
 
 ```powershell
-ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no root@45.156.21.220
+ssh -o PreferredAuthentications=password -o PubkeyAuthentication=no root@45.156.21.149
 ```
 
 ### Решение 6: Проверка через веб-консоль RocketCloud
@@ -184,7 +184,7 @@ systemctl restart ssh
 
 1. Скачайте PuTTY: https://www.putty.org/
 2. Заполните:
-   - Host Name: `45.156.21.220`
+   - Host Name: `45.156.21.149`
    - Port: `22`
    - Connection type: SSH
 3. В Connection → SSH → Auth укажите путь к приватному ключу
@@ -204,19 +204,19 @@ systemctl restart ssh
 
 ```powershell
 # 1. Проверка ping
-ping 45.156.21.220
+ping 45.156.21.149
 
 # 2. Проверка порта
-Test-NetConnection -ComputerName 45.156.21.220 -Port 22
+Test-NetConnection -ComputerName 45.156.21.149 -Port 22
 
 # 3. Очистка known_hosts
-ssh-keygen -R 45.156.21.220
+ssh-keygen -R 45.156.21.149
 
 # 4. Попытка подключения с детальными логами
-ssh -v root@45.156.21.220 "echo 'test'"
+ssh -v root@45.156.21.149 "echo 'test'"
 
 # 5. Попытка с другими параметрами
-ssh -o ConnectTimeout=30 -o ServerAliveInterval=30 root@45.156.21.220
+ssh -o ConnectTimeout=30 -o ServerAliveInterval=30 root@45.156.21.149
 ```
 
 ---
@@ -225,7 +225,7 @@ ssh -o ConnectTimeout=30 -o ServerAliveInterval=30 root@45.156.21.220
 
 1. **Обратитесь в поддержку RocketCloud:**
    - Опишите проблему
-   - Укажите IP: `45.156.21.220`
+   - Укажите IP: `45.156.21.149`
    - Приложите вывод `ssh -v`
 
 2. **Проверьте через веб-консоль:**
@@ -252,9 +252,9 @@ cat ~/.ssh/config
 ls -la ~/.ssh/
 
 # Тест подключения с разными параметрами
-ssh -v -o ConnectTimeout=10 root@45.156.21.220
-ssh -v -o PreferredAuthentications=password root@45.156.21.220
-ssh -v -p 2222 root@45.156.21.220
+ssh -v -o ConnectTimeout=10 root@45.156.21.149
+ssh -v -o PreferredAuthentications=password root@45.156.21.149
+ssh -v -p 2222 root@45.156.21.149
 ```
 
 ### На сервере (через веб-консоль):
