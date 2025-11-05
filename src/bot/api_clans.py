@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import and_, or_
+from sqlalchemy.exc import OperationalError
 from urllib.parse import parse_qs, unquote
 import json
 from datetime import datetime, timedelta
@@ -19,6 +20,33 @@ from bot.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def handle_database_error(e: Exception) -> HTTPException:
+    """Handle database errors with user-friendly messages"""
+    error_str = str(e)
+    
+    # Check for quota exceeded error
+    if "exceeded the data transfer quota" in error_str or "quota" in error_str.lower():
+        logger.error("❌ Database quota exceeded!")
+        return HTTPException(
+            status_code=503,
+            detail="База данных временно недоступна из-за превышения лимита трафика. Пожалуйста, попробуйте позже или обратитесь к администратору."
+        )
+    
+    # Generic database error
+    if isinstance(e, OperationalError):
+        logger.error(f"❌ Database operational error: {e}")
+        return HTTPException(
+            status_code=503,
+            detail="База данных временно недоступна. Пожалуйста, попробуйте позже."
+        )
+    
+    # Generic error
+    return HTTPException(
+        status_code=500,
+        detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}"
+    )
 
 router = APIRouter()
 
@@ -205,7 +233,7 @@ async def create_clan(request: Request, db: Session = Depends(get_db)) -> Dict[s
     except Exception as e:
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+        raise handle_database_error(e)
 
 
 @router.get("/api/clans/search")
@@ -249,9 +277,11 @@ async def search_clans(request: Request, db: Session = Depends(get_db)) -> Dict[
             "total": len(result)
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+        raise handle_database_error(e)
 
 
 @router.get("/api/clans/my-clan")
@@ -325,9 +355,11 @@ async def get_my_clan(request: Request, db: Session = Depends(get_db)) -> Dict[s
             }
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+        raise handle_database_error(e)
 
 
 @router.post("/api/clans/join")
@@ -392,7 +424,7 @@ async def join_clan(request: Request, db: Session = Depends(get_db)) -> Dict[str
     except Exception as e:
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+        raise handle_database_error(e)
 
 
 @router.post("/api/clans/leave")
@@ -457,7 +489,7 @@ async def leave_clan(request: Request, db: Session = Depends(get_db)) -> Dict[st
     except Exception as e:
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+        raise handle_database_error(e)
 
 
 @router.post("/api/clans/chat/send")
@@ -509,7 +541,7 @@ async def send_clan_message(request: Request, db: Session = Depends(get_db)) -> 
     except Exception as e:
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+        raise handle_database_error(e)
 
 
 @router.post("/api/clans/upload-image")
@@ -565,5 +597,5 @@ async def upload_clan_image(request: Request, db: Session = Depends(get_db)) -> 
     except Exception as e:
         logger.error(f"❌ API ERROR: {type(e).__name__}: {str(e)}", exc_info=True)
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
+        raise handle_database_error(e)
 
