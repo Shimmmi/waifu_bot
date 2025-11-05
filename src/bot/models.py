@@ -296,6 +296,10 @@ class ClanMember(Base):
     last_active = mapped_column(DateTime, nullable=False, server_default=text("now()"))
     donated_gold = mapped_column(BigInteger, nullable=False, default=0)
     donated_skills = mapped_column(Integer, nullable=False, default=0)
+    
+    # Relationships
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    clan: Mapped["Clan"] = relationship("Clan", foreign_keys=[clan_id])
 
 
 class ClanEvent(Base):
@@ -333,6 +337,10 @@ class ClanChatMessage(Base):
     message = mapped_column(Text, nullable=False)
     created_at = mapped_column(DateTime, nullable=False, server_default=text("now()"))
     is_deleted = mapped_column(Boolean, nullable=False, default=False)
+    
+    # Relationships
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    clan: Mapped["Clan"] = relationship("Clan", foreign_keys=[clan_id])
 
 
 class ClanRaidActivity(Base):

@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends, Request
+from starlette.requests import Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,6 +41,7 @@ try:
     from bot.models import Waifu, User
     from bot.services.waifu_generator import calculate_waifu_power
     from bot.services.global_xp import GlobalXPService
+    from bot.services.cache_service import cache_service
     logger.info("✅ Database modules imported successfully")
     logger.info(f"   SessionLocal: {SessionLocal}")
     logger.info(f"   Waifu model: {Waifu}")
@@ -249,8 +251,6 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
     """Получение данных профиля пользователя (из Telegram WebApp initData)"""
     try:
         logger.info(f"📡 API REQUEST: GET /api/profile")
-        logger.info(f"🌐 Request URL: {request.url}")
-        logger.info(f"📱 User Agent: {request.headers.get('user-agent', 'Unknown')}")
         
         if User is None or SessionLocal is None:
             logger.error("❌ Database models not configured")
@@ -270,6 +270,13 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
         
         if not user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
+        
+        # Check cache
+        cache_key = f"user_profile:{user.id}"
+        cached_value = cache_service.get(cache_key)
+        if cached_value is not None:
+            logger.info(f"✅ Cache hit for profile")
+            return cached_value
         
         # Get active waifu
         active_waifu = None
@@ -374,6 +381,9 @@ async def get_profile(request: Request, db: Session = Depends(get_db)) -> Dict[s
             "free_summon_available": free_summon_available,
             "free_summon_cooldown_seconds": free_summon_cooldown_seconds
         }
+        
+        # Cache for 30 seconds
+        cache_service.set(cache_key, profile_data, ttl_seconds=30)
         
         logger.info(f"✅ Profile data fetched")
         return profile_data
@@ -575,10 +585,17 @@ async def view_player_profile(user_id: int, request: Request, db: Session = Depe
         raise HTTPException(status_code=500, detail=f"Ошибка сервера: {type(e).__name__}: {str(e)}")
 
 @app.get("/api/waifus")
-async def get_waifus(request: Request, db: Session = Depends(get_db)):
-    """Получение списка всех вайфу пользователя"""
+async def get_waifus(
+    request: Request, 
+    db: Session = Depends(get_db),
+    page: int = 1,
+    limit: int = 30,
+    sort_by: str = "name",
+    favorites_only: bool = False
+):
+    """Получение списка всех вайфу пользователя с пагинацией"""
     try:
-        logger.info(f"📡 API REQUEST: GET /api/waifus")
+        logger.info(f"📡 API REQUEST: GET /api/waifus (page={page}, limit={limit}, sort_by={sort_by})")
         
         if User is None or Waifu is None:
             raise HTTPException(status_code=500, detail="Database models not configured")
@@ -598,8 +615,22 @@ async def get_waifus(request: Request, db: Session = Depends(get_db)):
         if not user:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
         
-        # Get all waifus for user
-        waifus = db.query(Waifu).filter(Waifu.owner_id == user.id).all()
+        # Check cache
+        cache_key = f"user_waifus:{user.id}:{page}:{limit}:{sort_by}:{favorites_only}"
+        cached_value = cache_service.get(cache_key)
+        if cached_value is not None:
+            logger.info(f"✅ Cache hit for waifus list")
+            return cached_value
+        
+        # Build query with pagination
+        query = db.query(Waifu).filter(Waifu.owner_id == user.id)
+        
+        # Filter by favorites if needed
+        if favorites_only:
+            query = query.filter(Waifu.is_favorite == True)
+        
+        # Get all waifus for skill effects calculation (need total count for bonuses)
+        all_waifus = db.query(Waifu).filter(Waifu.owner_id == user.id).all()
         
         # Get skill effects for power calculation
         skill_effects = {}
@@ -608,10 +639,10 @@ async def get_waifus(request: Request, db: Session = Depends(get_db)):
             skill_effects = get_user_skill_effects(db, user.id)
             
             # Calculate collection-based bonuses (synergy, harmony)
-            favorite_count = sum(1 for w in waifus if w.is_favorite)
+            favorite_count = sum(1 for w in all_waifus if w.is_favorite)
             synergy_bonus = min(favorite_count * skill_effects.get('favorite_power_bonus', 0.0), 0.5)
             
-            unique_rarities = len(set(w.rarity for w in waifus))
+            unique_rarities = len(set(w.rarity for w in all_waifus))
             harmony_bonus = min(unique_rarities * skill_effects.get('rarity_bonus', 0.0), 0.25)
             
             # Add collection bonus to skill_effects
@@ -622,6 +653,32 @@ async def get_waifus(request: Request, db: Session = Depends(get_db)):
         except Exception as e:
             logger.warning(f"⚠️ Error fetching skill effects for waifus: {e}")
         
+        # Apply sorting
+        if sort_by == "name":
+            query = query.order_by(Waifu.name.asc())
+        elif sort_by == "power":
+            # Note: We'll sort by power after calculating it
+            query = query.order_by(Waifu.level.desc(), Waifu.rarity.desc())
+        elif sort_by == "level":
+            query = query.order_by(Waifu.level.desc())
+        elif sort_by == "rarity":
+            # Sort by rarity using Python (after loading)
+            # We'll sort after calculating power
+            pass
+        elif sort_by == "race":
+            query = query.order_by(Waifu.race.asc())
+        elif sort_by == "profession":
+            query = query.order_by(Waifu.profession.asc())
+        elif sort_by == "nationality":
+            query = query.order_by(Waifu.nationality.asc())
+        else:
+            query = query.order_by(Waifu.name.asc())
+        
+        # Apply pagination
+        from bot.utils.pagination import paginate_query
+        waifus, pagination_info = paginate_query(query, page, limit)
+        
+        # Build waifu list (without image_url to save bandwidth)
         waifu_list = []
         for waifu in waifus:
             power = calculate_waifu_power(waifu.__dict__, skill_effects)
@@ -634,15 +691,30 @@ async def get_waifus(request: Request, db: Session = Depends(get_db)):
                 "race": waifu.race,
                 "profession": waifu.profession,
                 "nationality": waifu.nationality,
-                "image_url": waifu.image_url,
+                # image_url removed to reduce data transfer (can be loaded separately if needed)
                 "stats": waifu.stats,
                 "dynamic": waifu.dynamic,
                 "is_active": waifu.is_active or False,
                 "is_favorite": waifu.is_favorite or False
             })
         
-        logger.info(f"✅ Fetched {len(waifu_list)} waifus")
-        return waifu_list
+        # Sort by power or rarity if needed (after calculation)
+        if sort_by == "power":
+            waifu_list.sort(key=lambda w: w['power'], reverse=True)
+        elif sort_by == "rarity":
+            rarity_order = {'Common': 1, 'Uncommon': 2, 'Rare': 3, 'Epic': 4, 'Legendary': 5}
+            waifu_list.sort(key=lambda w: rarity_order.get(w['rarity'], 99), reverse=True)
+        
+        result = {
+            "waifus": waifu_list,
+            "pagination": pagination_info.dict()
+        }
+        
+        # Cache for 15 seconds
+        cache_service.set(cache_key, result, ttl_seconds=15)
+        
+        logger.info(f"✅ Fetched {len(waifu_list)} waifus (page {page})")
+        return result
         
     except HTTPException:
         raise
@@ -700,6 +772,10 @@ async def set_active_waifu(waifu_id: str, request: Request, db: Session = Depend
         
         db.commit()
         
+        # Invalidate cache
+        cache_service.delete(f"user_profile:{user.id}")
+        cache_service.delete_pattern(f"user_waifus:{user.id}:")
+        
         logger.info(f"✅ Waifu {waifu_id} set as active for user {user.id}")
         return {"success": True, "message": "Вайфу установлена как активная"}
         
@@ -745,6 +821,9 @@ async def toggle_favorite(waifu_id: str, request: Request, db: Session = Depends
         # Toggle favorite status
         waifu.is_favorite = not waifu.is_favorite
         db.commit()
+        
+        # Invalidate cache
+        cache_service.delete_pattern(f"user_waifus:{user.id}:")
         
         status = "добавлена в избранное" if waifu.is_favorite else "удалена из избранного"
         logger.info(f"✅ Waifu {waifu_id} {status} for user {user.id}")

@@ -5,9 +5,9 @@ Clan system API endpoints
 import logging
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.orm.attributes import flag_modified
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 from sqlalchemy.exc import OperationalError
 from urllib.parse import parse_qs, unquote
 import json
@@ -18,6 +18,8 @@ from bot.models import (
     User, Clan, ClanMember, ClanEvent, ClanEventParticipation, ClanChatMessage,
     Waifu
 )
+from bot.services.cache_service import cache_service
+from bot.utils.pagination import paginate_query
 
 logger = logging.getLogger(__name__)
 
@@ -257,10 +259,16 @@ async def search_clans(request: Request, db: Session = Depends(get_db)) -> Dict[
         # Limit results
         clans = clans_query.limit(20).all()
         
-        # Get member counts
+        # Get member counts with optimized query (no N+1)
+        clans_with_counts = db.query(
+            Clan,
+            func.count(ClanMember.user_id).label('member_count')
+        ).outerjoin(
+            ClanMember, Clan.id == ClanMember.clan_id
+        ).group_by(Clan.id).limit(20).all()
+        
         result = []
-        for clan in clans:
-            member_count = db.query(ClanMember).filter(ClanMember.clan_id == clan.id).count()
+        for clan, member_count in clans_with_counts:
             result.append({
                 "id": clan.id,
                 "name": clan.name,
@@ -269,7 +277,7 @@ async def search_clans(request: Request, db: Session = Depends(get_db)) -> Dict[
                 "type": clan.type,
                 "level": clan.level,
                 "total_power": clan.total_power,
-                "members_count": member_count
+                "members_count": member_count or 0
             })
         
         return {
@@ -285,10 +293,21 @@ async def search_clans(request: Request, db: Session = Depends(get_db)) -> Dict[
 
 
 @router.get("/api/clans/my-clan")
-async def get_my_clan(request: Request, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_my_clan(
+    request: Request, 
+    db: Session = Depends(get_db),
+    page: int = 1,
+    limit: int = 20
+) -> Dict[str, Any]:
     """Get user's clan information"""
     try:
         user = get_user_from_request(request, db)
+        
+        # Check cache
+        cache_key = f"clan_info:{user.id}:{page}:{limit}"
+        cached_value = cache_service.get(cache_key)
+        if cached_value is not None:
+            return cached_value
         
         # Get user's clan membership
         member = db.query(ClanMember).filter(ClanMember.user_id == user.id).first()
@@ -300,35 +319,42 @@ async def get_my_clan(request: Request, db: Session = Depends(get_db)) -> Dict[s
         if not clan:
             return {"clan": None}
         
-        # Get members
-        members = db.query(ClanMember).filter(ClanMember.clan_id == clan.id).all()
+        # Get members with optimized query (no N+1)
+        members = db.query(ClanMember)\
+            .options(joinedload(ClanMember.user))\
+            .filter(ClanMember.clan_id == clan.id)\
+            .all()
+        
         members_data = []
         for m in members:
-            member_user = db.query(User).filter(User.id == m.user_id).first()
             members_data.append({
                 "user_id": m.user_id,
-                "username": member_user.username if member_user else "Unknown",
+                "username": m.user.username if m.user else "Unknown",
                 "role": m.role,
                 "joined_at": m.joined_at.isoformat(),
                 "donated_gold": m.donated_gold,
                 "donated_skills": m.donated_skills
             })
         
-        # Get recent chat messages
-        recent_messages = db.query(ClanChatMessage).filter(
-            and_(
-                ClanChatMessage.clan_id == clan.id,
-                ClanChatMessage.is_deleted == False
-            )
-        ).order_by(ClanChatMessage.created_at.desc()).limit(50).all()
+        # Get recent chat messages with pagination and optimized query (no N+1)
+        messages_query = db.query(ClanChatMessage)\
+            .options(joinedload(ClanChatMessage.user))\
+            .filter(
+                and_(
+                    ClanChatMessage.clan_id == clan.id,
+                    ClanChatMessage.is_deleted == False
+                )
+            )\
+            .order_by(ClanChatMessage.created_at.desc())
+        
+        messages, pagination_info = paginate_query(messages_query, page, limit)
         
         messages_data = []
-        for msg in reversed(recent_messages):  # Reverse to show oldest first
-            msg_user = db.query(User).filter(User.id == msg.user_id).first()
+        for msg in reversed(messages):  # Reverse to show oldest first
             messages_data.append({
                 "id": msg.id,
                 "user_id": msg.user_id,
-                "username": msg_user.username if msg_user else "Unknown",
+                "username": msg.user.username if msg.user else "Unknown",
                 "message": msg.message,
                 "created_at": msg.created_at.isoformat()
             })
@@ -338,7 +364,7 @@ async def get_my_clan(request: Request, db: Session = Depends(get_db)) -> Dict[s
         if clan.settings and isinstance(clan.settings, dict):
             clan_image = clan.settings.get('image')
         
-        return {
+        result = {
             "clan": {
                 "id": clan.id,
                 "name": clan.name,
@@ -350,10 +376,16 @@ async def get_my_clan(request: Request, db: Session = Depends(get_db)) -> Dict[s
                 "total_power": clan.total_power,
                 "members": members_data,
                 "messages": messages_data,
+                "messages_pagination": pagination_info.dict(),
                 "my_role": member.role,
                 "image": clan_image
             }
         }
+        
+        # Cache for 10 seconds
+        cache_service.set(cache_key, result, ttl_seconds=10)
+        
+        return result
         
     except HTTPException:
         raise
@@ -411,6 +443,9 @@ async def join_clan(request: Request, db: Session = Depends(get_db)) -> Dict[str
         clan.total_power = calculate_total_power(db, clan.id)
         
         db.commit()
+        
+        # Invalidate cache
+        cache_service.delete_pattern(f"clan_info:{clan.id}:")
         
         logger.info(f"✅ User {user.id} joined clan {clan.name}")
         
@@ -477,6 +512,10 @@ async def leave_clan(request: Request, db: Session = Depends(get_db)) -> Dict[st
         
         db.commit()
         
+        # Invalidate cache
+        if clan:
+            cache_service.delete_pattern(f"clan_info:{clan.id}:")
+        
         logger.info(f"✅ User {user.id} left clan")
         
         return {
@@ -528,6 +567,9 @@ async def send_clan_message(request: Request, db: Session = Depends(get_db)) -> 
                 db.delete(old_msg)
         
         db.commit()
+        
+        # Invalidate cache for clan info
+        cache_service.delete_pattern(f"clan_info:{member.clan_id}:")
         
         logger.info(f"✅ Message sent to clan chat by user {user.id}")
         
